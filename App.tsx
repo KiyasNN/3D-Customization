@@ -658,7 +658,7 @@ export default function App() {
       <div className="w-full h-screen bg-zinc-950 flex flex-col items-center justify-center font-sans">
         <div className="relative flex items-center justify-center">
           <div className="w-16 h-16 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin"></div>
-          <div className="absolute font-mono text-[10px] text-blue-400 font-bold uppercase animate-pulse">NK</div>
+          <div className="absolute font-mono text-[10px] text-blue-400 font-bold uppercase animate-pulse">3D</div>
         </div>
         <p className="mt-6 text-sm text-zinc-400 tracking-wide font-medium">Securing Customizer Environment...</p>
       </div>
@@ -669,29 +669,29 @@ export default function App() {
     return (
       <div className="w-full h-screen bg-zinc-950 overflow-hidden relative font-sans flex items-center justify-center">
         {/* Sleek Dark Background with Ambient Glow */}
-        <div className="absolute inset-0 z-0 bg-[radial-gradient(circle_at_50%_40%,rgba(59,130,246,0.1),transparent_50%)]" />
+        <div className="absolute inset-0 z-0 bg-[radial-gradient(circle_at_50%_40%,rgba(59,130,246,0.12),transparent_55%)]" />
         
         {/* Clean, high-contrast display card */}
-        <div className="relative z-10 w-full max-w-sm p-8 rounded-3xl bg-zinc-900/90 border border-white/10 backdrop-blur-2xl shadow-2xl flex flex-col items-center text-center">
+        <div className="relative z-10 w-full max-w-[360px] p-8 rounded-[28px] bg-zinc-900/90 border border-white/10 backdrop-blur-2xl shadow-2xl flex flex-col items-center text-center">
           
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/10 mb-6 group hover:scale-105 transition-transform">
-             <span className="font-mono text-lg font-black text-white tracking-widest leading-none pl-0.5 select-none">NK</span>
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/15 mb-5 active:scale-95 transition-transform">
+             <span className="font-mono text-base font-black text-white tracking-widest pl-0.5 select-none">3D</span>
           </div>
 
-          <h1 className="text-xl font-bold text-white tracking-tight mb-2">
-            NK 3D Customizer
+          <h1 className="text-lg font-bold text-white tracking-tight mb-1.5">
+            3D.Customizer
           </h1>
-          <p className="text-zinc-400 text-xs leading-relaxed mb-6 px-2">
-            Sign in with your Google account to customize models, persist design variants, and access administrative tools.
+          <p className="text-zinc-400 text-xs leading-relaxed mb-6 px-1">
+            Sign in with Google to craft models, persist custom variants, and unlock professional design controls.
           </p>
 
           <div className="w-full flex flex-col gap-2.5">
             {/* Google Login button */}
             <button
               onClick={handleGoogleLogin}
-              className="w-full py-3.5 px-5 rounded-xl border border-white/10 flex items-center justify-center gap-3 bg-white/5 text-zinc-100 hover:bg-white/10 active:scale-[0.98] transition-all font-medium text-xs cursor-pointer shadow-md"
+              className="w-full py-3 px-5 rounded-xl flex items-center justify-center gap-3 bg-white text-zinc-950 hover:bg-zinc-100 active:scale-[0.98] transition-all font-semibold text-xs cursor-pointer shadow-lg shadow-white/5"
             >
-              <svg className="w-4.5 h-4.5 flex-shrink-0" viewBox="0 0 24 24" fill="none">
+              <svg className="w-5 h-5 flex-shrink-0" width="20" height="20" viewBox="0 0 24 24" fill="none">
                 <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
                 <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
                 <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l3.66-2.85z" fill="#FBBC05"/>
@@ -699,21 +699,20 @@ export default function App() {
               </svg>
               <span>Continue with Google</span>
             </button>
-
-            {/* Simulated sandbox bypass/guest demo login */}
-            <button
-              onClick={handleBypassLogin}
-              className="w-full py-3 px-5 rounded-xl flex items-center justify-center gap-2 bg-blue-600/90 hover:bg-blue-600 text-white active:scale-[0.98] transition-all font-semibold text-xs cursor-pointer shadow-lg shadow-blue-900/40"
-            >
-              <span>Continue as Guest Admin</span>
-            </button>
           </div>
 
-          <div className="mt-6 text-center">
-            <p className="text-[10px] text-zinc-500 font-mono tracking-wider uppercase">
-              Secure Environment • Enterprise Edition
+          <div className="mt-5 text-center">
+            <p className="text-[9px] text-zinc-500 font-mono tracking-wider uppercase select-none">
+              SECURE WORKSPACE
             </p>
           </div>
+        </div>
+
+        {/* Attribution bottom left of the screen */}
+        <div className="absolute bottom-4 left-4 z-50 pointer-events-none select-none">
+          <span className="font-mono text-zinc-600 font-semibold tracking-widest text-[9px] uppercase opacity-75">
+            by nkh
+          </span>
         </div>
       </div>
     );
@@ -812,6 +811,13 @@ export default function App() {
 
       <div className="absolute inset-0 z-10 pointer-events-none">
         <Interface />
+      </div>
+
+      {/* Attribution bottom left of the screen */}
+      <div className="absolute bottom-4 left-4 z-50 pointer-events-none select-none">
+        <span className="font-mono text-zinc-500 font-semibold tracking-widest text-[9px] uppercase opacity-70">
+          by nkh
+        </span>
       </div>
     </div>
   );

@@ -2570,7 +2570,7 @@ const UserProfileWidget: React.FC = () => {
       <div className="relative">
         <button
           onClick={() => setDropdownOpen(!dropdownOpen)}
-          className="flex items-center gap-2 p-1.5 pr-3 rounded-full bg-zinc-900/90 hover:bg-zinc-805 border border-white/10 backdrop-blur-xl transition-all cursor-pointer shadow-lg active:scale-95 group"
+          className="flex items-center gap-2 p-1.5 pr-3 rounded-full bg-zinc-900/90 hover:bg-zinc-800 border border-white/10 backdrop-blur-xl transition-all cursor-pointer shadow-lg active:scale-95 group"
         >
           {user.photoURL ? (
             <img
@@ -2619,7 +2619,7 @@ const UserProfileWidget: React.FC = () => {
 
               <button
                 onClick={handleLogout}
-                className="w-full flex items-center gap-2.5 p-2 rounded-xl text-xs font-semibold text-red-405 hover:text-red-300 hover:bg-red-500/10 transition-colors text-left"
+                className="w-full flex items-center gap-2.5 p-2 rounded-xl text-xs font-semibold text-red-100 hover:text-red-300 hover:bg-red-500/10 transition-colors text-left"
               >
                 <LogOut size={14} />
                 <span>Disconnect Account</span>
