@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useStore } from "../store";
+import { GuidedTour } from "./GuidedTour";
 import { LogOut, Users, ShieldAlert, Search } from "lucide-react";
 import {
   collection,
@@ -264,7 +265,10 @@ const TopToolbar = ({
     <div
       className={`w-full p-4 flex justify-center items-start relative z-40 pointer-events-none transition-opacity ${recordingStatus === "recording" ? "opacity-0" : "opacity-100"}`}
     >
-      <div className="pointer-events-auto bg-zinc-900/90 backdrop-blur-xl border border-white/10 rounded-2xl p-2 flex items-center shadow-2xl overflow-x-auto custom-scrollbar max-w-full">
+      <div 
+        id="tour-top-toolbar"
+        className="pointer-events-auto bg-zinc-900/90 backdrop-blur-xl border border-white/10 rounded-2xl p-2 flex items-center shadow-2xl overflow-x-auto custom-scrollbar max-w-full"
+      >
         <div className="flex items-center gap-3 px-3 border-r border-white/10 shrink-0">
           <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider hidden xl:block">
             View
@@ -1592,6 +1596,13 @@ export const Interface: React.FC = () => {
           ))}
         </div>
       </div>
+
+      <GuidedTour 
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        showLeftPanel={showLeftPanel}
+        setShowLeftPanel={setShowLeftPanel}
+      />
     </div>
   );
 };
@@ -1615,6 +1626,7 @@ const LeftPanel = ({ showLeftPanel }: any) => {
 
   return (
     <div
+      id="tour-left-panel"
       className={`ml-6 md:ml-6 flex flex-row items-start gap-2 animate-in slide-in-from-left duration-500 absolute left-0 top-2 bottom-auto max-h-[calc(100%-1rem)] pointer-events-none z-20 transition-opacity ${recordingStatus === "recording" ? "opacity-0" : "opacity-100"} ${isMobile ? "top-[70px] ml-4 flex-col" : ""}`}
     >
       <div
@@ -1829,6 +1841,7 @@ const RightPanel = ({ activeTab, onStartCamera, onStopCamera }: any) => {
 
   return (
     <div
+      id="tour-right-panel"
       className={`
         flex flex-col gap-3 animate-in slide-in-from-right duration-500 absolute pointer-events-none z-20 transition-all
         ${recordingStatus === "recording" ? "opacity-0" : "opacity-100"}
