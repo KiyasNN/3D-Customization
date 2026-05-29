@@ -812,13 +812,6 @@ export default function App() {
       <div className="absolute inset-0 z-10 pointer-events-none">
         <Interface />
       </div>
-
-      {/* Attribution bottom left of the screen */}
-      <div className="absolute bottom-4 left-4 z-50 pointer-events-none select-none">
-        <span className="font-mono text-zinc-500 font-semibold tracking-widest text-[9px] uppercase opacity-70">
-          by nkh
-        </span>
-      </div>
     </div>
   );
 }

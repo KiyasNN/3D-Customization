@@ -43,12 +43,10 @@ service cloud.firestore {
     }
 
     function isValidUserUpdate(data) {
-      return data.keys().hasAll(['email', 'displayName', 'createdAt', 'lastActive'])
-        && data.keys().size() <= 5
+      return data.keys().hasAll(['email', 'displayName', 'lastActive'])
         && data.email is string && data.email.size() <= 256
         && data.displayName is string && data.displayName.size() <= 128
-        // PhotoURL might be optional and added as a 5th key if needed, so keep size checks safe
-        && data.createdAt == resource.data.createdAt
+        && (!('createdAt' in resource.data) || data.createdAt == resource.data.createdAt)
         && data.lastActive == request.time;
     }
 

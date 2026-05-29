@@ -2028,13 +2028,6 @@ const RightPanel = ({ activeTab, onStartCamera, onStopCamera }: any) => {
 
           {activeTab === "models" && (
             <div className="grid grid-cols-2 gap-2 max-h-[400px] overflow-y-auto custom-scrollbar pr-1">
-              <div
-                className={`aspect-square rounded-lg border flex flex-col items-center justify-center cursor-pointer transition-all hover:bg-white/5 h-fit ${currentModel?.id === "demo-shoe" ? "border-blue-500 bg-blue-500/10" : "border-white/10"}`}
-                onClick={() => setCurrentModel(DEMO_ASSET)}
-              >
-                <Box size={24} className="text-zinc-400 mb-2" />
-                <span className="text-[10px] text-zinc-300">Demo Shoe</span>
-              </div>
               {uploadedAssets.map((asset) => (
                 <div
                   key={asset.id}
@@ -2566,7 +2559,7 @@ const UserProfileWidget: React.FC = () => {
       : "?";
 
   return (
-    <div className="fixed top-4 right-4 z-[95] pointer-events-auto">
+    <div className="fixed bottom-4 left-4 z-[95] pointer-events-auto flex flex-col items-center gap-1.5 select-none animate-in fade-in duration-350">
       <div className="relative">
         <button
           onClick={() => setDropdownOpen(!dropdownOpen)}
@@ -2602,7 +2595,7 @@ const UserProfileWidget: React.FC = () => {
               className="fixed inset-0 z-10"
               onClick={() => setDropdownOpen(false)}
             />
-            <div className="absolute right-0 mt-2 w-56 rounded-2xl bg-zinc-950/95 border border-white/10 p-2 shadow-2xl z-20 backdrop-blur-2xl animate-in fade-in-20 slide-in-from-top-4 duration-150">
+            <div className="absolute left-0 bottom-full mb-2 w-56 rounded-2xl bg-zinc-950/95 border border-white/10 p-2 shadow-2xl z-20 backdrop-blur-2xl animate-in fade-in-20 slide-in-from-bottom-4 duration-150">
               <div className="p-3 border-b border-white/5 bg-white/5 rounded-t-xl mb-1.5">
                 <p className="text-xs font-bold text-white truncate">
                   {user.displayName || "Active Member"}
@@ -2628,6 +2621,11 @@ const UserProfileWidget: React.FC = () => {
           </>
         )}
       </div>
+
+      {/* Attribution centered perfectly below the account widget */}
+      <span className="font-mono text-zinc-500 font-semibold tracking-widest text-[9px] uppercase opacity-70 pointer-events-none select-none">
+        by nkh
+      </span>
     </div>
   );
 };
