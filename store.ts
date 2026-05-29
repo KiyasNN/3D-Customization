@@ -422,13 +422,16 @@ export const useStore = create<AppState>((set, get) => ({
 
   uploadAsset: (asset: UploadedAsset) => set((state) => ({
     uploadedAssets: [...state.uploadedAssets, asset],
-    currentModel: asset
+    currentModel: asset,
+    selectedPart: null,
+    customParts: []
   })),
 
   removeAsset: (assetId) => set((state) => {
     const newAssets = state.uploadedAssets.filter(a => a.id !== assetId);
     // If the removed asset is currently active, switch back to Demo (null)
-    const newCurrent = state.currentModel?.id === assetId ? null : state.currentModel;
+    const isActive = state.currentModel?.id === assetId;
+    const newCurrent = isActive ? null : state.currentModel;
     
     // Revoke URL if possible to free memory
     const assetToRemove = state.uploadedAssets.find(a => a.id === assetId);
@@ -438,11 +441,21 @@ export const useStore = create<AppState>((set, get) => ({
 
     return {
        uploadedAssets: newAssets,
-       currentModel: newCurrent
+       currentModel: newCurrent,
+       ...(isActive ? { selectedPart: null, customParts: [] } : {})
     };
   }),
 
-  setCurrentModel: (asset) => set({ currentModel: asset }),
+  setCurrentModel: (asset) => set((state) => {
+    if (state.currentModel?.id !== asset?.id) {
+      return { 
+        currentModel: asset,
+        selectedPart: null,
+        customParts: []
+      };
+    }
+    return { currentModel: asset };
+  }),
   
   setCustomParts: (parts) => set((state) => {
     // CRITICAL FIX: Prevent infinite loop by checking if parts are actually different

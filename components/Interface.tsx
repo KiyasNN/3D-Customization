@@ -1603,15 +1603,15 @@ const LeftPanel = ({ showLeftPanel }: any) => {
   const customParts = useStore((s) => s.customParts);
   const currentModel = useStore((s) => s.currentModel);
   const displayParts = React.useMemo(() => {
-    return currentModel || customParts.length > 0
-      ? customParts.map((id) => ({ id, name: id }))
-      : SHOE_PARTS;
+    if (!currentModel) return [];
+    if (currentModel.id === "demo-shoe") return SHOE_PARTS;
+    return customParts.map((id) => ({ id, name: id }));
   }, [currentModel, customParts]);
   const selectedPart = useStore((s) => s.selectedPart);
   const selectPart = useStore((s) => s.selectPart);
   const showAnnotations = useStore((s) => s.showAnnotations);
 
-  if (!showLeftPanel) return null;
+  if (!showLeftPanel || displayParts.length === 0) return null;
 
   return (
     <div
@@ -1704,10 +1704,11 @@ const RightPanel = ({ activeTab, onStartCamera, onStopCamera }: any) => {
   const pbrInputRef = useRef<HTMLInputElement>(null);
   const environmentInputRef = useRef<HTMLInputElement>(null);
 
-  const displayParts =
-    currentModel || useStore.getState().customParts.length > 0
-      ? useStore.getState().customParts.map((id) => ({ id, name: id }))
-      : SHOE_PARTS;
+  const displayParts = React.useMemo(() => {
+    if (!currentModel) return [];
+    if (currentModel.id === "demo-shoe") return SHOE_PARTS;
+    return useStore.getState().customParts.map((id) => ({ id, name: id }));
+  }, [currentModel]);
 
   const handleAssetUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
