@@ -1,0 +1,35 @@
+{
+  "name": "nk-3d-customizer",
+  "private": true,
+  "version": "1.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "lint": "tsc --noEmit",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@google/genai": "^1.31.0",
+    "@react-three/drei": "^9.105.4",
+    "@react-three/fiber": "^8.16.1",
+    "@react-three/postprocessing": "^2.16.2",
+    "firebase": "^12.14.0",
+    "jspdf": "^2.5.1",
+    "lucide-react": "^0.344.0",
+    "postprocessing": "^6.35.2",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "three": "^0.165.0",
+    "three-stdlib": "^2.29.4",
+    "zustand": "^4.5.2"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@types/three": "^0.165.0",
+    "@vitejs/plugin-react": "^6.0.2",
+    "typescript": "^5.2.2",
+    "vite": "^8.0.14"
+  }
+}
