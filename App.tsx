@@ -13,7 +13,7 @@ import { Interface } from './components/Interface';
 import { ShoeModel } from './components/ShoeModel';
 import { Mannequin } from './components/Mannequin'; // Import Mannequin
 import { useStore } from './store';
-import { onAuthStateChanged } from 'firebase/auth';
+import { onAuthStateChanged, getRedirectResult } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db, syncUserProfile, loginWithGoogle } from './services/firebase';
 
@@ -563,9 +563,16 @@ export default function App() {
   const setUser = useStore(s => s.setUser);
   const setAuthLoading = useStore(s => s.setAuthLoading);
   const setIsAdmin = useStore(s => s.setIsAdmin);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   // Auth Status Subscriber
   useEffect(() => {
+    getRedirectResult(auth).catch((err: any) => {
+      console.error("Redirect auth error:", err);
+      setAuthError("Redirect login failed. Please ensure third-party cookies are allowed or try opening in a new tab.");
+      setAuthLoading(false);
+    });
+
     const unsubscribe = onAuthStateChanged(auth, async (currentFirebaseUser) => {
       try {
         if (currentFirebaseUser) {
@@ -619,6 +626,7 @@ export default function App() {
 
   const handleGoogleLogin = async () => {
     setAuthLoading(true);
+    setAuthError(null);
     try {
       const loggedUser = await loginWithGoogle();
       if (loggedUser) {
@@ -631,10 +639,20 @@ export default function App() {
         } catch (e) {}
         setIsAdmin(isB || dbAdmin);
         await syncUserProfile(loggedUser);
+        setAuthLoading(false);
       }
-    } catch (err) {
-      console.error("Google authentication error:", err);
-    } finally {
+      // For real auth, it redirects and never reaches here
+    } catch (err: any) {
+      if (err.code === 'auth/popup-closed-by-user') {
+        console.warn("Login popup was closed before completion.");
+        setAuthError("Popup blocked. Since you connected a real Firebase DB, browser security prevents the popup in this preview window. Please open the app in a new tab using the button in the top right.");
+      } else if (err.code === 'auth/network-request-failed') {
+        console.warn("Network request failed. Please check your internet connection.");
+        setAuthError("Network error or 3rd-party cookies blocked in iframe. Please open in a new tab.");
+      } else {
+        console.error("Google authentication error:", err);
+        setAuthError("Authentication failed. Please try again.");
+      }
       setAuthLoading(false);
     }
   };
@@ -699,6 +717,15 @@ export default function App() {
               </svg>
               <span>Continue with Google</span>
             </button>
+            {authError && (
+              <div className="mt-2 text-xs text-red-400 bg-red-400/10 border border-red-400/20 p-2.5 rounded-lg text-left leading-relaxed">
+                <span className="font-semibold block mb-1">Login Blocked</span>
+                {authError}
+                <div className="mt-2 text-[10px] text-zinc-400">
+                  Tip: Use the 'Open in new tab' button in the top right of the preview pane.
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="mt-5 text-center">

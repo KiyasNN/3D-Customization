@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import { useLoader, useFrame, useThree } from '@react-three/fiber';
 import { OBJLoader } from 'three-stdlib';
 import { GLTFLoader } from 'three-stdlib';
+import { USDLoader } from 'three/examples/jsm/loaders/USDLoader.js';
 import { useStore } from '../store';
 import { SHOE_PARTS } from '../constants';
 import { Material, TextureConfig } from '../types';
@@ -709,16 +710,79 @@ const ShoePartMesh = ({ id, geometry, position, scale, explodeOffset, interactiv
   );
 };
 
+const useModelLoader = (url: string, isObj: boolean, isUsdz: boolean, resources: any) => {
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<any>(null);
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+
+    const manager = new THREE.LoadingManager();
+    manager.setURLModifier((requestUrl: string) => {
+      if (!resources) return requestUrl;
+      const decodedUrl = decodeURIComponent(requestUrl);
+      const matchKey = Object.keys(resources).find((key) => {
+        const normalizedKey = key.replace(/^\.\//, "");
+        return (
+          decodedUrl.endsWith(normalizedKey) ||
+          decodedUrl.includes("/" + normalizedKey)
+        );
+      });
+      if (matchKey) {
+        return resources[matchKey];
+      }
+      return requestUrl;
+    });
+
+    let loader: any;
+    if (isUsdz) {
+      loader = new USDLoader(manager);
+    } else if (isObj) {
+      loader = new OBJLoader(manager);
+    } else {
+      loader = new GLTFLoader(manager);
+    }
+
+    loader.load(
+      url,
+      (loadedData: any) => {
+        if (active) {
+          setData(loadedData);
+          setLoading(false);
+        }
+      },
+      undefined,
+      (err: any) => {
+        console.error("Error loading model:", err);
+        if (active) {
+          setError(err);
+          setLoading(false);
+        }
+      }
+    );
+
+    return () => {
+      active = false;
+    };
+  }, [url, isObj, isUsdz, resources]);
+
+  return { data, loading, error };
+};
+
 // --- RESTORED INTERACTIVE MODEL ---
-const InteractiveModel = ({ url, isObj, customScale, customPosition, customRotation, interactive, videoTexture }: any) => {
+const InteractiveModel = ({ url, isObj, isUsdz, customScale, customPosition, customRotation, interactive, videoTexture }: any) => {
   const setCustomParts = useStore(s => s.setCustomParts);
   const partMaterials = useStore(s => s.partMaterials);
   const materials = useStore(s => s.materials);
   const partVisibility = useStore(s => s.partVisibility);
   const partConfigs = useStore(s => s.partConfigs);
+  const currentModel = useStore(s => s.currentModel);
+  const resources = currentModel?.resources;
   
-  const scene = useLoader(isObj ? OBJLoader : GLTFLoader, url);
-  const model = isObj ? scene : scene.scene;
+  const { data: scene, loading } = useModelLoader(url, isObj, isUsdz, resources);
+  const model = scene ? (isUsdz ? scene : (isObj ? scene : scene.scene)) : null;
   const [sceneRef, setSceneRef] = useState<THREE.Group | null>(null);
   
   // Auto-scaling state
@@ -985,10 +1049,12 @@ export const ShoeModel = ({ interactive = true, customScale, customPosition, cus
   }
 
   const isObj = currentModel.extension === 'obj';
+  const isUsdz = currentModel.extension === 'usdz';
   return (
     <InteractiveModel 
       url={currentModel.url} 
       isObj={isObj} 
+      isUsdz={isUsdz}
       customScale={customScale}
       customPosition={customPosition}
       customRotation={customRotation}

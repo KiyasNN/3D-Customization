@@ -33,7 +33,12 @@ export const useStore = create<AppState>((set, get) => ({
   partAnnotations: {}, // Init empty
   materials: [...INITIAL_MATERIALS],
   uploadedAssets: [],
-  currentModel: null,
+  currentModel: {
+    id: 'demo-shoe',
+    url: '',
+    name: 'Demo Shoe',
+    extension: 'demo'
+  },
   customParts: [],
   modelResetCounter: 0,
   savedVariants: [],

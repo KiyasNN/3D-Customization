@@ -3,6 +3,7 @@ import {
   getAuth, 
   GoogleAuthProvider, 
   signInWithPopup, 
+  getRedirectResult,
   signOut, 
   onAuthStateChanged, 
   User as FirebaseUser 

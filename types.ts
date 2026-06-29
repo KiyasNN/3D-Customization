@@ -26,7 +26,7 @@ export interface UploadedAsset {
   id: string;
   url: string;
   name: string;
-  extension: string; // 'glb' | 'gltf' | 'obj'
+  extension: string; // 'glb' | 'gltf' | 'obj' | 'usdz'
   resources?: Record<string, string>; // Filename -> BlobURL map for textures/bins
 }
 

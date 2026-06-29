@@ -1732,7 +1732,7 @@ const RightPanel = ({ activeTab, onStartCamera, onStopCamera }: any) => {
     Array.from(files).forEach((val) => {
       const file = val as File;
       const ext = file.name.split(".").pop()?.toLowerCase();
-      if (ext === "gltf" || ext === "glb" || ext === "obj") {
+      if (ext === "gltf" || ext === "glb" || ext === "obj" || ext === "usdz") {
         mainFile = file;
       } else {
         resourceMap[file.name] = URL.createObjectURL(file);
@@ -1753,7 +1753,7 @@ const RightPanel = ({ activeTab, onStartCamera, onStopCamera }: any) => {
       });
     } else if (Object.keys(resourceMap).length > 0) {
       alert(
-        "Please include the main 3D model file (.gltf, .glb, or .obj) in your selection.",
+        "Please include the main 3D model file (.gltf, .glb, .obj, or .usdz) in your selection.",
       );
     }
   };
@@ -1858,7 +1858,7 @@ const RightPanel = ({ activeTab, onStartCamera, onStopCamera }: any) => {
         multiple
         ref={assetInputRef}
         onChange={handleAssetUpload}
-        accept=".glb,.gltf,.obj,.bin,.png,.jpg,.jpeg"
+        accept=".glb,.gltf,.obj,.usdz,.bin,.png,.jpg,.jpeg"
         className="hidden"
       />
       <input
