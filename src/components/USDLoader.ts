@@ -1,3 +1,3 @@
-import { USDZLoader } from 'three/examples/jsm/loaders/USDZLoader.js';
+import { USDZLoader } from 'three-usdz-loader';
 
 export { USDZLoader as USDLoader };

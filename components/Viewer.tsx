@@ -1,6 +1,6 @@
 // @ts-nocheck
 import React, { useEffect, useState } from 'react';
-import { USDLoader } from 'three/examples/jsm/loaders/USDLoader.js';
+import { USDZLoader as USDLoader } from 'three/examples/jsm/loaders/USDZLoader.js';
 
 interface ModelData {
   type: string;
@@ -17,7 +17,7 @@ export const Viewer: React.FC<ViewerProps> = ({ modelData, onLoad }) => {
 
   useEffect(() => {
     if (modelData && modelData.type === 'usdz') {
-      const loader = new USDLoader();
+      const loader = new USDZLoader();
       loader.load(modelData.url, (group) => {
         setScene(group); // Set the loaded 3D group to the React state
         if (onLoad) onLoad(); // Trigger callbacks (such as fitting the camera)

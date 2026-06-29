@@ -1,6 +1,6 @@
 // @ts-nocheck
 import React, { useEffect, useState } from 'react';
-import { USDLoader } from 'three/examples/jsm/loaders/USDLoader.js';
+import { USDZLoader as USDLoader } from 'three/examples/jsm/loaders/USDZLoader.js';
 
 interface ModelData {
   type: string;

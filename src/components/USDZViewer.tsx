@@ -3,7 +3,7 @@ import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Html, useProgress } from '@react-three/drei';
 import * as THREE from 'three';
 // @ts-ignore - Ignore missing types if they don't exist for USDLoader
-import { USDLoader } from 'three/examples/jsm/loaders/USDLoader.js';
+import { USDZLoader as USDLoader } from 'three/examples/jsm/loaders/USDZLoader.js';
 
 interface USDZModelProps {
   url: string;
@@ -21,7 +21,7 @@ export const USDZModel: React.FC<USDZModelProps> = ({ url }) => {
     
     loader.load(
       url,
-      (usdGroup: THREE.Group) => {
+      (usdGroup: any) => {
         if (isMounted) {
           console.log(`Successfully loaded USDZ file: ${url}`);
           setScene(usdGroup);

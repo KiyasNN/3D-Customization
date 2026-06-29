@@ -7,7 +7,7 @@ import * as THREE from 'three';
 import { useLoader, useFrame, useThree } from '@react-three/fiber';
 import { OBJLoader } from 'three-stdlib';
 import { GLTFLoader } from 'three-stdlib';
-import { USDLoader } from 'three/examples/jsm/loaders/USDLoader.js';
+import { USDZLoader } from 'three/examples/jsm/loaders/USDZLoader.js';
 import { useStore } from '../store';
 import { SHOE_PARTS } from '../constants';
 import { Material, TextureConfig } from '../types';
@@ -738,7 +738,7 @@ const useModelLoader = (url: string, isObj: boolean, isUsdz: boolean, resources:
 
     let loader: any;
     if (isUsdz) {
-      loader = new USDLoader(manager);
+      loader = new USDZLoader(manager);
     } else if (isObj) {
       loader = new OBJLoader(manager);
     } else {

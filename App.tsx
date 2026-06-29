@@ -13,9 +13,9 @@ import { Interface } from './components/Interface';
 import { ShoeModel } from './components/ShoeModel';
 import { Mannequin } from './components/Mannequin'; // Import Mannequin
 import { useStore } from './store';
-import { onAuthStateChanged, getRedirectResult } from 'firebase/auth';
+import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
-import { auth, db, syncUserProfile, loginWithGoogle } from './services/firebase';
+import { auth, db, syncUserProfile, loginWithGoogle, handleRedirectResult } from './services/firebase';
 
 // Fix for Three.js r165+ deprecation warning in three-stdlib
 if (THREE.LoaderUtils && typeof TextDecoder !== 'undefined') {
@@ -567,12 +567,6 @@ export default function App() {
 
   // Auth Status Subscriber
   useEffect(() => {
-    getRedirectResult(auth).catch((err: any) => {
-      console.error("Redirect auth error:", err);
-      setAuthError("Redirect login failed. Please ensure third-party cookies are allowed or try opening in a new tab.");
-      setAuthLoading(false);
-    });
-
     const unsubscribe = onAuthStateChanged(auth, async (currentFirebaseUser) => {
       try {
         if (currentFirebaseUser) {
@@ -639,13 +633,11 @@ export default function App() {
         } catch (e) {}
         setIsAdmin(isB || dbAdmin);
         await syncUserProfile(loggedUser);
-        setAuthLoading(false);
       }
-      // For real auth, it redirects and never reaches here
     } catch (err: any) {
       if (err.code === 'auth/popup-closed-by-user') {
         console.warn("Login popup was closed before completion.");
-        setAuthError("Popup blocked. Since you connected a real Firebase DB, browser security prevents the popup in this preview window. Please open the app in a new tab using the button in the top right.");
+        setAuthError("Popup login ditutup sebelum selesai. Silakan coba lagi.");
       } else if (err.code === 'auth/network-request-failed') {
         console.warn("Network request failed. Please check your internet connection.");
         setAuthError("Network error or 3rd-party cookies blocked in iframe. Please open in a new tab.");
@@ -653,6 +645,7 @@ export default function App() {
         console.error("Google authentication error:", err);
         setAuthError("Authentication failed. Please try again.");
       }
+    } finally {
       setAuthLoading(false);
     }
   };
@@ -685,12 +678,12 @@ export default function App() {
 
   if (!user) {
     return (
-      <div className="w-full h-screen bg-zinc-950 overflow-hidden relative font-sans flex items-center justify-center">
+      <div className="w-full h-screen bg-zinc-950 overflow-hidden relative z-50 font-sans flex items-center justify-center">
         {/* Sleek Dark Background with Ambient Glow */}
         <div className="absolute inset-0 z-0 bg-[radial-gradient(circle_at_50%_40%,rgba(59,130,246,0.12),transparent_55%)]" />
         
         {/* Clean, high-contrast display card */}
-        <div className="relative z-10 w-full max-w-[360px] p-8 rounded-[28px] bg-zinc-900/90 border border-white/10 backdrop-blur-2xl shadow-2xl flex flex-col items-center text-center">
+        <div className="relative z-50 w-full max-w-[360px] p-8 rounded-[28px] bg-zinc-900/90 border border-white/10 backdrop-blur-2xl shadow-2xl flex flex-col items-center text-center">
           
           <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/15 mb-5 active:scale-95 transition-transform">
              <span className="font-mono text-base font-black text-white tracking-widest pl-0.5 select-none">3D</span>

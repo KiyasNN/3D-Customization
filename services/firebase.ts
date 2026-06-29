@@ -112,6 +112,14 @@ export const loginWithGoogle = async () => {
   return result.user;
 };
 
+export const handleRedirectResult = async () => {
+  if (isFirebasePlayground) {
+    return null;
+  }
+  const result = await getRedirectResult(auth);
+  return result?.user || null;
+};
+
 export const logoutUser = async () => {
   if (isFirebasePlayground) {
     return;
