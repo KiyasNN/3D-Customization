@@ -290,8 +290,8 @@ const Dimensions = React.memo(({ geometry }: { geometry: THREE.BufferGeometry })
        </mesh>
 
        <Html position={[dims.x/2, -dims.y/2, dims.z/2]} zIndexRange={[100, 0]}>
-         <div className="transform translate-x-2 translate-y-2 bg-zinc-900/90 text-white text-[10px] px-2 py-1 rounded border border-blue-500/30 whitespace-nowrap flex items-center gap-1 shadow-xl pointer-events-none">
-           <span className="text-blue-400 font-bold">X</span>
+         <div className="transform translate-x-2 translate-y-2 bg-zinc-900/90 text-white text-[10px] px-2 py-1 rounded border border-red-500/30 whitespace-nowrap flex items-center gap-1 shadow-xl pointer-events-none">
+           <span className="text-red-400 font-bold">X</span>
            <span className="font-mono">{(dims.x * scale).toFixed(0)}mm</span>
          </div>
        </Html>
@@ -304,8 +304,8 @@ const Dimensions = React.memo(({ geometry }: { geometry: THREE.BufferGeometry })
        </Html>
        
        <Html position={[-dims.x/2, -dims.y/2, -dims.z/2]} zIndexRange={[100, 0]}>
-         <div className="transform -translate-x-full translate-y-2 mr-2 bg-zinc-900/90 text-white text-[10px] px-2 py-1 rounded border border-red-500/30 whitespace-nowrap flex items-center gap-1 shadow-xl pointer-events-none">
-           <span className="text-red-400 font-bold">Z</span>
+         <div className="transform -translate-x-full translate-y-2 mr-2 bg-zinc-900/90 text-white text-[10px] px-2 py-1 rounded border border-blue-500/30 whitespace-nowrap flex items-center gap-1 shadow-xl pointer-events-none">
+           <span className="text-blue-400 font-bold">Z</span>
            <span className="font-mono">{(dims.z * scale).toFixed(0)}mm</span>
          </div>
        </Html>
@@ -399,6 +399,8 @@ const AnnotationManager = ({ scene }: { scene: THREE.Group }) => {
   // Switch to 3D Labels during recording OR snapshotting
   const use3DLabels = recordingStatus === 'recording' || isSnapshotting;
 
+  const preallocatedPositions = useRef<Record<string, { worldPos: THREE.Vector3, screenPos: THREE.Vector3 }>>({});
+
   useEffect(() => {
      customParts.forEach(id => {
         if (progressRefs.current[id] === undefined) progressRefs.current[id] = 1;
@@ -451,10 +453,20 @@ const AnnotationManager = ({ scene }: { scene: THREE.Group }) => {
        _tempScreenPos.copy(_tempWorldPos).project(camera);
        if (_tempScreenPos.z > 1) return;
 
+       if (!preallocatedPositions.current[id]) {
+          preallocatedPositions.current[id] = {
+             worldPos: new THREE.Vector3(),
+             screenPos: new THREE.Vector3()
+          };
+       }
+       const cache = preallocatedPositions.current[id];
+       cache.worldPos.copy(_tempWorldPos);
+       cache.screenPos.copy(_tempScreenPos);
+
        active.push({
           id,
-          worldPos: _tempWorldPos.clone(),
-          screenPos: _tempScreenPos.clone(),
+          worldPos: cache.worldPos,
+          screenPos: cache.screenPos,
           isRight: _tempScreenPos.x >= 0,
           data
        });
@@ -679,16 +691,92 @@ const ShoePartMesh = ({ id, geometry, position, scale, explodeOffset, interactiv
   const currentExpansion = useRef(0);
   const justFinishedDragging = useRef(false);
 
+  const isDraggingMesh = useRef(false);
+  const dragPlane = useMemo(() => new THREE.Plane(), []);
+  const dragOffset = useMemo(() => new THREE.Vector3(), []);
+  const intersection = useMemo(() => new THREE.Vector3(), []);
+  const { camera, raycaster } = useThree();
+
+  const onMeshPointerDown = useCallback((e: any) => {
+      if (!interactive || !isSelected || transformMode !== 'translate') return;
+      e.stopPropagation();
+      (e.target as any).setPointerCapture(e.pointerId);
+      
+      isDraggingMesh.current = true;
+      setIsDragging(true);
+      
+      const normal = new THREE.Vector3();
+      camera.getWorldDirection(normal);
+      normal.negate();
+      
+      if (meshRef.current) {
+          dragPlane.setFromNormalAndCoplanarPoint(normal, meshRef.current.position);
+          if (raycaster.ray.intersectPlane(dragPlane, intersection)) {
+              dragOffset.copy(meshRef.current.position).sub(intersection);
+          }
+      }
+      
+      const controls = (window as any).controls;
+      if (controls) controls.enabled = false;
+  }, [isSelected, interactive, transformMode, setIsDragging, camera, raycaster, dragPlane, dragOffset, intersection]);
+
+  const onMeshPointerMove = useCallback((e: any) => {
+      if (!isDraggingMesh.current || !meshRef.current) return;
+      e.stopPropagation();
+
+      if (raycaster.ray.intersectPlane(dragPlane, intersection)) {
+          const newPos = intersection.clone().add(dragOffset);
+          meshRef.current.position.copy(newPos);
+      }
+  }, [dragPlane, dragOffset, intersection, raycaster.ray]);
+
+  const onMeshPointerUp = useCallback((e: any) => {
+      if (!isDraggingMesh.current) return;
+      isDraggingMesh.current = false;
+      setIsDragging(false);
+      (e.target as any).releasePointerCapture(e.pointerId);
+      
+      const controls = (window as any).controls;
+      if (controls) controls.enabled = true;
+
+      if (meshRef.current) {
+          justFinishedDragging.current = true;
+          setTimeout(() => { justFinishedDragging.current = false; }, 100);
+
+          const expansion = currentExpansion.current > 0.05 ? currentExpansion.current : 1.0;
+          const newOffset: [number, number, number] = [
+              (meshRef.current.position.x - position[0]) / expansion,
+              (meshRef.current.position.y - position[1]) / expansion,
+              (meshRef.current.position.z - position[2]) / expansion
+          ];
+          updatePartConfig(id, { explosionOffset: newOffset });
+      }
+  }, [id, position, setIsDragging, updatePartConfig]);
+
   useEffect(() => {
     return () => {
       setIsDragging(false);
     };
   }, [setIsDragging]);
 
+  const lastConfigSignature = useRef<string>("");
+  const isSettled = useRef(false);
+
   useFrame((state, delta) => {
     if (meshRef.current) {
        const target = isExploded ? 1 : 0;
+       
+       const currentSig = `${isExploded}_${config.explosionOffset?.join(',')}_${config.meshScale}_${config.meshRotation?.join(',')}`;
+       const isDraggingActive = isDraggingGizmo.current || justFinishedDragging.current;
+
+       if (isSettled.current && currentSig === lastConfigSignature.current && !isDraggingActive) {
+          return;
+       }
+
        currentExpansion.current = THREE.MathUtils.lerp(currentExpansion.current, target, delta * 4);
+       if (Math.abs(currentExpansion.current - target) < 0.001) {
+          currentExpansion.current = target;
+       }
        
        // Position - Only set if not actively being dragged by 3D transform cursor
        if (!isDraggingGizmo.current && !justFinishedDragging.current) {
@@ -720,6 +808,25 @@ const ShoePartMesh = ({ id, geometry, position, scale, explodeOffset, interactiv
          meshRef.current.rotation.x = THREE.MathUtils.lerp(meshRef.current.rotation.x, finalRotX, delta * 6);
          meshRef.current.rotation.y = THREE.MathUtils.lerp(meshRef.current.rotation.y, finalRotY, delta * 6);
          meshRef.current.rotation.z = THREE.MathUtils.lerp(meshRef.current.rotation.z, finalRotZ, delta * 6);
+
+         if (Math.abs(meshRef.current.rotation.x - finalRotX) < 0.001 &&
+             Math.abs(meshRef.current.rotation.y - finalRotY) < 0.001 &&
+             Math.abs(meshRef.current.rotation.z - finalRotZ) < 0.001) {
+             meshRef.current.rotation.x = finalRotX;
+             meshRef.current.rotation.y = finalRotY;
+             meshRef.current.rotation.z = finalRotZ;
+         }
+       }
+
+       const targetRot = config.meshRotation || [0, 0, 0];
+       const finalRotX = isExploded ? targetRot[0] : 0;
+       const rotationSettled = Math.abs(meshRef.current.rotation.x - finalRotX) < 0.002;
+
+       if (currentExpansion.current === target && rotationSettled && !isDraggingActive) {
+          isSettled.current = true;
+          lastConfigSignature.current = currentSig;
+       } else {
+          isSettled.current = false;
        }
     }
   });
@@ -749,8 +856,12 @@ const ShoePartMesh = ({ id, geometry, position, scale, explodeOffset, interactiv
       name={id}
       geometry={partGeometry}
       material={material}
+      onPointerDown={onMeshPointerDown}
+      onPointerMove={onMeshPointerMove}
+      onPointerUp={onMeshPointerUp}
       onClick={interactive ? (e) => {
         e.stopPropagation();
+        if (isDraggingMesh.current) return; // Don't select if we were dragging
         selectPart(isSelected ? null : id);
       } : undefined}
       onPointerOver={interactive ? (e) => {
@@ -785,6 +896,7 @@ const ShoePartMesh = ({ id, geometry, position, scale, explodeOffset, interactiv
           object={mesh}
           mode={transformMode}
           size={transformGizmoSize}
+          space="world"
           onMouseDown={() => {
             isDraggingGizmo.current = true;
             setIsDragging(true);
@@ -971,14 +1083,8 @@ const InteractiveModel = ({ url, isObj, isUsdz, customScale, customPosition, cus
     const center = new THREE.Vector3();
     box.getCenter(center);
     
-    const maxDim = Math.max(size.x, size.y, size.z);
-    
-    // Target size to match default shoe (approx 3.5 units long)
-    const TARGET_SIZE = 3.5;
-    let scale = 1;
-    if (maxDim > 0) {
-       scale = TARGET_SIZE / maxDim;
-    }
+    // Keep scale as 1 to follow original object scale and size "apa adanya"
+    const scale = 1;
     
     // Align bottom to Y=0 and Center X/Z
     const xOffset = -center.x * scale;
@@ -1078,20 +1184,41 @@ const RecursiveMeshPart = React.memo(({ object, interactive, videoTexture }: any
     const originalRotation = useRef(object.rotation.clone());
     const originalScale = useRef(object.scale.clone());
 
-    // Center geometry origin to visual center for better gizmo placement
+    // Center geometry origin to visual center for better gizmo placement (Idempotent version)
     useLayoutEffect(() => {
-        if (object && object.geometry) {
-            const geo = object.geometry;
-            if (!geo.boundingBox) geo.computeBoundingBox();
+        if (object && object.geometry && !object.userData.__pivotCentered) {
+            // Force compute initial bounding box
+            object.geometry.computeBoundingBox();
+            if (!object.geometry.boundingBox) return;
+
             const center = new THREE.Vector3();
-            geo.boundingBox.getCenter(center);
-            
+            object.geometry.boundingBox.getCenter(center);
+
+            // If the geometry center is offset from the local origin (0,0,0)
             if (center.length() > 0.001) {
+                // Clone geometry to avoid mutating shared assets between instances
+                const geo = object.geometry.clone();
+                
+                // Shift geometry to center its origin
                 geo.translate(-center.x, -center.y, -center.z);
-                const worldOffset = center.clone().multiply(object.scale).applyEuler(object.rotation);
-                object.position.add(worldOffset);
+                
+                // Recompute bounding volumes after translation
+                geo.computeBoundingBox();
+                geo.computeBoundingSphere();
+
+                // Compensate object position to keep the mesh visually in the same world/parent place
+                // We move the object position by the center offset, transformed by the object's own transforms
+                const pivotOffset = center.clone().multiply(object.scale).applyQuaternion(object.quaternion);
+                object.position.add(pivotOffset);
+                
+                // Apply the new geometry
+                object.geometry = geo;
+                
+                // Update refs used for animations/explosions
                 originalPosition.current.copy(object.position);
             }
+
+            object.userData.__pivotCentered = true;
         }
     }, [object]);
     
@@ -1101,10 +1228,74 @@ const RecursiveMeshPart = React.memo(({ object, interactive, videoTexture }: any
         originalScale.current.copy(object.scale);
     }, [object.position, object.rotation, object.scale]);
     
+    const lastConfigSignature = useRef<string>("");
+    const isSettled = useRef(false);
+
     const currentExpansion = useRef(0);
-    
     const meshScale = config.meshScale !== undefined ? config.meshScale : 1;
     const justFinishedDragging = useRef(false);
+
+    const isDraggingMesh = useRef(false);
+    const dragPlane = useMemo(() => new THREE.Plane(), []);
+    const dragOffset = useMemo(() => new THREE.Vector3(), []);
+    const intersection = useMemo(() => new THREE.Vector3(), []);
+    const { camera, raycaster } = useThree();
+
+    const onMeshPointerDown = useCallback((e: any) => {
+        if (!interactive || !isSelected || transformMode !== 'translate') return;
+        e.stopPropagation();
+        (e.target as any).setPointerCapture(e.pointerId);
+        
+        isDraggingMesh.current = true;
+        setIsDragging(true);
+        
+        const normal = new THREE.Vector3();
+        camera.getWorldDirection(normal);
+        normal.negate();
+        
+        if (meshRef.current) {
+            dragPlane.setFromNormalAndCoplanarPoint(normal, meshRef.current.position);
+            if (raycaster.ray.intersectPlane(dragPlane, intersection)) {
+                dragOffset.copy(meshRef.current.position).sub(intersection);
+            }
+        }
+        
+        const controls = (window as any).controls;
+        if (controls) controls.enabled = false;
+    }, [isSelected, interactive, transformMode, setIsDragging, camera, raycaster, dragPlane, dragOffset, intersection]);
+
+    const onMeshPointerMove = useCallback((e: any) => {
+        if (!isDraggingMesh.current || !meshRef.current) return;
+        e.stopPropagation();
+
+        if (raycaster.ray.intersectPlane(dragPlane, intersection)) {
+            const newPos = intersection.clone().add(dragOffset);
+            meshRef.current.position.copy(newPos);
+        }
+    }, [dragPlane, dragOffset, intersection, raycaster.ray]);
+
+    const onMeshPointerUp = useCallback((e: any) => {
+        if (!isDraggingMesh.current) return;
+        isDraggingMesh.current = false;
+        setIsDragging(false);
+        (e.target as any).releasePointerCapture(e.pointerId);
+        
+        const controls = (window as any).controls;
+        if (controls) controls.enabled = true;
+
+        if (meshRef.current) {
+            justFinishedDragging.current = true;
+            setTimeout(() => { justFinishedDragging.current = false; }, 100);
+
+            const expansion = currentExpansion.current > 0.05 ? currentExpansion.current : 1.0;
+            const newOffset: [number, number, number] = [
+                (meshRef.current.position.x - originalPosition.current.x) / expansion,
+                (meshRef.current.position.y - originalPosition.current.y) / expansion,
+                (meshRef.current.position.z - originalPosition.current.z) / expansion
+            ];
+            updatePartConfig(id, { explosionOffset: newOffset });
+        }
+    }, [id, setIsDragging, updatePartConfig]);
 
     useEffect(() => {
         return () => {
@@ -1115,7 +1306,18 @@ const RecursiveMeshPart = React.memo(({ object, interactive, videoTexture }: any
     useFrame((state, delta) => {
         if (meshRef.current) {
            const target = isExploded ? 1 : 0;
+           
+           const currentSig = `${isExploded}_${config.explosionOffset?.join(',')}_${config.meshScale}_${config.meshRotation?.join(',')}`;
+           const isDraggingActive = isDraggingGizmo.current || justFinishedDragging.current;
+
+           if (isSettled.current && currentSig === lastConfigSignature.current && !isDraggingActive) {
+              return;
+           }
+
            currentExpansion.current = THREE.MathUtils.lerp(currentExpansion.current, target, delta * 4);
+           if (Math.abs(currentExpansion.current - target) < 0.001) {
+              currentExpansion.current = target;
+           }
            
            // Position
            if (!isDraggingGizmo.current && !justFinishedDragging.current) {
@@ -1148,6 +1350,25 @@ const RecursiveMeshPart = React.memo(({ object, interactive, videoTexture }: any
                meshRef.current.rotation.x = THREE.MathUtils.lerp(meshRef.current.rotation.x, finalRotX, delta * 6);
                meshRef.current.rotation.y = THREE.MathUtils.lerp(meshRef.current.rotation.y, finalRotY, delta * 6);
                meshRef.current.rotation.z = THREE.MathUtils.lerp(meshRef.current.rotation.z, finalRotZ, delta * 6);
+
+               if (Math.abs(meshRef.current.rotation.x - finalRotX) < 0.001 &&
+                   Math.abs(meshRef.current.rotation.y - finalRotY) < 0.001 &&
+                   Math.abs(meshRef.current.rotation.z - finalRotZ) < 0.001) {
+                   meshRef.current.rotation.x = finalRotX;
+                   meshRef.current.rotation.y = finalRotY;
+                   meshRef.current.rotation.z = finalRotZ;
+               }
+           }
+
+           const targetRot = config.meshRotation || [originalRotation.current.x, originalRotation.current.y, originalRotation.current.z];
+           const finalRotX = isExploded ? targetRot[0] : originalRotation.current.x;
+           const rotationSettled = Math.abs(meshRef.current.rotation.x - finalRotX) < 0.002;
+
+           if (currentExpansion.current === target && rotationSettled && !isDraggingActive) {
+              isSettled.current = true;
+              lastConfigSignature.current = currentSig;
+           } else {
+              isSettled.current = false;
            }
         }
     });
@@ -1169,8 +1390,12 @@ const RecursiveMeshPart = React.memo(({ object, interactive, videoTexture }: any
           material={material}
           castShadow
           receiveShadow
+          onPointerDown={onMeshPointerDown}
+          onPointerMove={onMeshPointerMove}
+          onPointerUp={onMeshPointerUp}
           onClick={interactive ? (e) => {
               e.stopPropagation();
+              if (isDraggingMesh.current) return; // Don't select if we were dragging
               selectPart(isSelected ? null : id);
           } : undefined}
           onPointerOver={interactive ? (e) => {
@@ -1203,6 +1428,7 @@ const RecursiveMeshPart = React.memo(({ object, interactive, videoTexture }: any
               object={mesh}
               mode={transformMode}
               size={transformGizmoSize}
+              space="world"
               onMouseDown={() => {
                 isDraggingGizmo.current = true;
                 setIsDragging(true);

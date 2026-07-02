@@ -234,6 +234,7 @@ const TopToolbar = ({
   const selectPart = useStore((s) => s.selectPart);
   const resetAllParts = useStore((s) => s.resetAllParts);
   const triggerSnapshot = useStore((s) => s.triggerSnapshot);
+  const triggerFitView = useStore((s) => s.triggerFitView);
   const recordingStatus = useStore((s) => s.recordingStatus);
   const isRecordingSettingsOpen = useStore((s) => s.isRecordingSettingsOpen);
   const savedVariants = useStore((s) => s.savedVariants);
@@ -274,6 +275,12 @@ const TopToolbar = ({
               icon={<ArrowLeftFromLine />}
               label="Right"
               onClick={() => setCameraView("right")}
+            />
+            <TopButton
+              icon={<Maximize2 />}
+              label="Fit View"
+              onClick={triggerFitView}
+              color="blue"
             />
             <TopButton
               icon={<Repeat />}
@@ -334,6 +341,13 @@ const TopToolbar = ({
               active={isSingleMode}
               color="orange"
               disabled={!selectedPart}
+            />
+            <TopButton
+              icon={<Ruler />}
+              label="Ruler"
+              onClick={toggleMeasurements}
+              active={showMeasurements}
+              color="blue"
             />
             <TopButton
               icon={<Tag />}
@@ -774,6 +788,8 @@ const PartProperties = () => {
     setTransformMode,
     showAnnotations,
     toggleAnnotations,
+    showMeasurements,
+    toggleMeasurements,
   } = useStore();
 
   // Logic to determine defaults if annotation doesn't exist yet
@@ -884,6 +900,19 @@ const PartProperties = () => {
             {showAnnotations ? <EyeOff size={12} /> : <Eye size={12} />}
             <span className="text-[10px]">
               {showAnnotations ? "Hide Global Annotations" : "Show Global Annotations"}
+            </span>
+          </button>
+          <button
+            onClick={toggleMeasurements}
+            className={`w-full py-1.5 mt-1 border rounded text-center transition-colors flex items-center justify-center gap-2 group ${
+              showMeasurements 
+                ? "bg-blue-500/20 border-blue-500/30 hover:bg-blue-500/30 text-blue-400" 
+                : "bg-zinc-900/50 border-white/5 hover:bg-zinc-800 text-zinc-400 hover:text-white"
+            }`}
+          >
+            {showMeasurements ? <EyeOff size={12} /> : <Ruler size={12} />}
+            <span className="text-[10px]">
+              {showMeasurements ? "Hide Measurements" : "Show Measurements"}
             </span>
           </button>
         </div>

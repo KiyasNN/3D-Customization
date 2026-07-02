@@ -165,6 +165,7 @@ export interface AppState {
   reverseWalk: boolean; // New: Toggle reverse walk orientation
   baseShoeType: 'left' | 'right'; // New: Defines orientation of source model
   cameraRequest: { position: [number, number, number], target: [number, number, number] } | null;
+  fitRequest: number;
   currentView: 'default' | 'left' | 'right' | 'back' | 'free';
   showMeasurements: boolean;
   showAnnotations: boolean; // New: Toggle annotation visibility
@@ -268,6 +269,7 @@ export interface AppState {
   
   // Camera
   setCameraView: (view: 'default' | 'left' | 'right' | 'back') => void;
+  triggerFitView: () => void;
 
   // AI
   generateFullDesign: (prompt: string) => Promise<void>; // New Main Action

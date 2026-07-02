@@ -76,6 +76,7 @@ export const useStore = create<AppState>((set, get) => ({
   isExploded: false,
   isDragging: false,
   cameraRequest: null,
+  fitRequest: 0,
   currentView: 'default',
   showMeasurements: false,
   showAnnotations: true, // Default to visible
@@ -730,4 +731,5 @@ export const useStore = create<AppState>((set, get) => ({
 
   // New action to frame specific bounds
   setCustomCamera: (position: [number, number, number], target: [number, number, number]) => set({ cameraRequest: { position, target }, currentView: 'free' }),
+  triggerFitView: () => set((state) => ({ fitRequest: state.fitRequest + 1 })),
 }));

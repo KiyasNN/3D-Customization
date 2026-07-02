@@ -4,7 +4,7 @@ import { Canvas } from '@react-three/fiber';
 // @ts-ignore
 import { useThree, useFrame, useLoader } from '@react-three/fiber';
 // @ts-ignore
-import { Environment, OrbitControls, MeshReflectorMaterial, ContactShadows, Stage, PerspectiveCamera, TransformControls, Outlines } from '@react-three/drei';
+import { Environment, OrbitControls, MeshReflectorMaterial, ContactShadows, Stage, PerspectiveCamera, TransformControls, Outlines, GizmoHelper, GizmoViewport } from '@react-three/drei';
 // @ts-ignore
 import { EffectComposer, Bloom, Vignette, Noise, ChromaticAberration, TiltShift2, N8AO, SMAA } from '@react-three/postprocessing';
 import * as THREE from 'three';
@@ -85,48 +85,88 @@ const ScreenshotHandler = () => {
 };
 
 // Manager for scene interactions
-const SceneManager = ({ setControlsSize, sceneRef }: any) => {
-  useFrame(() => {
-    if (sceneRef.current) {
-        const box = new THREE.Box3().setFromObject(sceneRef.current);
-        const size = box.getSize(new THREE.Vector3()).length();
-        setControlsSize(Math.max(0.5, size / 5));
-    }
-  });
+const SceneManager = () => {
   return null;
 }
 
 // Controls the camera animation based on store state
-const CameraRig = () => {
+const CameraRig = ({ sceneRef }: { sceneRef: React.RefObject<THREE.Group> }) => {
   const cameraRequest = useStore(s => s.cameraRequest);
+  const fitRequest = useStore(s => s.fitRequest);
   const { camera, controls } = useThree();
-  const vec = new THREE.Vector3();
-  const [isAnimating, setIsAnimating] = useState(false);
+  
+  const targetPos = useRef<THREE.Vector3 | null>(null);
+  const targetTarget = useRef<THREE.Vector3 | null>(null);
+  const isAnimating = useRef(false);
 
   // When a new camera request comes in, start animating
   useEffect(() => {
     if (cameraRequest) {
-      setIsAnimating(true);
+      targetPos.current = new THREE.Vector3(...cameraRequest.position);
+      targetTarget.current = new THREE.Vector3(...cameraRequest.target);
+      isAnimating.current = true;
     }
   }, [cameraRequest]);
 
+  // When a fit request comes in, calculate bounds of all objects and frame them
+  useEffect(() => {
+    if (fitRequest > 0 && sceneRef.current) {
+      const group = sceneRef.current;
+      const box = new THREE.Box3().setFromObject(group);
+      
+      // If bounding box is empty/invalid, skip
+      if (box.isEmpty()) return;
+
+      const center = new THREE.Vector3();
+      box.getCenter(center);
+      
+      const size = new THREE.Vector3();
+      box.getSize(size);
+      
+      const maxDim = Math.max(size.x, size.y, size.z);
+      
+      // Calculate fov in radians
+      const fov = (camera as THREE.PerspectiveCamera).fov * (Math.PI / 180);
+      
+      // Calculate distance to fit the object nicely
+      let distance = maxDim / (2 * Math.tan(fov / 2)) * 1.35;
+      
+      // Put a safe guard on distance
+      distance = Math.max(1.5, Math.min(distance, 15.0));
+      
+      // Maintain the camera's current viewing angle
+      const direction = new THREE.Vector3();
+      camera.getWorldDirection(direction);
+      direction.negate().normalize();
+      
+      // Fallback direction if camera is somehow at center
+      if (direction.length() < 0.01) {
+        direction.set(1, 0.5, 1).normalize();
+      }
+      
+      const nextCameraPos = center.clone().add(direction.multiplyScalar(distance));
+      
+      targetPos.current = nextCameraPos;
+      targetTarget.current = center;
+      isAnimating.current = true;
+    }
+  }, [fitRequest, camera, sceneRef]);
+
   useFrame(() => {
-    if (isAnimating && cameraRequest) {
+    if (isAnimating.current && targetPos.current && targetTarget.current) {
       // Smoothly interpolate camera position
-      const targetPos = new THREE.Vector3(...cameraRequest.position);
-      camera.position.lerp(targetPos, 0.1); 
+      camera.position.lerp(targetPos.current, 0.1); 
       
       // Update controls target
       const orbitControls = (controls as any);
       if (orbitControls) {
-         vec.set(...cameraRequest.target);
-         orbitControls.target.lerp(vec, 0.1);
+         orbitControls.target.lerp(targetTarget.current, 0.1);
          orbitControls.update();
       }
 
       // Stop animating when we are close enough
-      if (camera.position.distanceTo(targetPos) < 0.05) {
-        setIsAnimating(false);
+      if (camera.position.distanceTo(targetPos.current) < 0.05) {
+        isAnimating.current = false;
       }
     }
   });
@@ -630,7 +670,6 @@ export default function App() {
   const setIsDragging = useStore(s => s.setIsDragging);
   const isExploded = useStore(s => s.isExploded);
   const turntableSettings = useStore(s => s.turntableSettings);
-  const [controlsSize, setControlsSize] = useState(1);
   const sceneRef = useRef<THREE.Group>(null);
   
   // Calculate control states
@@ -672,7 +711,7 @@ export default function App() {
            }}
          >
            <PerspectiveCamera makeDefault position={[0, 0, 10]} fov={50} />
-           <SceneManager setControlsSize={setControlsSize} sceneRef={sceneRef} />
+           <SceneManager />
            <RendererConfig />
           {/* Apply background color and fog if environment background is disabled. */}
           {!showEnvironmentBackground && (
@@ -687,7 +726,7 @@ export default function App() {
              <ScreenshotHandler />
              
              {/* Camera Animation Rig */}
-             <CameraRig />
+             <CameraRig sceneRef={sceneRef} />
              
              {/* Video Recording Logic */}
              <VideoRecorder />
@@ -725,6 +764,17 @@ export default function App() {
                enabled={controlsEnabled && !isDragging}
                target={[0, 0.5, 0]} // Lowered target to center on volume
             />
+
+            {/* Bottom-left Axis Guide */}
+            <GizmoHelper
+               alignment="bottom-left"
+               margin={[80, 80]}
+            >
+               <GizmoViewport 
+                  axisColors={['#ef4444', '#22c55e', '#3b82f6']} // Match custom dimensions: Red (X), Green (Y), Blue (Z)
+                  labelColor="white" 
+               />
+            </GizmoHelper>
           </Suspense>
         </Canvas>
       </div>
