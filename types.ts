@@ -48,6 +48,7 @@ export interface EnvironmentSettings {
 }
 
 export interface EffectsSettings {
+  postProcessingEnabled?: boolean;
   bloomIntensity: number;
   toneMapping?: 'ACESFilmic' | 'AgX' | 'Linear' | 'None';
   exposure?: number;
@@ -62,6 +63,7 @@ export interface TextureConfig {
   displacementScale: number;
   explosionOffset?: [number, number, number]; // New: Custom explosion vector
   meshScale?: number; // New: Manual scale adjustment for the part
+  meshRotation?: [number, number, number]; // New: Manual rotation adjustment for the part
   projectedImageUrl?: string; // New: custom image projected URL
   projectionOffsetX?: number;
   projectionOffsetY?: number;
@@ -180,6 +182,7 @@ export interface AppState {
   // Dragging / Gizmo states
   isTransforming: boolean; // True when actively transforming a part in 3D using the gizmo
   showTransformGizmo: boolean; // Toggles the 3D transform cursor/gizmo
+  transformGizmoSize: number; // Controls the size of the 3D transform cursor/gizmo
   transformMode: 'translate' | 'rotate' | 'scale';
   isDragging: boolean;
   
@@ -208,6 +211,7 @@ export interface AppState {
   singlePart: () => void;
   showAllParts: () => void; 
   toggleExploded: () => void; // New
+  resetAllExplode: () => void; // New
   toggleFloor: () => void; // New
   resetPart: (partId: string) => void;
   resetAllParts: () => void; // Reset entire model to default
@@ -257,6 +261,7 @@ export interface AppState {
   setShowEnvironmentBackground: (enabled: boolean) => void; // New
   setIsTransforming: (isTransforming: boolean) => void; // New
   setShowTransformGizmo: (showTransformGizmo: boolean) => void; // New
+  setTransformGizmoSize: (size: number) => void; // New
   setLighting: (preset: LightingPreset) => void;
   setFloor: (floor: FloorType) => void;
   setVideoStream: (stream: MediaStream | null) => void;

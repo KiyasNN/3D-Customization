@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useRef, useMemo, useEffect, useState, useLayoutEffect } from 'react';
+import React, { useRef, useMemo, useEffect, useState, useLayoutEffect, useCallback } from 'react';
 // @ts-ignore
 import { Html, Outlines, Edges, Line, Text, Billboard, TransformControls } from '@react-three/drei';
 import * as THREE from 'three';
@@ -644,6 +644,7 @@ const ShoePartMesh = ({ id, geometry, position, scale, explodeOffset, interactiv
   const isTransforming = useStore(s => s.isTransforming);
   const transformMode = useStore(s => s.transformMode);
   const showTransformGizmo = useStore(s => s.showTransformGizmo);
+  const transformGizmoSize = useStore(s => s.transformGizmoSize);
   const updatePartConfig = useStore(s => s.updatePartConfig);
   const setIsDragging = useStore(s => s.setIsDragging);
   const isDragging = useStore(s => s.isDragging);
@@ -735,16 +736,16 @@ const ShoePartMesh = ({ id, geometry, position, scale, explodeOffset, interactiv
 
   const [mesh, setMesh] = useState<THREE.Mesh | null>(null);
 
+  const setMeshRef = useCallback((node: THREE.Mesh | null) => {
+    meshRef.current = node;
+    setMesh(node);
+  }, []);
+
   if (isVisible === false) return null;
 
   const meshElement = (
     <mesh
-      ref={(node) => {
-        meshRef.current = node;
-        if (node !== mesh) {
-          setMesh(node);
-        }
-      }}
+      ref={setMeshRef}
       name={id}
       geometry={partGeometry}
       material={material}
@@ -783,7 +784,7 @@ const ShoePartMesh = ({ id, geometry, position, scale, explodeOffset, interactiv
         <TransformControls
           object={mesh}
           mode={transformMode}
-          size={0.65}
+          size={transformGizmoSize}
           onMouseDown={() => {
             isDraggingGizmo.current = true;
             setIsDragging(true);
@@ -945,38 +946,6 @@ const InteractiveModel = ({ url, isObj, isUsdz, customScale, customPosition, cus
          child.receiveShadow = true;
          if (!child.name) child.name = `part_${child.id}`;
          foundParts.push(child.name);
-
-         // Correct colorSpace of embedded textures in the USDZ/GLTF model
-         if (child.material) {
-           const mats = Array.isArray(child.material) ? child.material : [child.material];
-           mats.forEach((mat) => {
-             if (mat.map && mat.map.isTexture) {
-               mat.map.colorSpace = THREE.SRGBColorSpace;
-               mat.map.needsUpdate = true;
-             }
-             if (mat.emissiveMap && mat.emissiveMap.isTexture) {
-               mat.emissiveMap.colorSpace = THREE.SRGBColorSpace;
-               mat.emissiveMap.needsUpdate = true;
-             }
-             if (mat.normalMap && mat.normalMap.isTexture) {
-               mat.normalMap.colorSpace = THREE.LinearSRGBColorSpace;
-               mat.normalMap.needsUpdate = true;
-             }
-             if (mat.roughnessMap && mat.roughnessMap.isTexture) {
-               mat.roughnessMap.colorSpace = THREE.LinearSRGBColorSpace;
-               mat.roughnessMap.needsUpdate = true;
-             }
-             if (mat.metalnessMap && mat.metalnessMap.isTexture) {
-               mat.metalnessMap.colorSpace = THREE.LinearSRGBColorSpace;
-               mat.metalnessMap.needsUpdate = true;
-             }
-             if (mat.aoMap && mat.aoMap.isTexture) {
-               mat.aoMap.colorSpace = THREE.LinearSRGBColorSpace;
-               mat.aoMap.needsUpdate = true;
-             }
-             mat.needsUpdate = true;
-           });
-         }
       }
     });
     const unique = [...new Set(foundParts)];
@@ -1087,6 +1056,7 @@ const RecursiveMeshPart = React.memo(({ object, interactive, videoTexture }: any
     const transformMode = useStore(s => s.transformMode);
     const setIsDragging = useStore(s => s.setIsDragging);
     const showTransformGizmo = useStore(s => s.showTransformGizmo);
+    const transformGizmoSize = useStore(s => s.transformGizmoSize);
     const updatePartConfig = useStore(s => s.updatePartConfig);
     const isDragging = useStore(s => s.isDragging);
 
@@ -1107,6 +1077,23 @@ const RecursiveMeshPart = React.memo(({ object, interactive, videoTexture }: any
     const originalPosition = useRef(object.position.clone());
     const originalRotation = useRef(object.rotation.clone());
     const originalScale = useRef(object.scale.clone());
+
+    // Center geometry origin to visual center for better gizmo placement
+    useLayoutEffect(() => {
+        if (object && object.geometry) {
+            const geo = object.geometry;
+            if (!geo.boundingBox) geo.computeBoundingBox();
+            const center = new THREE.Vector3();
+            geo.boundingBox.getCenter(center);
+            
+            if (center.length() > 0.001) {
+                geo.translate(-center.x, -center.y, -center.z);
+                const worldOffset = center.clone().multiply(object.scale).applyEuler(object.rotation);
+                object.position.add(worldOffset);
+                originalPosition.current.copy(object.position);
+            }
+        }
+    }, [object]);
     
     useEffect(() => {
         originalPosition.current.copy(object.position);
@@ -1167,16 +1154,16 @@ const RecursiveMeshPart = React.memo(({ object, interactive, videoTexture }: any
 
     const [mesh, setMesh] = useState<THREE.Mesh | null>(null);
 
+    const setMeshRef = useCallback((node: THREE.Mesh | null) => {
+        meshRef.current = node;
+        setMesh(node);
+    }, []);
+
     if (!isVisible) return null;
 
     const meshElement = (
       <mesh
-          ref={(node) => {
-              meshRef.current = node;
-              if (node !== mesh) {
-                  setMesh(node);
-              }
-          }}
+          ref={setMeshRef}
           name={id}
           geometry={object.geometry}
           material={material}
@@ -1215,7 +1202,7 @@ const RecursiveMeshPart = React.memo(({ object, interactive, videoTexture }: any
             <TransformControls
               object={mesh}
               mode={transformMode}
-              size={0.65}
+              size={transformGizmoSize}
               onMouseDown={() => {
                 isDraggingGizmo.current = true;
                 setIsDragging(true);

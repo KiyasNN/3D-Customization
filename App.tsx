@@ -271,8 +271,10 @@ const PRESETS = {
 
 // Helper component to safely load HDRIs with standard 'files' prop
 const HDRI = ({ file, background = false, intensity = 1 }: { file: string, background?: boolean, intensity?: number }) => {
+  const envSettings = useStore(s => s.environmentSettings);
+  const rotation: [number, number, number] = [envSettings.rotationX, envSettings.rotationY, envSettings.rotationZ];
   // Use array for files to avoid ambiguity in drei Environment component
-  return <Environment files={[file]} background={background} environmentIntensity={intensity} />;
+  return <Environment files={[file]} background={background} environmentIntensity={intensity} environmentRotation={rotation} backgroundRotation={rotation} />;
 };
 
 // Sub-component to load custom environment texture with appropriate loader
@@ -544,7 +546,7 @@ const Effects = () => {
   const bloomIntensity = effectsSettings?.bloomIntensity ?? 0.6;
 
   // Disable expensive effects during recording or on mobile to save performance/battery
-  const enabled = !isMobile && recordingStatus === 'idle';
+  const enabled = !isMobile && recordingStatus === 'idle' && effectsSettings?.postProcessingEnabled;
 
   if (!enabled) return null;
 
@@ -627,12 +629,14 @@ export default function App() {
   const isDragging = useStore(s => s.isDragging);
   const setIsDragging = useStore(s => s.setIsDragging);
   const isExploded = useStore(s => s.isExploded);
+  const turntableSettings = useStore(s => s.turntableSettings);
   const [controlsSize, setControlsSize] = useState(1);
   const sceneRef = useRef<THREE.Group>(null);
   
   // Calculate control states
   const isRecording = recordingStatus === 'recording';
-  const shouldAutoRotate = isTurntableActive && !isRecording && !isWalking && !showTransformGizmo;
+  const shouldAutoRotate = isTurntableActive && !isRecording && !isWalking && !(isExploded && showTransformGizmo);
+  const computedTurntableSpeed = turntableSettings.direction === 'clockwise' ? turntableSpeed : -turntableSpeed;
   const controlsEnabled = !isRecording; 
   
   useEffect(() => {
@@ -691,19 +695,6 @@ export default function App() {
              {/* Dynamic Lighting */}
              <SceneLighting />
             
-              {/* Realism: Contact Shadows */}
-              {currentLighting === 'studio' && !isWalking && showFloor && (
-                <ContactShadows 
-                  position={[0, 0, 0]} 
-                  opacity={0.7} 
-                  scale={10} 
-                  blur={2.5} 
-                  far={1}
-                  resolution={512}
-                  color="#000000"
-                />
-              )}
-
              {/* 3D Content - Centered at Y=0 */}
              <group ref={sceneRef} position={[0, 0, 0]}>
                 {isWalking ? (
@@ -730,7 +721,7 @@ export default function App() {
                enableRotate={controlsEnabled}
                enableZoom={true} 
                autoRotate={shouldAutoRotate}
-               autoRotateSpeed={turntableSpeed} 
+               autoRotateSpeed={computedTurntableSpeed} 
                enabled={controlsEnabled && !isDragging}
                target={[0, 0.5, 0]} // Lowered target to center on volume
             />

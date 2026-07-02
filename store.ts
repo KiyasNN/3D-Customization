@@ -83,7 +83,7 @@ export const useStore = create<AppState>((set, get) => ({
   showHelp: false,
   lightingEnabled: false, // Default flat virtual lights to OFF for beautiful contrast
   wireframeEnabled: false, // Default wireframe mode to OFF
-  showEnvironmentBackground: true, // Default environment background to ON
+  showEnvironmentBackground: false, // Default environment background to OFF
   currentLighting: 'studio',
   customEnvironment: null,
   environmentSettings: {
@@ -93,10 +93,11 @@ export const useStore = create<AppState>((set, get) => ({
     height: 2.5,
     radius: 120,
     scale: 100,
-    intensity: 0.2, // Default to 0.2 for the perfect subtle highlight sweet-spot
-    preset: 'city'
+    intensity: 0.6, // Default to 0.6
+    preset: 'studio'
   },
   effectsSettings: {
+    postProcessingEnabled: false,
     bloomIntensity: 0.6,
     toneMapping: 'ACESFilmic',
     exposure: 1.0,
@@ -107,6 +108,7 @@ export const useStore = create<AppState>((set, get) => ({
   
   isTransforming: false,
   showTransformGizmo: true, // Default to true so transform gizmo shows up automatically
+  transformGizmoSize: 0.35, // Default size for the gizmo
   transformMode: 'translate',
   
   activeVideoStream: null,
@@ -300,6 +302,19 @@ export const useStore = create<AppState>((set, get) => ({
       newVisibility[id] = true;
     });
     return { partVisibility: newVisibility, isSingleMode: false };
+  }),
+
+  resetAllExplode: () => set((state) => {
+    const newConfigs = { ...state.partConfigs };
+    Object.keys(newConfigs).forEach(key => {
+      newConfigs[key] = {
+        ...newConfigs[key],
+        explosionOffset: undefined,
+        meshScale: undefined,
+        meshRotation: undefined
+      };
+    });
+    return { partConfigs: newConfigs };
   }),
 
   toggleExploded: () => set((state) => ({ isExploded: !state.isExploded })),
@@ -683,6 +698,7 @@ export const useStore = create<AppState>((set, get) => ({
   setShowEnvironmentBackground: (enabled) => set({ showEnvironmentBackground: enabled }),
   setIsTransforming: (isTransforming) => set({ isTransforming, isDragging: false }),
   setShowTransformGizmo: (showTransformGizmo) => set({ showTransformGizmo }),
+  setTransformGizmoSize: (transformGizmoSize) => set({ transformGizmoSize }),
   setTransformMode: (transformMode) => set({ transformMode }),
 
   setLighting: (preset) => set({ currentLighting: preset }),

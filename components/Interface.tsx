@@ -11,6 +11,7 @@ import {
   Redo2,
   Camera,
   Box,
+  Bot,
   Sparkles,
   Download,
   CheckCircle,
@@ -216,6 +217,7 @@ const TopToolbar = ({
   const isWalking = useStore((s) => s.isWalking);
   const isExploded = useStore((s) => s.isExploded);
   const toggleExploded = useStore((s) => s.toggleExploded);
+  const resetAllExplode = useStore((s) => s.resetAllExplode);
   const showFloor = useStore((s) => s.showFloor);
   const toggleFloor = useStore((s) => s.toggleFloor);
   const hidePart = useStore((s) => s.hidePart);
@@ -763,10 +765,15 @@ const PartProperties = () => {
     updatePartConfig,
     isExploded,
     toggleExploded,
+    resetAllExplode,
     showTransformGizmo,
     setShowTransformGizmo,
+    transformGizmoSize,
+    setTransformGizmoSize,
     transformMode,
     setTransformMode,
+    showAnnotations,
+    toggleAnnotations,
   } = useStore();
 
   // Logic to determine defaults if annotation doesn't exist yet
@@ -866,6 +873,19 @@ const PartProperties = () => {
             step="5"
             onChange={(v: number) => handleUpdate("offset", v)}
           />
+          <button
+            onClick={toggleAnnotations}
+            className={`w-full py-1.5 mt-1 border rounded text-center transition-colors flex items-center justify-center gap-2 group ${
+              showAnnotations 
+                ? "bg-blue-500/20 border-blue-500/30 hover:bg-blue-500/30 text-blue-400" 
+                : "bg-zinc-900/50 border-white/5 hover:bg-zinc-800 text-zinc-400 hover:text-white"
+            }`}
+          >
+            {showAnnotations ? <EyeOff size={12} /> : <Eye size={12} />}
+            <span className="text-[10px]">
+              {showAnnotations ? "Hide Global Annotations" : "Show Global Annotations"}
+            </span>
+          </button>
         </div>
 
         <div className="h-px bg-white/10 w-full" />
@@ -929,24 +949,55 @@ const PartProperties = () => {
 
 
           {isExploded && (
-            <div className="flex items-center justify-between mt-2 pt-2 border-t border-white/5">
-              <div className="flex flex-col text-left">
-                <span className="text-[10px] font-medium text-zinc-300">3D Viewport Gizmo</span>
-                <span className="text-[8px] text-zinc-500">Drag part directly in 3D scene</span>
-              </div>
-              <button
-                onClick={() => setShowTransformGizmo(!showTransformGizmo)}
-                className={`w-9 h-5 rounded-full p-0.5 transition-colors focus:outline-none ${
-                  showTransformGizmo ? "bg-orange-500" : "bg-zinc-800"
-                }`}
-              >
-                <div
-                  className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
-                    showTransformGizmo ? "translate-x-4" : "translate-x-0"
+            <>
+              <div className="flex items-center justify-between mt-2 pt-2 border-t border-white/5">
+                <div className="flex flex-col text-left">
+                  <span className="text-[10px] font-medium text-zinc-300">3D Viewport Gizmo</span>
+                  <span className="text-[8px] text-zinc-500">Drag part directly in 3D scene</span>
+                </div>
+                <button
+                  onClick={() => setShowTransformGizmo(!showTransformGizmo)}
+                  className={`w-9 h-5 rounded-full p-0.5 transition-colors focus:outline-none ${
+                    showTransformGizmo ? "bg-orange-500" : "bg-zinc-800"
                   }`}
+                >
+                  <div
+                    className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                      showTransformGizmo ? "translate-x-4" : "translate-x-0"
+                    }`}
+                  />
+                </button>
+              </div>
+              {showTransformGizmo && (
+                <div className="mt-2 pl-1 pr-2">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-[9px] text-zinc-500">Gizmo Size</span>
+                    <span className="text-[9px] text-zinc-400 font-mono">{(transformGizmoSize * 100).toFixed(0)}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0.1"
+                    max="1.5"
+                    step="0.05"
+                    value={transformGizmoSize}
+                    onChange={(e) => setTransformGizmoSize(parseFloat(e.target.value))}
+                    className="w-full accent-orange-500"
+                  />
+                </div>
+              )}
+              <button
+                onClick={resetAllExplode}
+                className="w-full py-1.5 mt-2 bg-red-900/30 border border-red-500/20 rounded text-center hover:bg-red-900/50 transition-colors flex items-center justify-center gap-2 group"
+              >
+                <RotateCcw
+                  size={12}
+                  className="text-red-400 group-hover:-rotate-90 transition-transform"
                 />
+                <span className="text-[10px] text-red-400">
+                  Reset All Transforms
+                </span>
               </button>
-            </div>
+            </>
           )}
         </div>
       </div>
@@ -1580,7 +1631,7 @@ export const Interface: React.FC = () => {
               { id: "models", icon: Box, label: "Models" },
               { id: "materials", icon: Layers, label: "Materials" },
               { id: "colors", icon: Palette, label: "Colors" },
-              { id: "mix", icon: Sparkles, label: "AI Mix" },
+              { id: "mix", icon: Bot, label: "AI" },
               { id: "light", icon: Sun, label: "Light" },
             ];
             return items;
@@ -1664,7 +1715,7 @@ const LeftPanel = ({ showLeftPanel }: any) => {
         </div>
       </div>
 
-      {selectedPart && showAnnotations && (
+      {selectedPart && (
         <div
           className={`w-56 bg-zinc-900/90 backdrop-blur-md rounded-xl border border-white/10 flex flex-col shadow-2xl overflow-hidden pointer-events-auto shrink-0 animate-in slide-in-from-left-2 duration-300 ${isMobile ? "w-64 bg-zinc-900/95" : ""}`}
         >
@@ -2382,7 +2433,7 @@ const RightPanel = ({ activeTab, onStartCamera, onStopCamera }: any) => {
                 </div>
 
                 {/* Environment Brightness Slider */}
-                <div className="bg-zinc-800/50 p-2 rounded-lg border border-white/5">
+                <div className="bg-zinc-800/50 p-2 rounded-lg border border-white/5 space-y-2">
                   <SliderControl
                     label="Environment Brightness"
                     value={environmentSettings.intensity}
@@ -2391,6 +2442,16 @@ const RightPanel = ({ activeTab, onStartCamera, onStopCamera }: any) => {
                     step="0.01"
                     onChange={(v: number) =>
                       updateEnvironmentSettings({ intensity: v })
+                    }
+                  />
+                  <SliderControl
+                    label="Environment Rotation"
+                    value={environmentSettings.rotationY}
+                    min="0"
+                    max={Math.PI * 2}
+                    step="0.01"
+                    onChange={(v: number) =>
+                      updateEnvironmentSettings({ rotationY: v })
                     }
                   />
                 </div>
@@ -2477,6 +2538,22 @@ const RightPanel = ({ activeTab, onStartCamera, onStopCamera }: any) => {
                           {mode === 'ACESFilmic' ? 'ACES' : mode}
                         </button>
                       ))}
+                    </div>
+                  </div>
+
+                  {/* Post Processing */}
+                  <div className="flex flex-col gap-1.5 pt-1.5 border-t border-white/5">
+                    <div className="flex justify-between items-center">
+                      <div className="flex flex-col">
+                        <span className="text-xs font-medium text-zinc-200">Post Processing</span>
+                        <span className="text-[10px] text-zinc-500">Bloom, grain, vignette, tilt-shift, AO</span>
+                      </div>
+                      <button
+                        onClick={() => updateEffectsSettings({ postProcessingEnabled: !effectsSettings?.postProcessingEnabled })}
+                        className={`w-10 h-6 flex items-center rounded-full p-0.5 transition-colors focus:outline-none shrink-0 ${effectsSettings?.postProcessingEnabled ? 'bg-blue-500' : 'bg-zinc-700'}`}
+                      >
+                        <div className={`bg-white w-5 h-5 rounded-full shadow-md transform transition-transform ${effectsSettings?.postProcessingEnabled ? 'translate-x-4' : 'translate-x-0'}`} />
+                      </button>
                     </div>
                   </div>
 
