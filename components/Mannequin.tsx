@@ -11,10 +11,17 @@ import { ShoeModel } from './ShoeModel';
 // Preload the asset to avoid pop-in
 useGLTF.preload('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/models/gltf/Soldier.glb');
 
+// Pre-allocated temporary variables for math calculations inside useFrame to prevent GC pressure
+const _worldPos = new THREE.Vector3();
+const _worldQuat = new THREE.Quaternion();
+const _worldScale = new THREE.Vector3();
+const _parentQuat = new THREE.Quaternion();
+
 export const Mannequin = () => {
   const walkSpeed = useStore(s => s.walkSpeed);
   const baseShoeType = useStore(s => s.baseShoeType);
   const currentModel = useStore(s => s.currentModel);
+  const reverseWalk = useStore(s => s.reverseWalk);
 
   const group = useRef<THREE.Group>(null);
   
@@ -74,16 +81,12 @@ export const Mannequin = () => {
 
     // Helper to sync
     const syncShoe = (bone: THREE.Object3D, shoeContainer: THREE.Group) => {
-        const worldPos = new THREE.Vector3();
-        const worldQuat = new THREE.Quaternion();
-        const worldScale = new THREE.Vector3();
-        
         // Get bone world transform
-        bone.matrixWorld.decompose(worldPos, worldQuat, worldScale);
+        bone.matrixWorld.decompose(_worldPos, _worldQuat, _worldScale);
         
         // Apply world pos first
-        shoeContainer.position.copy(worldPos);
-        shoeContainer.quaternion.copy(worldQuat);
+        shoeContainer.position.copy(_worldPos);
+        shoeContainer.quaternion.copy(_worldQuat);
         
         // Convert to local space of the parent (Mannequin Group)
         // This is necessary because Mannequin is offset in App.tsx (y=-0.5)
@@ -92,9 +95,8 @@ export const Mannequin = () => {
             shoeContainer.parent.worldToLocal(shoeContainer.position);
             
             // Adjust rotation for parent's rotation (if any)
-            const parentQuat = new THREE.Quaternion();
-            shoeContainer.parent.getWorldQuaternion(parentQuat);
-            shoeContainer.quaternion.premultiply(parentQuat.invert());
+            shoeContainer.parent.getWorldQuaternion(_parentQuat);
+            shoeContainer.quaternion.premultiply(_parentQuat.invert());
         }
     };
 
@@ -117,7 +119,7 @@ export const Mannequin = () => {
   // We move DOWN (-Y) to place sole on floor, and slightly Forward (+Z) to align with leg.
   const POSITION_OFFSET: [number, number, number] = [0, -0.15, 0.08];
 
-  const rotationY = currentModel ? 0 : -Math.PI / 2;
+  const rotationY = (currentModel ? 0 : -Math.PI / 2) + (reverseWalk ? Math.PI : 0);
 
   // Mirror Logic
   const leftScaleX = baseShoeType === 'right' ? -1 : 1;

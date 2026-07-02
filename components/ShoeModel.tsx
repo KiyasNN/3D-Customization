@@ -1,13 +1,13 @@
 // @ts-nocheck
 import React, { useRef, useMemo, useEffect, useState, useLayoutEffect } from 'react';
 // @ts-ignore
-import { Html, Outlines, Edges, Line, Text, Billboard } from '@react-three/drei';
+import { Html, Outlines, Edges, Line, Text, Billboard, TransformControls } from '@react-three/drei';
 import * as THREE from 'three';
 // @ts-ignore
 import { useLoader, useFrame, useThree } from '@react-three/fiber';
 import { OBJLoader } from 'three-stdlib';
 import { GLTFLoader } from 'three-stdlib';
-import { USDZLoader } from 'three/examples/jsm/loaders/USDZLoader.js';
+import { USDLoader } from 'three/examples/jsm/loaders/USDLoader.js';
 import { useStore } from '../store';
 import { SHOE_PARTS } from '../constants';
 import { Material, TextureConfig } from '../types';
@@ -15,6 +15,7 @@ import { Material, TextureConfig } from '../types';
 // Texture Cache to prevent reloading same URL
 const textureCache: Record<string, THREE.Texture> = {};
 const clonedTextureCache: Record<string, THREE.Texture> = {};
+const materialCache: Record<string, THREE.MeshStandardMaterial> = {};
 
 // Constant for explosion scale
 const EXPLOSION_SCALE = 0.5; 
@@ -40,20 +41,34 @@ const getThreeMaterial = (
   matId: string, 
   allMaterials: Material[], 
   config: TextureConfig = DEFAULT_CONFIG,
-  videoTexture?: THREE.Texture | null
+  videoTexture?: THREE.Texture | null,
+  wireframe: boolean = false
 ) => {
   const matDef = allMaterials?.find(m => m.id === matId);
-  if (!matDef) return new THREE.MeshStandardMaterial({ color: '#cccccc' });
+  if (!matDef) {
+    const fallbackKey = `fallback_${wireframe}`;
+    if (!materialCache[fallbackKey]) {
+      materialCache[fallbackKey] = new THREE.MeshStandardMaterial({ color: '#cccccc', wireframe });
+    }
+    return materialCache[fallbackKey];
+  }
+
+  const cacheKey = `${matId}_r${config.roughness}_s${config.scale}_ns${config.normalScale}_ds${config.displacementScale}_w${wireframe}_v${videoTexture ? 'yes' : 'no'}_decal${config.projectedImageUrl ? `${config.projectedImageUrl}_ox${config.projectionOffsetX}_oy${config.projectionOffsetY}_sx${config.projectionScaleX}_sy${config.projectionScaleY}_rot${config.projectionRotation}_rep${config.projectionRepeat}` : 'none'}`;
+
+  if (materialCache[cacheKey]) {
+    return materialCache[cacheKey];
+  }
 
   const params: THREE.MeshStandardMaterialParameters = {
     color: matDef.color,
     roughness: config.roughness,
     metalness: matDef.metalness,
+    wireframe: wireframe,
   };
 
   const scale = config.scale;
 
-  const loadMap = (url: string) => {
+  const loadMap = (url: string, isColorMap: boolean = false) => {
     let tex = textureCache[url];
     if (!tex) {
       tex = new THREE.TextureLoader().load(url);
@@ -66,6 +81,8 @@ const getThreeMaterial = (
     }
     
     if (!tex) return null;
+
+    tex.colorSpace = isColorMap ? THREE.SRGBColorSpace : THREE.LinearSRGBColorSpace;
 
     const cacheKey = `${url}_${scale}`;
     if (clonedTextureCache[cacheKey]) {
@@ -86,6 +103,7 @@ const getThreeMaterial = (
     clone.repeat.set(scale, scale);
     clone.wrapS = THREE.RepeatWrapping;
     clone.wrapT = THREE.RepeatWrapping;
+    clone.colorSpace = isColorMap ? THREE.SRGBColorSpace : THREE.LinearSRGBColorSpace;
     clone.needsUpdate = true;
     clonedTextureCache[cacheKey] = clone;
     return clone;
@@ -95,26 +113,27 @@ const getThreeMaterial = (
      videoTexture.repeat.set(scale, scale);
      videoTexture.wrapS = THREE.RepeatWrapping;
      videoTexture.wrapT = THREE.RepeatWrapping;
+     videoTexture.colorSpace = THREE.SRGBColorSpace;
      params.map = videoTexture;
      params.color = new THREE.Color('#ffffff');
   } else if (matDef.textureUrl) {
-     params.map = loadMap(matDef.textureUrl);
+     params.map = loadMap(matDef.textureUrl, true);
   }
   
   if (matDef.normalMapUrl) {
-     params.normalMap = loadMap(matDef.normalMapUrl);
+     params.normalMap = loadMap(matDef.normalMapUrl, false);
      params.normalScale = new THREE.Vector2(config.normalScale, config.normalScale);
   }
   
-  if (matDef.roughnessMapUrl) params.roughnessMap = loadMap(matDef.roughnessMapUrl);
-  if (matDef.metalnessMapUrl) params.metalnessMap = loadMap(matDef.metalnessMapUrl);
+  if (matDef.roughnessMapUrl) params.roughnessMap = loadMap(matDef.roughnessMapUrl, false);
+  if (matDef.metalnessMapUrl) params.metalnessMap = loadMap(matDef.metalnessMapUrl, false);
   if (matDef.aoMapUrl) {
-     params.aoMap = loadMap(matDef.aoMapUrl);
+     params.aoMap = loadMap(matDef.aoMapUrl, false);
      params.aoMapIntensity = 1.0;
   }
   
   if (matDef.displacementMapUrl) {
-    params.displacementMap = loadMap(matDef.displacementMapUrl);
+    params.displacementMap = loadMap(matDef.displacementMapUrl, false);
     params.displacementScale = config.displacementScale;
   }
 
@@ -203,9 +222,10 @@ const getThreeMaterial = (
             #endif
            `
         );
-     };
+      };
   }
 
+  materialCache[cacheKey] = material;
   return material;
 };
 
@@ -237,8 +257,24 @@ const Dimensions = React.memo(({ geometry }: { geometry: THREE.BufferGeometry })
     box.getSize(size);
     box.getCenter(c);
     
-    setDims(size);
-    setCenter(c);
+    // Use functional state setter to prevent unnecessary re-renders via tolerance checks
+    setDims((prev) => {
+      if (Math.abs(prev.x - size.x) < 0.0001 && 
+          Math.abs(prev.y - size.y) < 0.0001 && 
+          Math.abs(prev.z - size.z) < 0.0001) {
+        return prev;
+      }
+      return size;
+    });
+
+    setCenter((prev) => {
+      if (Math.abs(prev.x - c.x) < 0.0001 && 
+          Math.abs(prev.y - c.y) < 0.0001 && 
+          Math.abs(prev.z - c.z) < 0.0001) {
+        return prev;
+      }
+      return c;
+    });
   }, [geometry, showMeasurements]);
 
   if (!showMeasurements || !geometry) return null;
@@ -592,27 +628,32 @@ const useVideoTexture = (stream: MediaStream | null) => {
 // --- Individual Shoe Part Component ---
 const ShoePartMesh = ({ id, geometry, position, scale, explodeOffset, interactive = true, videoTexture }: any) => {
   // Use Specific Selectors to avoid unnecessary re-renders
-  const selectedPart = useStore(s => s.selectedPart);
   const selectPart = useStore(s => s.selectPart);
   const hoverPart = useStore(s => s.hoverPart);
-  const hoveredPart = useStore(s => s.hoveredPart);
-  const partMaterials = useStore(s => s.partMaterials);
   const materials = useStore(s => s.materials);
-  const partVisibility = useStore(s => s.partVisibility);
-  const partConfigs = useStore(s => s.partConfigs);
   const isExploded = useStore(s => s.isExploded);
 
-  const isVisible = partVisibility[id];
-  const matId = partMaterials[id];
-  const isSelected = selectedPart === id;
-  const isHovered = hoveredPart === id;
-  const config = partConfigs[id] || DEFAULT_CONFIG;
+  const isVisible = useStore(s => s.partVisibility[id] !== false);
+  const matId = useStore(s => s.partMaterials[id]);
+  const isSelected = useStore(s => s.selectedPart === id);
+  const isHovered = useStore(s => s.hoveredPart === id);
+  const config = useStore(s => s.partConfigs[id] || DEFAULT_CONFIG);
+  const wireframeEnabled = useStore(s => s.wireframeEnabled);
+
+  // Gizmo actions and settings
+  const isTransforming = useStore(s => s.isTransforming);
+  const transformMode = useStore(s => s.transformMode);
+  const showTransformGizmo = useStore(s => s.showTransformGizmo);
+  const updatePartConfig = useStore(s => s.updatePartConfig);
+  const setIsDragging = useStore(s => s.setIsDragging);
+  const isDragging = useStore(s => s.isDragging);
 
   const meshRef = useRef<THREE.Mesh>(null);
+  const isDraggingGizmo = useRef(false);
 
   const material = useMemo(() => {
-    return getThreeMaterial(matId, materials, config, videoTexture);
-  }, [matId, materials, videoTexture, config]);
+    return getThreeMaterial(matId, materials, config, videoTexture, wireframeEnabled);
+  }, [matId, materials, videoTexture, config, wireframeEnabled]);
 
   // Create unique geometry for each part based on its exact scale dimensions
   // This completely eliminates non-uniform scaling / stretching of the selection outline
@@ -635,27 +676,50 @@ const ShoePartMesh = ({ id, geometry, position, scale, explodeOffset, interactiv
 
   const meshScale = config.meshScale !== undefined ? config.meshScale : 1;
   const currentExpansion = useRef(0);
+  const justFinishedDragging = useRef(false);
+
+  useEffect(() => {
+    return () => {
+      setIsDragging(false);
+    };
+  }, [setIsDragging]);
 
   useFrame((state, delta) => {
     if (meshRef.current) {
        const target = isExploded ? 1 : 0;
        currentExpansion.current = THREE.MathUtils.lerp(currentExpansion.current, target, delta * 4);
        
-       // Position
-       let finalOffset = explodeOffset;
-       if (config.explosionOffset) {
-           finalOffset = config.explosionOffset;
+       // Position - Only set if not actively being dragged by 3D transform cursor
+       if (!isDraggingGizmo.current && !justFinishedDragging.current) {
+         let finalOffset = explodeOffset;
+         if (config.explosionOffset) {
+             finalOffset = config.explosionOffset;
+         }
+         
+         if (finalOffset) {
+            meshRef.current.position.x = position[0] + (finalOffset[0] * currentExpansion.current);
+            meshRef.current.position.y = position[1] + (finalOffset[1] * currentExpansion.current);
+            meshRef.current.position.z = position[2] + (finalOffset[2] * currentExpansion.current);
+         }
        }
        
-       if (finalOffset) {
-          meshRef.current.position.x = position[0] + (finalOffset[0] * currentExpansion.current);
-          meshRef.current.position.y = position[1] + (finalOffset[1] * currentExpansion.current);
-          meshRef.current.position.z = position[2] + (finalOffset[2] * currentExpansion.current);
+       // Scale - Only apply scaling factor when exploded, and only if not dragging
+       if (!isDraggingGizmo.current && !justFinishedDragging.current) {
+         const currentScaleFactor = THREE.MathUtils.lerp(1, meshScale, currentExpansion.current);
+         meshRef.current.scale.copy(baseScale).multiplyScalar(currentScaleFactor);
        }
-       
-       // Scale - Only apply scaling factor when exploded
-       const currentScaleFactor = THREE.MathUtils.lerp(1, meshScale, currentExpansion.current);
-       meshRef.current.scale.copy(baseScale).multiplyScalar(currentScaleFactor);
+
+       // Rotation - Interpolate to saved rotation when exploded, reset otherwise
+       if (!isDraggingGizmo.current && !justFinishedDragging.current) {
+         const targetRot = config.meshRotation || [0, 0, 0];
+         const finalRotX = isExploded ? targetRot[0] : 0;
+         const finalRotY = isExploded ? targetRot[1] : 0;
+         const finalRotZ = isExploded ? targetRot[2] : 0;
+
+         meshRef.current.rotation.x = THREE.MathUtils.lerp(meshRef.current.rotation.x, finalRotX, delta * 6);
+         meshRef.current.rotation.y = THREE.MathUtils.lerp(meshRef.current.rotation.y, finalRotY, delta * 6);
+         meshRef.current.rotation.z = THREE.MathUtils.lerp(meshRef.current.rotation.z, finalRotZ, delta * 6);
+       }
     }
   });
 
@@ -669,43 +733,92 @@ const ShoePartMesh = ({ id, geometry, position, scale, explodeOffset, interactiv
     }
   }, [isHovered, isSelected, material]);
 
+  const [mesh, setMesh] = useState<THREE.Mesh | null>(null);
+
   if (isVisible === false) return null;
+
+  const meshElement = (
+    <mesh
+      ref={(node) => {
+        meshRef.current = node;
+        if (node !== mesh) {
+          setMesh(node);
+        }
+      }}
+      name={id}
+      geometry={partGeometry}
+      material={material}
+      onClick={interactive ? (e) => {
+        e.stopPropagation();
+        selectPart(isSelected ? null : id);
+      } : undefined}
+      onPointerOver={interactive ? (e) => {
+        e.stopPropagation();
+        hoverPart(id);
+        document.body.style.cursor = 'pointer';
+      } : undefined}
+      onPointerOut={interactive ? (e) => {
+        e.stopPropagation();
+        hoverPart(null);
+        document.body.style.cursor = 'auto';
+      } : undefined}
+      castShadow
+      receiveShadow
+    >
+      {isSelected && (
+        <Edges 
+          scale={1.0} 
+          threshold={15} 
+          color="#ff6600" 
+        />
+      )}
+      {isSelected && <Dimensions geometry={partGeometry} />}
+    </mesh>
+  );
 
   return (
     <group>
-      <mesh
-        ref={meshRef}
-        name={id}
-        geometry={partGeometry}
-        material={material}
-        position={position}
-        scale={baseScale} // Initial scale, useFrame updates it
-        onClick={interactive ? (e) => {
-          e.stopPropagation();
-          selectPart(isSelected ? null : id);
-        } : undefined}
-        onPointerOver={interactive ? (e) => {
-          e.stopPropagation();
-          hoverPart(id);
-          document.body.style.cursor = 'pointer';
-        } : undefined}
-        onPointerOut={interactive ? (e) => {
-          e.stopPropagation();
-          hoverPart(null);
-          document.body.style.cursor = 'auto';
-        } : undefined}
-        castShadow
-        receiveShadow
-      >
-        {isSelected && (
-          <Edges 
-            scale={1.0} 
-            threshold={15} 
-            color="#ff6600" 
-          />
-        )}
-        {isSelected && <Dimensions geometry={partGeometry} />}
-      </mesh>
+      {meshElement}
+      {isSelected && showTransformGizmo && isExploded && mesh && (
+        <TransformControls
+          object={mesh}
+          mode={transformMode}
+          size={0.65}
+          onMouseDown={() => {
+            isDraggingGizmo.current = true;
+            setIsDragging(true);
+          }}
+          onMouseUp={() => {
+            isDraggingGizmo.current = false;
+            setIsDragging(false);
+
+            if (meshRef.current) {
+              justFinishedDragging.current = true;
+              setTimeout(() => { justFinishedDragging.current = false; }, 100);
+
+              const posX = meshRef.current.position.x;
+              const posY = meshRef.current.position.y;
+              const posZ = meshRef.current.position.z;
+
+              const expansion = currentExpansion.current > 0.05 ? currentExpansion.current : 1.0;
+              const newOffset: [number, number, number] = [
+                (posX - position[0]) / expansion,
+                (posY - position[1]) / expansion,
+                (posZ - position[2]) / expansion
+              ];
+
+              if (transformMode === 'translate') {
+                updatePartConfig(id, { explosionOffset: newOffset });
+              } else if (transformMode === 'scale') {
+                const newScale = (meshRef.current.scale.x / baseScale.x + meshRef.current.scale.y / baseScale.y + meshRef.current.scale.z / baseScale.z) / 3;
+                updatePartConfig(id, { meshScale: newScale });
+              } else if (transformMode === 'rotate') {
+                updatePartConfig(id, { meshRotation: [meshRef.current.rotation.x, meshRef.current.rotation.y, meshRef.current.rotation.z] });
+              }
+            }
+          }}
+        />
+      )}
     </group>
   );
 };
@@ -736,10 +849,30 @@ const useModelLoader = (url: string, isObj: boolean, isUsdz: boolean, resources:
       return requestUrl;
     });
 
-    let loader: any;
     if (isUsdz) {
-      loader = new USDZLoader(manager);
-    } else if (isObj) {
+      const loader = new USDLoader(manager);
+      loader.load(
+        url,
+        (loadedData: any) => {
+          if (active) {
+            setData(loadedData);
+            setLoading(false);
+          }
+        },
+        undefined,
+        (err: any) => {
+          console.error("USD Loader error:", err);
+          if (active) {
+            setError(err);
+            setLoading(false);
+          }
+        }
+      );
+      return () => { active = false; };
+    }
+
+    let loader: any;
+    if (isObj) {
       loader = new OBJLoader(manager);
     } else {
       loader = new GLTFLoader(manager);
@@ -774,15 +907,29 @@ const useModelLoader = (url: string, isObj: boolean, isUsdz: boolean, resources:
 // --- RESTORED INTERACTIVE MODEL ---
 const InteractiveModel = ({ url, isObj, isUsdz, customScale, customPosition, customRotation, interactive, videoTexture }: any) => {
   const setCustomParts = useStore(s => s.setCustomParts);
-  const partMaterials = useStore(s => s.partMaterials);
-  const materials = useStore(s => s.materials);
-  const partVisibility = useStore(s => s.partVisibility);
-  const partConfigs = useStore(s => s.partConfigs);
   const currentModel = useStore(s => s.currentModel);
   const resources = currentModel?.resources;
   
   const { data: scene, loading } = useModelLoader(url, isObj, isUsdz, resources);
-  const model = scene ? (isUsdz ? scene : (isObj ? scene : scene.scene)) : null;
+  
+  // High-robustness model normalization
+  let model: any = null;
+  if (scene) {
+    if (scene.isObject3D) {
+      model = scene;
+    } else if (scene.scene && scene.scene.isObject3D) {
+      model = scene.scene;
+    } else if (scene.scenes && scene.scenes[0] && scene.scenes[0].isObject3D) {
+      model = scene.scenes[0];
+    } else if (typeof scene.traverse === 'function') {
+      model = scene;
+    } else if (scene.scene && typeof scene.scene.traverse === 'function') {
+      model = scene.scene;
+    } else {
+      model = scene;
+    }
+  }
+
   const [sceneRef, setSceneRef] = useState<THREE.Group | null>(null);
   
   // Auto-scaling state
@@ -790,7 +937,7 @@ const InteractiveModel = ({ url, isObj, isUsdz, customScale, customPosition, cus
 
   // Parse parts and Calculate Normalization
   useEffect(() => {
-    if (!model) return;
+    if (!model || typeof model.traverse !== 'function') return;
     const foundParts: string[] = [];
     model.traverse((child: any) => {
       if (child.isMesh) {
@@ -798,6 +945,38 @@ const InteractiveModel = ({ url, isObj, isUsdz, customScale, customPosition, cus
          child.receiveShadow = true;
          if (!child.name) child.name = `part_${child.id}`;
          foundParts.push(child.name);
+
+         // Correct colorSpace of embedded textures in the USDZ/GLTF model
+         if (child.material) {
+           const mats = Array.isArray(child.material) ? child.material : [child.material];
+           mats.forEach((mat) => {
+             if (mat.map && mat.map.isTexture) {
+               mat.map.colorSpace = THREE.SRGBColorSpace;
+               mat.map.needsUpdate = true;
+             }
+             if (mat.emissiveMap && mat.emissiveMap.isTexture) {
+               mat.emissiveMap.colorSpace = THREE.SRGBColorSpace;
+               mat.emissiveMap.needsUpdate = true;
+             }
+             if (mat.normalMap && mat.normalMap.isTexture) {
+               mat.normalMap.colorSpace = THREE.LinearSRGBColorSpace;
+               mat.normalMap.needsUpdate = true;
+             }
+             if (mat.roughnessMap && mat.roughnessMap.isTexture) {
+               mat.roughnessMap.colorSpace = THREE.LinearSRGBColorSpace;
+               mat.roughnessMap.needsUpdate = true;
+             }
+             if (mat.metalnessMap && mat.metalnessMap.isTexture) {
+               mat.metalnessMap.colorSpace = THREE.LinearSRGBColorSpace;
+               mat.metalnessMap.needsUpdate = true;
+             }
+             if (mat.aoMap && mat.aoMap.isTexture) {
+               mat.aoMap.colorSpace = THREE.LinearSRGBColorSpace;
+               mat.aoMap.needsUpdate = true;
+             }
+             mat.needsUpdate = true;
+           });
+         }
       }
     });
     const unique = [...new Set(foundParts)];
@@ -813,7 +992,7 @@ const InteractiveModel = ({ url, isObj, isUsdz, customScale, customPosition, cus
 
   // Normalization Layout Effect
   useLayoutEffect(() => {
-    if (!model) return;
+    if (!model || typeof model.updateMatrixWorld !== 'function') return;
 
     // We must reset transformations to get true bounding box of geometry
     model.updateMatrixWorld(true);
@@ -837,9 +1016,18 @@ const InteractiveModel = ({ url, isObj, isUsdz, customScale, customPosition, cus
     const yOffset = -box.min.y * scale; 
     const zOffset = -center.z * scale;
     
-    setNormalization({
-       scale: scale,
-       position: [xOffset, yOffset, zOffset]
+    setNormalization((prev) => {
+      const isScaleSame = Math.abs(prev.scale - scale) < 0.0001;
+      const isPosSame = Math.abs(prev.position[0] - xOffset) < 0.0001 &&
+                        Math.abs(prev.position[1] - yOffset) < 0.0001 &&
+                        Math.abs(prev.position[2] - zOffset) < 0.0001;
+      if (isScaleSame && isPosSame) {
+        return prev;
+      }
+      return {
+        scale: scale,
+        position: [xOffset, yOffset, zOffset]
+      };
     });
   }, [model]);
 
@@ -857,125 +1045,239 @@ const InteractiveModel = ({ url, isObj, isUsdz, customScale, customPosition, cus
       rotation={finalRotation}
       scale={finalScale}
     >
-       {model && model.children.map((child: any, i: number) => {
-           return (
-             <RecursivePart 
-                key={child.uuid || i} 
-                object={child} 
-                interactive={interactive}
-                partMaterials={partMaterials}
-                materials={materials}
-                partVisibility={partVisibility}
-                partConfigs={partConfigs}
-                videoTexture={videoTexture}
-             />
-           );
-       })}
+       <group
+         scale={model ? [model.scale.x, model.scale.y, model.scale.z] : [1, 1, 1]}
+         position={model ? [model.position.x, model.position.y, model.position.z] : [0, 0, 0]}
+         rotation={model ? [model.rotation.x, model.rotation.y, model.rotation.z] : [0, 0, 0]}
+       >
+         {model && model.children?.map((child: any, i: number) => {
+             return (
+               <RecursivePart 
+                  key={child.uuid || i} 
+                  object={child} 
+                  interactive={interactive}
+                  videoTexture={videoTexture}
+               />
+             );
+         })}
+       </group>
        {sceneRef && <AnnotationManager scene={sceneRef} />}
     </group>
   );
 };
 
-// Helper for InteractiveModel to traverse and render interactive parts
-const RecursivePart = ({ object, interactive, partMaterials, materials, partVisibility, partConfigs, videoTexture }: any) => {
-    const selectedPart = useStore(s => s.selectedPart);
+// Memoized mesh node component to prevent unnecessary updates
+const RecursiveMeshPart = React.memo(({ object, interactive, videoTexture }: any) => {
+    const id = object.name || object.uuid;
+    
+    const isSelected = useStore(s => s.selectedPart === id);
+    const isHovered = useStore(s => s.hoveredPart === id);
+    const isVisible = useStore(s => s.partVisibility[id] !== false);
+    const matId = useStore(s => s.partMaterials[id]);
+    const config = useStore(s => s.partConfigs[id] || DEFAULT_CONFIG);
+    const materials = useStore(s => s.materials);
+    const isExploded = useStore(s => s.isExploded);
+    const wireframeEnabled = useStore(s => s.wireframeEnabled);
+
     const selectPart = useStore(s => s.selectPart);
     const hoverPart = useStore(s => s.hoverPart);
-    const hoveredPart = useStore(s => s.hoveredPart);
-    const isExploded = useStore(s => s.isExploded);
 
+    // Gizmo actions and settings
+    const isTransforming = useStore(s => s.isTransforming);
+    const transformMode = useStore(s => s.transformMode);
+    const setIsDragging = useStore(s => s.setIsDragging);
+    const showTransformGizmo = useStore(s => s.showTransformGizmo);
+    const updatePartConfig = useStore(s => s.updatePartConfig);
+    const isDragging = useStore(s => s.isDragging);
+
+    const material = useMemo(() => {
+        if (!matId && object.material) {
+            const baseMat = Array.isArray(object.material) ? object.material[0] : object.material;
+            if (baseMat) {
+                baseMat.wireframe = wireframeEnabled;
+            }
+            return object.material;
+        }
+        return getThreeMaterial(matId, materials, config, videoTexture, wireframeEnabled);
+    }, [matId, materials, videoTexture, config, object.material, wireframeEnabled]);
+
+    const meshRef = useRef<THREE.Mesh>(null);
+    const isDraggingGizmo = useRef(false);
+
+    const originalPosition = useRef(object.position.clone());
+    const originalRotation = useRef(object.rotation.clone());
+    const originalScale = useRef(object.scale.clone());
+    
+    useEffect(() => {
+        originalPosition.current.copy(object.position);
+        originalRotation.current.copy(object.rotation);
+        originalScale.current.copy(object.scale);
+    }, [object.position, object.rotation, object.scale]);
+    
+    const currentExpansion = useRef(0);
+    
+    const meshScale = config.meshScale !== undefined ? config.meshScale : 1;
+    const justFinishedDragging = useRef(false);
+
+    useEffect(() => {
+        return () => {
+            setIsDragging(false);
+        };
+    }, [setIsDragging]);
+
+    useFrame((state, delta) => {
+        if (meshRef.current) {
+           const target = isExploded ? 1 : 0;
+           currentExpansion.current = THREE.MathUtils.lerp(currentExpansion.current, target, delta * 4);
+           
+           // Position
+           if (!isDraggingGizmo.current && !justFinishedDragging.current) {
+             let finalOffset = config.explosionOffset || [0,0,0];
+             
+             if (finalOffset[0] !== 0 || finalOffset[1] !== 0 || finalOffset[2] !== 0) {
+                meshRef.current.position.x = originalPosition.current.x + (finalOffset[0] * currentExpansion.current);
+                meshRef.current.position.y = originalPosition.current.y + (finalOffset[1] * currentExpansion.current);
+                meshRef.current.position.z = originalPosition.current.z + (finalOffset[2] * currentExpansion.current);
+             } else {
+                meshRef.current.position.x = originalPosition.current.x;
+                meshRef.current.position.y = originalPosition.current.y;
+                meshRef.current.position.z = originalPosition.current.z;
+             }
+           }
+           
+           // Scale - Interpolate between 1.0 (default) and meshScale based on expansion state
+           if (!isDraggingGizmo.current && !justFinishedDragging.current) {
+               const currentScaleFactor = THREE.MathUtils.lerp(1, meshScale, currentExpansion.current);
+               meshRef.current.scale.copy(originalScale.current).multiplyScalar(currentScaleFactor);
+           }
+
+           // Rotation - Interpolate to saved rotation when exploded, reset to original otherwise
+           if (!isDraggingGizmo.current && !justFinishedDragging.current) {
+               const targetRot = config.meshRotation || [originalRotation.current.x, originalRotation.current.y, originalRotation.current.z];
+               const finalRotX = isExploded ? targetRot[0] : originalRotation.current.x;
+               const finalRotY = isExploded ? targetRot[1] : originalRotation.current.y;
+               const finalRotZ = isExploded ? targetRot[2] : originalRotation.current.z;
+
+               meshRef.current.rotation.x = THREE.MathUtils.lerp(meshRef.current.rotation.x, finalRotX, delta * 6);
+               meshRef.current.rotation.y = THREE.MathUtils.lerp(meshRef.current.rotation.y, finalRotY, delta * 6);
+               meshRef.current.rotation.z = THREE.MathUtils.lerp(meshRef.current.rotation.z, finalRotZ, delta * 6);
+           }
+        }
+    });
+
+    const [mesh, setMesh] = useState<THREE.Mesh | null>(null);
+
+    if (!isVisible) return null;
+
+    const meshElement = (
+      <mesh
+          ref={(node) => {
+              meshRef.current = node;
+              if (node !== mesh) {
+                  setMesh(node);
+              }
+          }}
+          name={id}
+          geometry={object.geometry}
+          material={material}
+          castShadow
+          receiveShadow
+          onClick={interactive ? (e) => {
+              e.stopPropagation();
+              selectPart(isSelected ? null : id);
+          } : undefined}
+          onPointerOver={interactive ? (e) => {
+              e.stopPropagation();
+              hoverPart(id);
+              document.body.style.cursor = 'pointer';
+          } : undefined}
+          onPointerOut={interactive ? (e) => {
+              e.stopPropagation();
+              hoverPart(null);
+              document.body.style.cursor = 'auto';
+          } : undefined}
+      >
+          {isSelected && (
+            <Edges 
+              scale={1.0} 
+              threshold={15} 
+              color="#ff6600" 
+            />
+          )}
+          {isSelected && <Dimensions geometry={object.geometry} />}
+      </mesh>
+    );
+
+    return (
+        <group>
+          {meshElement}
+          {isSelected && showTransformGizmo && isExploded && mesh && (
+            <TransformControls
+              object={mesh}
+              mode={transformMode}
+              size={0.65}
+              onMouseDown={() => {
+                isDraggingGizmo.current = true;
+                setIsDragging(true);
+              }}
+              onMouseUp={() => {
+                isDraggingGizmo.current = false;
+                setIsDragging(false);
+
+                if (meshRef.current) {
+                  justFinishedDragging.current = true;
+                  setTimeout(() => { justFinishedDragging.current = false; }, 100);
+
+                  const posX = meshRef.current.position.x;
+                  const posY = meshRef.current.position.y;
+                  const posZ = meshRef.current.position.z;
+
+                  const expansion = currentExpansion.current > 0.05 ? currentExpansion.current : 1.0;
+                  const newOffset: [number, number, number] = [
+                    (posX - originalPosition.current.x) / expansion,
+                    (posY - originalPosition.current.y) / expansion,
+                    (posZ - originalPosition.current.z) / expansion
+                  ];
+
+                  if (transformMode === 'translate') {
+                    updatePartConfig(id, { explosionOffset: newOffset });
+                  } else if (transformMode === 'scale') {
+                    const newScale = (meshRef.current.scale.x / originalScale.current.x + 
+                                      meshRef.current.scale.y / originalScale.current.y + 
+                                      meshRef.current.scale.z / originalScale.current.z) / 3;
+                    updatePartConfig(id, { meshScale: newScale });
+                  } else if (transformMode === 'rotate') {
+                    updatePartConfig(id, { meshRotation: [meshRef.current.rotation.x, meshRef.current.rotation.y, meshRef.current.rotation.z] });
+                  }
+                }
+              }}
+            />
+          )}
+        </group>
+    );
+});
+
+// Helper for InteractiveModel to traverse and render interactive parts
+const RecursivePart = ({ object, interactive, videoTexture }: any) => {
     if (!object) return null;
 
     if (object.isMesh) {
-        const id = object.name;
-        const isVisible = partVisibility[id] !== false;
-        const matId = partMaterials[id];
-        const isSelected = selectedPart === id;
-        const isHovered = hoveredPart === id;
-        const config = partConfigs[id] || DEFAULT_CONFIG;
-        
-        const material = useMemo(() => {
-            return getThreeMaterial(matId, materials, config, videoTexture);
-        }, [matId, materials, videoTexture, config]);
-
-        const meshRef = useRef<THREE.Mesh>(null);
-        const originalPosition = useRef(object.position.clone());
-        const originalScale = useRef(object.scale.clone());
-        const currentExpansion = useRef(0);
-        
-        const meshScale = config.meshScale !== undefined ? config.meshScale : 1;
-
-        useFrame((state, delta) => {
-            if (meshRef.current) {
-               const target = isExploded ? 1 : 0;
-               currentExpansion.current = THREE.MathUtils.lerp(currentExpansion.current, target, delta * 4);
-               
-               // Position
-               let finalOffset = config.explosionOffset || [0,0,0];
-               
-               if (finalOffset[0] !== 0 || finalOffset[1] !== 0 || finalOffset[2] !== 0) {
-                  meshRef.current.position.x = originalPosition.current.x + (finalOffset[0] * currentExpansion.current);
-                  meshRef.current.position.y = originalPosition.current.y + (finalOffset[1] * currentExpansion.current);
-                  meshRef.current.position.z = originalPosition.current.z + (finalOffset[2] * currentExpansion.current);
-               }
-               
-               // Scale - Interpolate between 1.0 (default) and meshScale based on expansion state
-               const currentScaleFactor = THREE.MathUtils.lerp(1, meshScale, currentExpansion.current);
-               meshRef.current.scale.copy(originalScale.current).multiplyScalar(currentScaleFactor);
-            }
-        });
-
-        if (!isVisible) return null;
-
         return (
-            <mesh
-                ref={meshRef}
-                name={id}
-                geometry={object.geometry}
-                material={material}
-                position={object.position}
-                rotation={object.rotation}
-                scale={object.scale} // Initial scale, updated in useFrame
-                castShadow
-                receiveShadow
-                onClick={interactive ? (e) => {
-                    e.stopPropagation();
-                    selectPart(isSelected ? null : id);
-                } : undefined}
-                onPointerOver={interactive ? (e) => {
-                    e.stopPropagation();
-                    hoverPart(id);
-                    document.body.style.cursor = 'pointer';
-                } : undefined}
-                onPointerOut={interactive ? (e) => {
-                    e.stopPropagation();
-                    hoverPart(null);
-                    document.body.style.cursor = 'auto';
-                } : undefined}
-            >
-                {isSelected && (
-                  <Edges 
-                    scale={1.0} 
-                    threshold={15} 
-                    color="#ff6600" 
-                  />
-                )}
-                {isSelected && <Dimensions geometry={object.geometry} />}
-            </mesh>
+            <RecursiveMeshPart 
+                object={object} 
+                interactive={interactive} 
+                videoTexture={videoTexture} 
+            />
         );
     }
 
     return (
         <group position={object.position} rotation={object.rotation} scale={object.scale}>
-            {object.children.map((child: any, i: number) => (
+            {object.children?.map((child: any, i: number) => (
                 <RecursivePart 
                     key={child.uuid || i} 
                     object={child} 
                     interactive={interactive}
-                    partMaterials={partMaterials}
-                    materials={materials}
-                    partVisibility={partVisibility}
-                    partConfigs={partConfigs}
                     videoTexture={videoTexture}
                 />
             ))}

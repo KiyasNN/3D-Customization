@@ -17,12 +17,15 @@ import {
 import { generateShoeConfig, generateTexture } from './services/geminiService';
 import { processPBRMaps } from './services/materialEngine';
 
+export const DEMO_ASSET: UploadedAsset = {
+  id: "demo-shoe",
+  url: "",
+  name: "Demo Shoe",
+  extension: "demo",
+};
+
 export const useStore = create<AppState>((set, get) => ({
   isMobile: false,
-
-  user: null,
-  authLoading: true,
-  isAdmin: false,
 
   selectedPart: null,
   hoveredPart: null,
@@ -33,12 +36,7 @@ export const useStore = create<AppState>((set, get) => ({
   partAnnotations: {}, // Init empty
   materials: [...INITIAL_MATERIALS],
   uploadedAssets: [],
-  currentModel: {
-    id: 'demo-shoe',
-    url: '',
-    name: 'Demo Shoe',
-    extension: 'demo'
-  },
+  currentModel: DEMO_ASSET,
   customParts: [],
   modelResetCounter: 0,
   savedVariants: [],
@@ -60,6 +58,7 @@ export const useStore = create<AppState>((set, get) => ({
 
   isWalking: false, // Initial walking state
   walkSpeed: 0.7, // Default reduced to 0.7
+  reverseWalk: false, // New: Toggle reverse walk orientation
   baseShoeType: 'right', // Default
   recordingStatus: 'idle',
   recordedUrl: null,
@@ -75,12 +74,16 @@ export const useStore = create<AppState>((set, get) => ({
 
   isSingleMode: false,
   isExploded: false,
+  isDragging: false,
   cameraRequest: null,
   currentView: 'default',
   showMeasurements: false,
   showAnnotations: true, // Default to visible
   showFloor: false, // Default floor off
   showHelp: false,
+  lightingEnabled: false, // Default flat virtual lights to OFF for beautiful contrast
+  wireframeEnabled: false, // Default wireframe mode to OFF
+  showEnvironmentBackground: true, // Default environment background to ON
   currentLighting: 'studio',
   customEnvironment: null,
   environmentSettings: {
@@ -90,13 +93,26 @@ export const useStore = create<AppState>((set, get) => ({
     height: 2.5,
     radius: 120,
     scale: 100,
-    intensity: 1.0
+    intensity: 0.2, // Default to 0.2 for the perfect subtle highlight sweet-spot
+    preset: 'city'
+  },
+  effectsSettings: {
+    bloomIntensity: 0.6,
+    toneMapping: 'ACESFilmic',
+    exposure: 1.0,
+    aoEnabled: false,
+    aoQuality: 'medium'
   },
   currentFloor: 'studio',
+  
+  isTransforming: false,
+  showTransformGizmo: true, // Default to true so transform gizmo shows up automatically
+  transformMode: 'translate',
   
   activeVideoStream: null,
 
   setIsMobile: (isMobile) => set({ isMobile }),
+  setIsDragging: (isDragging) => set({ isDragging }),
 
   selectPart: (partId) => set((state) => {
     // Prevent selection if recording
@@ -108,9 +124,9 @@ export const useStore = create<AppState>((set, get) => ({
        partsList.forEach(id => {
          newVisibility[id] = id === partId;
        });
-       return { selectedPart: partId, partVisibility: newVisibility };
+       return { selectedPart: partId, partVisibility: newVisibility, isDragging: false };
     }
-    return { selectedPart: partId };
+    return { selectedPart: partId, isDragging: false };
   }),
 
   hoverPart: (partId) => set({ hoveredPart: partId }),
@@ -359,6 +375,7 @@ export const useStore = create<AppState>((set, get) => ({
       partConfigs: deepCloneConfigs,
       partAnnotations: deepCloneAnnotations
     };
+
     return { savedVariants: [newVariant, ...state.savedVariants] };
   }),
 
@@ -376,10 +393,12 @@ export const useStore = create<AppState>((set, get) => ({
     return {};
   }),
 
-  deleteVariant: (variantId) => set((state) => ({
-    savedVariants: state.savedVariants.filter(v => v.id !== variantId),
-    selectedVariantIds: state.selectedVariantIds.filter(id => id !== variantId)
-  })),
+  deleteVariant: (variantId) => set((state) => {
+    return {
+      savedVariants: state.savedVariants.filter(v => v.id !== variantId),
+      selectedVariantIds: state.selectedVariantIds.filter(id => id !== variantId)
+    };
+  }),
 
   // Selection Logic Actions
   setSelectionMode: (enabled) => set({ isSelectionMode: enabled, selectedVariantIds: [] }),
@@ -401,6 +420,7 @@ export const useStore = create<AppState>((set, get) => ({
   toggleTurntable: () => set((state) => ({ isTurntableActive: !state.isTurntableActive, isWalking: false })),
   setTurntableSpeed: (speed) => set({ turntableSpeed: speed }),
   toggleWalking: () => set((state) => ({ isWalking: !state.isWalking, isTurntableActive: false })),
+  toggleReverseWalk: () => set((state) => ({ reverseWalk: !state.reverseWalk })),
   setWalkSpeed: (speed) => set({ walkSpeed: speed }),
   setBaseShoeType: (type) => set({ baseShoeType: type }),
   
@@ -434,9 +454,9 @@ export const useStore = create<AppState>((set, get) => ({
 
   removeAsset: (assetId) => set((state) => {
     const newAssets = state.uploadedAssets.filter(a => a.id !== assetId);
-    // If the removed asset is currently active, switch back to Demo (null)
+    // If the removed asset is currently active, switch back to Demo
     const isActive = state.currentModel?.id === assetId;
-    const newCurrent = isActive ? null : state.currentModel;
+    const newCurrent = isActive ? DEMO_ASSET : state.currentModel;
     
     // Revoke URL if possible to free memory
     const assetToRemove = state.uploadedAssets.find(a => a.id === assetId);
@@ -448,6 +468,20 @@ export const useStore = create<AppState>((set, get) => ({
        uploadedAssets: newAssets,
        currentModel: newCurrent,
        ...(isActive ? { selectedPart: null, customParts: [] } : {})
+    };
+  }),
+
+  clearScene: () => set((state) => {
+    state.uploadedAssets.forEach(asset => {
+      if (asset.url?.startsWith('blob:')) {
+        URL.revokeObjectURL(asset.url);
+      }
+    });
+    return {
+      uploadedAssets: [],
+      currentModel: DEMO_ASSET,
+      selectedPart: null,
+      customParts: []
     };
   }),
 
@@ -517,6 +551,10 @@ export const useStore = create<AppState>((set, get) => ({
 
   updateEnvironmentSettings: (settings) => set((state) => ({
     environmentSettings: { ...state.environmentSettings, ...settings }
+  })),
+
+  updateEffectsSettings: (settings) => set((state) => ({
+    effectsSettings: { ...state.effectsSettings, ...settings }
   })),
 
   createPBRMaterial: async (file: File) => {
@@ -640,6 +678,13 @@ export const useStore = create<AppState>((set, get) => ({
 
   toggleHelp: () => set((state) => ({ showHelp: !state.showHelp })),
 
+  setLightingEnabled: (enabled) => set({ lightingEnabled: enabled }),
+  setWireframeEnabled: (enabled) => set({ wireframeEnabled: enabled }),
+  setShowEnvironmentBackground: (enabled) => set({ showEnvironmentBackground: enabled }),
+  setIsTransforming: (isTransforming) => set({ isTransforming, isDragging: false }),
+  setShowTransformGizmo: (showTransformGizmo) => set({ showTransformGizmo }),
+  setTransformMode: (transformMode) => set({ transformMode }),
+
   setLighting: (preset) => set({ currentLighting: preset }),
   setFloor: (floor) => set({ currentFloor: floor }),
   
@@ -669,8 +714,4 @@ export const useStore = create<AppState>((set, get) => ({
 
   // New action to frame specific bounds
   setCustomCamera: (position: [number, number, number], target: [number, number, number]) => set({ cameraRequest: { position, target }, currentView: 'free' }),
-
-  setUser: (user) => set({ user }),
-  setAuthLoading: (loading) => set({ authLoading: loading }),
-  setIsAdmin: (isAdmin) => set({ isAdmin }),
 }));

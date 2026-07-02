@@ -13,9 +13,6 @@ export default defineConfig(({ mode }) => {
       'process.env.API_KEY': JSON.stringify(env.API_KEY || '')
     },
     resolve: {
-      alias: {
-        'three/examples/jsm/loaders/USDLoader.js': '/components/USDLoader.ts'
-      }
     },
     server: {
       open: true,

@@ -47,6 +47,14 @@ export interface EnvironmentSettings {
   intensity: number;
 }
 
+export interface EffectsSettings {
+  bloomIntensity: number;
+  toneMapping?: 'ACESFilmic' | 'AgX' | 'Linear' | 'None';
+  exposure?: number;
+  aoEnabled?: boolean;
+  aoQuality?: 'low' | 'medium' | 'high';
+}
+
 export interface TextureConfig {
   scale: number;
   normalScale: number;
@@ -152,6 +160,7 @@ export interface AppState {
   isExploded: boolean; // New: Exploded view state
   isWalking: boolean; // New: Mannequin walking mode
   walkSpeed: number; // New: Speed of the walking animation
+  reverseWalk: boolean; // New: Toggle reverse walk orientation
   baseShoeType: 'left' | 'right'; // New: Defines orientation of source model
   cameraRequest: { position: [number, number, number], target: [number, number, number] } | null;
   currentView: 'default' | 'left' | 'right' | 'back' | 'free';
@@ -159,16 +168,28 @@ export interface AppState {
   showAnnotations: boolean; // New: Toggle annotation visibility
   showFloor: boolean; // New: Toggle floor visibility
   showHelp: boolean;
+  lightingEnabled: boolean; // New: Toggle standard virtual lights
+  wireframeEnabled: boolean; // New: Toggle material wireframe mode
+  showEnvironmentBackground: boolean; // New: Toggle HDRI environment background
   currentLighting: LightingPreset;
   customEnvironment: EnvironmentAsset | null; // New: Custom environment file
   environmentSettings: EnvironmentSettings; // New: Calibration settings
+  effectsSettings: EffectsSettings; // New: Postprocessing effect settings
   currentFloor: FloorType;
+  
+  // Dragging / Gizmo states
+  isTransforming: boolean; // True when actively transforming a part in 3D using the gizmo
+  showTransformGizmo: boolean; // Toggles the 3D transform cursor/gizmo
+  transformMode: 'translate' | 'rotate' | 'scale';
+  isDragging: boolean;
   
   // Camera / Video
   activeVideoStream: MediaStream | null;
 
   // Actions
   setIsMobile: (isMobile: boolean) => void;
+  setIsDragging: (isDragging: boolean) => void;
+  setTransformMode: (mode: 'translate' | 'rotate' | 'scale') => void;
   selectPart: (partId: string | null) => void;
   hoverPart: (partId: string | null) => void;
   setMaterial: (partId: string, materialId: string) => void;
@@ -205,6 +226,7 @@ export interface AppState {
   toggleTurntable: () => void;
   setTurntableSpeed: (speed: number) => void; // New
   toggleWalking: () => void; // New
+  toggleReverseWalk: () => void; // New: Toggle reverse walk orientation
   setWalkSpeed: (speed: number) => void; // New
   setBaseShoeType: (type: 'left' | 'right') => void; // New
   
@@ -218,9 +240,11 @@ export interface AppState {
 
   uploadAsset: (asset: UploadedAsset) => void;
   removeAsset: (assetId: string) => void;
+  clearScene: () => void;
   uploadMaterial: (file: File) => void;
   uploadEnvironment: (file: File) => void; // New
   updateEnvironmentSettings: (settings: Partial<EnvironmentSettings>) => void; // New
+  updateEffectsSettings: (settings: Partial<EffectsSettings>) => void; // New
   createPBRMaterial: (file: File) => void; 
 
   setCurrentModel: (asset: UploadedAsset | null) => void;
@@ -228,20 +252,17 @@ export interface AppState {
   toggleMeasurements: () => void;
   toggleAnnotations: () => void; // New
   toggleHelp: () => void;
+  setLightingEnabled: (enabled: boolean) => void; // New
+  setWireframeEnabled: (enabled: boolean) => void; // New
+  setShowEnvironmentBackground: (enabled: boolean) => void; // New
+  setIsTransforming: (isTransforming: boolean) => void; // New
+  setShowTransformGizmo: (showTransformGizmo: boolean) => void; // New
   setLighting: (preset: LightingPreset) => void;
   setFloor: (floor: FloorType) => void;
   setVideoStream: (stream: MediaStream | null) => void;
   
   // Camera
   setCameraView: (view: 'default' | 'left' | 'right' | 'back') => void;
-
-  // Firebase Auth
-  user: any | null;
-  authLoading: boolean;
-  isAdmin: boolean;
-  setUser: (user: any | null) => void;
-  setAuthLoading: (loading: boolean) => void;
-  setIsAdmin: (isAdmin: boolean) => void;
 
   // AI
   generateFullDesign: (prompt: string) => Promise<void>; // New Main Action

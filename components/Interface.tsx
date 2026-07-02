@@ -1,17 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
-import { useStore } from "../store";
+import { useStore, DEMO_ASSET } from "../store";
 import { GuidedTour } from "./GuidedTour";
-import { LogOut, Users, ShieldAlert, Search } from "lucide-react";
-import {
-  collection,
-  getDocs,
-  doc,
-  setDoc,
-  deleteDoc,
-  updateDoc,
-  serverTimestamp,
-} from "firebase/firestore";
-import { db, auth, logoutUser } from "../services/firebase";
+import { Search } from "lucide-react";
 import { SHOE_PARTS, INITIAL_MATERIALS, MATERIAL_PRESETS } from "../constants";
 import { generatePDF } from "../services/pdfService";
 import { Material, UploadedAsset } from "../types";
@@ -56,6 +46,7 @@ import {
   Settings2,
   RotateCw,
   Eye,
+  EyeOff,
   CheckSquare,
   Square,
   List,
@@ -70,7 +61,6 @@ import {
   PanelLeftOpen,
   Image as ImageIcon,
   Move,
-  Move3d,
   Maximize2,
   Minimize2,
   Type as TypeIcon,
@@ -188,13 +178,7 @@ const TopButton = ({
   );
 };
 
-// Special Asset for Demo Shoe
-const DEMO_ASSET: UploadedAsset = {
-  id: "demo-shoe",
-  url: "",
-  name: "Demo Shoe",
-  extension: "demo",
-};
+
 
 // Preset Colors with Names
 const PRESET_COLORS = [
@@ -348,13 +332,6 @@ const TopToolbar = ({
               active={isSingleMode}
               color="orange"
               disabled={!selectedPart}
-            />
-            <TopButton
-              icon={<Ruler />}
-              label="Ruler"
-              onClick={toggleMeasurements}
-              active={showMeasurements}
-              color="blue"
             />
             <TopButton
               icon={<Tag />}
@@ -786,6 +763,10 @@ const PartProperties = () => {
     updatePartConfig,
     isExploded,
     toggleExploded,
+    showTransformGizmo,
+    setShowTransformGizmo,
+    transformMode,
+    setTransformMode,
   } = useStore();
 
   // Logic to determine defaults if annotation doesn't exist yet
@@ -892,10 +873,29 @@ const PartProperties = () => {
         {/* Transform Section */}
         <div className="flex flex-col gap-3">
           <div className="flex items-center gap-2 mb-1">
-            <Move3d size={12} className="text-orange-400" />
+            <Move size={12} className="text-orange-400" />
             <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
               Part Transform
             </span>
+          </div>
+
+          <div className="flex gap-1 mb-2">
+            {(['translate', 'rotate', 'scale'] as const).map((mode) => (
+              <button
+                key={mode}
+                onClick={() => setTransformMode(mode)}
+                className={`flex-1 py-1.5 rounded flex items-center justify-center transition-all ${
+                  transformMode === mode 
+                    ? 'bg-orange-500 text-white shadow-lg shadow-orange-900/20' 
+                    : 'bg-zinc-900/50 text-zinc-500 hover:text-zinc-300 border border-white/5'
+                }`}
+                title={`${mode.charAt(0).toUpperCase() + mode.slice(1)} Mode`}
+              >
+                {mode === 'translate' && <Move size={12} />}
+                {mode === 'rotate' && <RotateCw size={12} />}
+                {mode === 'scale' && <Maximize2 size={12} />}
+              </button>
+            ))}
           </div>
 
           {/* Scale Control - Only visible when exploded */}
@@ -926,35 +926,28 @@ const PartProperties = () => {
             </button>
           )}
 
-          <div className="h-px bg-white/5 w-full my-1" />
 
-          <span className="text-[9px] font-bold uppercase tracking-wider text-zinc-500 mb-1">
-            Exploded Position
-          </span>
-          <SliderControl
-            label="X Axis (Side)"
-            value={ex}
-            min={-2}
-            max={2}
-            step={0.01}
-            onChange={(v: number) => updateExplosion(0, v)}
-          />
-          <SliderControl
-            label="Y Axis (Up/Down)"
-            value={ey}
-            min={-2}
-            max={2}
-            step={0.01}
-            onChange={(v: number) => updateExplosion(1, v)}
-          />
-          <SliderControl
-            label="Z Axis (Fwd/Back)"
-            value={ez}
-            min={-2}
-            max={2}
-            step={0.01}
-            onChange={(v: number) => updateExplosion(2, v)}
-          />
+
+          {isExploded && (
+            <div className="flex items-center justify-between mt-2 pt-2 border-t border-white/5">
+              <div className="flex flex-col text-left">
+                <span className="text-[10px] font-medium text-zinc-300">3D Viewport Gizmo</span>
+                <span className="text-[8px] text-zinc-500">Drag part directly in 3D scene</span>
+              </div>
+              <button
+                onClick={() => setShowTransformGizmo(!showTransformGizmo)}
+                className={`w-9 h-5 rounded-full p-0.5 transition-colors focus:outline-none ${
+                  showTransformGizmo ? "bg-orange-500" : "bg-zinc-800"
+                }`}
+              >
+                <div
+                  className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                    showTransformGizmo ? "translate-x-4" : "translate-x-0"
+                  }`}
+                />
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -976,6 +969,8 @@ export const Interface: React.FC = () => {
     isWalking,
     walkSpeed,
     setWalkSpeed,
+    reverseWalk,
+    toggleReverseWalk,
     setBaseShoeType,
     toggleWalking,
     isTurntableActive,
@@ -993,9 +988,8 @@ export const Interface: React.FC = () => {
     materials,
   } = useStore();
 
-  const isAdmin = useStore((s) => s.isAdmin);
   const [activeTab, setActiveTab] = useState<
-    "dashboard" | "models" | "materials" | "colors" | "mix" | "light" | "admin"
+    "dashboard" | "models" | "materials" | "colors" | "mix" | "light"
   >("dashboard");
   const [showWalkModal, setShowWalkModal] = useState(false);
   const [showLeftPanel, setShowLeftPanel] = useState(!isMobile);
@@ -1204,6 +1198,21 @@ export const Interface: React.FC = () => {
           <div className="flex justify-between text-[9px] text-zinc-500 font-mono">
             <span>Slow</span>
             <span>Fast</span>
+          </div>
+          
+          <div className="flex items-center justify-between border-t border-white/5 pt-2 mt-1">
+            <div className="flex flex-col text-left">
+              <span className="text-[11px] font-medium text-white">Reverse Orientation</span>
+              <span className="text-[9px] text-zinc-400">Rotates shoe 180° for custom axes</span>
+            </div>
+            <button
+              onClick={toggleReverseWalk}
+              className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${reverseWalk ? "bg-blue-500" : "bg-zinc-700"}`}
+            >
+              <span
+                className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${reverseWalk ? "translate-x-4" : "translate-x-0"}`}
+              />
+            </button>
           </div>
         </div>
       )}
@@ -1540,7 +1549,10 @@ export const Interface: React.FC = () => {
       />
 
       <div className="flex-1 flex relative overflow-hidden pointer-events-none">
-        <UserProfileWidget />
+        {/* Attribution centered perfectly below the account widget */}
+        <span className="fixed bottom-4 left-4 z-[95] font-mono text-zinc-500 font-semibold tracking-widest text-[9px] uppercase opacity-70 pointer-events-none select-none">
+          by nkh
+        </span>
 
         {/* LEFT PANEL */}
         <LeftPanel showLeftPanel={showLeftPanel} />
@@ -1571,9 +1583,6 @@ export const Interface: React.FC = () => {
               { id: "mix", icon: Sparkles, label: "AI Mix" },
               { id: "light", icon: Sun, label: "Light" },
             ];
-            if (isAdmin) {
-              items.push({ id: "admin", icon: ShieldAlert, label: "Admin" });
-            }
             return items;
           })().map((tab) => (
             <button
@@ -1681,14 +1690,19 @@ const RightPanel = ({ activeTab, onStartCamera, onStopCamera }: any) => {
     isSelectionMode,
     isGenerating,
     environmentSettings,
+    effectsSettings,
     customEnvironment,
     currentLighting,
     showFloor,
+    lightingEnabled,
+    wireframeEnabled,
+    showEnvironmentBackground,
     setMaterial,
     removeMaterial,
     addMaterial,
     removeAsset,
     setCurrentModel,
+    clearScene,
     loadVariant,
     deleteVariant,
     toggleVariantSelection,
@@ -1700,7 +1714,11 @@ const RightPanel = ({ activeTab, onStartCamera, onStopCamera }: any) => {
     createPBRMaterial,
     generateFullDesign,
     setLighting,
+    setLightingEnabled,
+    setWireframeEnabled,
+    setShowEnvironmentBackground,
     updateEnvironmentSettings,
+    updateEffectsSettings,
     removeMaterialGroup,
   } = useStore();
 
@@ -2041,46 +2059,78 @@ const RightPanel = ({ activeTab, onStartCamera, onStopCamera }: any) => {
           )}
 
           {activeTab === "models" && (
-            <div className="grid grid-cols-2 gap-2 max-h-[400px] overflow-y-auto custom-scrollbar pr-1">
-              {uploadedAssets.map((asset) => (
+            <div className="flex flex-col gap-2 max-h-[400px] overflow-y-auto custom-scrollbar pr-1">
+              <div className="flex flex-col gap-1.5 border border-white/5 bg-black/20 rounded-lg p-2">
+                {/* Permanent Demo Shoe Asset */}
                 <div
-                  key={asset.id}
-                  className={`group aspect-square rounded-lg border flex flex-col items-center justify-center cursor-pointer transition-all hover:bg-white/5 overflow-hidden relative h-fit ${currentModel?.id === asset.id ? "border-blue-500 bg-blue-500/10" : "border-white/10"}`}
-                  onClick={() => setCurrentModel(asset)}
+                  className={`group flex items-center justify-between gap-2 px-3 py-2 rounded-md border cursor-pointer transition-all hover:bg-white/5 ${(!currentModel || currentModel.id === DEMO_ASSET.id) ? "border-blue-500 bg-blue-500/10 text-white" : "border-white/5 bg-zinc-900/40 text-zinc-300"}`}
+                  onClick={() => setCurrentModel(DEMO_ASSET)}
                 >
-                  <div className="text-[10px] text-zinc-300 truncate max-w-full px-2">
-                    {asset.name}
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <Box size={14} className={(!currentModel || currentModel.id === DEMO_ASSET.id) ? "text-blue-400" : "text-zinc-500"} />
+                    <div className="flex flex-col text-left min-w-0">
+                      <span className="text-[11px] font-medium truncate">
+                        {DEMO_ASSET.name}
+                      </span>
+                      <span className="text-[9px] text-zinc-500 uppercase">
+                        {DEMO_ASSET.extension}
+                      </span>
+                    </div>
                   </div>
-                  <div className="text-[8px] text-zinc-500 uppercase">
-                    {asset.extension}
-                  </div>
-                  <button
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      if (confirm("Remove?")) removeAsset(asset.id);
-                    }}
-                    className="absolute top-2 right-2 p-1.5 bg-red-500/80 hover:bg-red-600 rounded-full text-white md:opacity-0 md:group-hover:opacity-100 opacity-100 transition-all z-50 shadow-md backdrop-blur-sm pointer-events-auto"
-                  >
-                    <Trash2 size={12} />
-                  </button>
                 </div>
-              ))}
-              <div
-                onClick={() => assetInputRef.current?.click()}
-                className="aspect-square rounded-lg border border-dashed border-white/20 flex flex-col items-center justify-center cursor-pointer hover:border-white/50 hover:bg-white/5 transition-all h-fit"
-              >
-                <Plus size={24} className="text-zinc-500 mb-2" />
-                <span className="text-[10px] text-zinc-500">Import</span>
+
+                {uploadedAssets.map((asset) => (
+                  <div
+                    key={asset.id}
+                    className={`group flex items-center justify-between gap-2 px-3 py-2 rounded-md border cursor-pointer transition-all hover:bg-white/5 ${currentModel?.id === asset.id ? "border-blue-500 bg-blue-500/10 text-white" : "border-white/5 bg-zinc-900/40 text-zinc-300"}`}
+                    onClick={() => setCurrentModel(asset)}
+                  >
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                      <Box size={14} className={currentModel?.id === asset.id ? "text-blue-400" : "text-zinc-500"} />
+                      <div className="flex flex-col text-left min-w-0">
+                        <span className="text-[11px] font-medium truncate">
+                          {asset.name}
+                        </span>
+                        <span className="text-[9px] text-zinc-500 uppercase">
+                          {asset.extension}
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (confirm("Remove?")) removeAsset(asset.id);
+                      }}
+                      className="p-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 rounded transition-all flex items-center justify-center shrink-0"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                ))}
+                {uploadedAssets.length === 0 && (
+                  <div className="text-zinc-500 text-[10px] py-4 text-center">
+                    No custom 3D models imported yet.
+                  </div>
+                )}
               </div>
 
-              {/* Option to clear scene */}
-              <div
-                onClick={() => setCurrentModel(null)}
-                className="aspect-square rounded-lg border border-dashed border-red-500/20 flex flex-col items-center justify-center cursor-pointer hover:border-red-500/50 hover:bg-red-500/5 transition-all h-fit"
-              >
-                <Trash2 size={24} className="text-red-900/40 mb-2" />
-                <span className="text-[10px] text-red-900/40">Clear Scene</span>
+              <div className="grid grid-cols-2 gap-2 mt-1">
+                <button
+                  onClick={() => assetInputRef.current?.click()}
+                  className="py-2 rounded-lg border border-dashed border-white/20 hover:border-white/50 hover:bg-white/5 flex items-center justify-center gap-2 text-[11px] font-medium text-zinc-300 transition-all cursor-pointer"
+                >
+                  <Plus size={14} className="text-zinc-400" />
+                  <span>Import Model</span>
+                </button>
+
+                <button
+                  onClick={() => clearScene()}
+                  className="py-2 rounded-lg border border-dashed border-red-500/20 hover:border-red-500/50 hover:bg-red-500/5 flex items-center justify-center gap-2 text-[11px] font-medium text-red-400/80 transition-all cursor-pointer"
+                >
+                  <Trash2 size={14} className="text-red-500/50" />
+                  <span>Clear Scene</span>
+                </button>
               </div>
             </div>
           )}
@@ -2344,6 +2394,139 @@ const RightPanel = ({ activeTab, onStartCamera, onStopCamera }: any) => {
                     }
                   />
                 </div>
+
+                {/* Bloom Effect Intensity Slider */}
+                <div className="bg-zinc-800/50 p-2 rounded-lg border border-white/5">
+                  <SliderControl
+                    label="Bloom Effect Intensity"
+                    value={effectsSettings?.bloomIntensity ?? 0.6}
+                    min="0"
+                    max="3"
+                    step="0.05"
+                    onChange={(v: number) =>
+                      updateEffectsSettings({ bloomIntensity: v })
+                    }
+                  />
+                </div>
+
+                {/* Advanced Render Controls */}
+                <div className="bg-zinc-800/50 p-3 rounded-lg border border-white/5 space-y-3">
+                  <div className="text-xs font-semibold text-zinc-400 border-b border-white/5 pb-1 mb-2">
+                    Advanced Rendering
+                  </div>
+
+                  {/* Flat Studio Lights */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex flex-col">
+                      <span className="text-xs font-medium text-zinc-200">Virtual Lights</span>
+                      <span className="text-[10px] text-zinc-500">Enable flat directional & spot lights</span>
+                    </div>
+                    <button
+                      onClick={() => setLightingEnabled(!lightingEnabled)}
+                      className={`w-10 h-6 flex items-center rounded-full p-0.5 transition-colors focus:outline-none shrink-0 ${lightingEnabled ? 'bg-blue-500' : 'bg-zinc-700'}`}
+                    >
+                      <div className={`bg-white w-5 h-5 rounded-full shadow-md transform transition-transform ${lightingEnabled ? 'translate-x-4' : 'translate-x-0'}`} />
+                    </button>
+                  </div>
+
+                  {/* Show Environment Background */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex flex-col">
+                      <span className="text-xs font-medium text-zinc-200">Show HDRI Background</span>
+                      <span className="text-[10px] text-zinc-500">Toggle 360° environment panorama background</span>
+                    </div>
+                    <button
+                      onClick={() => setShowEnvironmentBackground(!showEnvironmentBackground)}
+                      className={`w-10 h-6 flex items-center rounded-full p-0.5 transition-colors focus:outline-none shrink-0 ${showEnvironmentBackground ? 'bg-blue-500' : 'bg-zinc-700'}`}
+                    >
+                      <div className={`bg-white w-5 h-5 rounded-full shadow-md transform transition-transform ${showEnvironmentBackground ? 'translate-x-4' : 'translate-x-0'}`} />
+                    </button>
+                  </div>
+
+                  {/* Wireframe Mode */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex flex-col">
+                      <span className="text-xs font-medium text-zinc-200">Wireframe Mode</span>
+                      <span className="text-[10px] text-zinc-500">Toggle technical wireframe grid overlay</span>
+                    </div>
+                    <button
+                      onClick={() => setWireframeEnabled(!wireframeEnabled)}
+                      className={`w-10 h-6 flex items-center rounded-full p-0.5 transition-colors focus:outline-none shrink-0 ${wireframeEnabled ? 'bg-blue-500' : 'bg-zinc-700'}`}
+                    >
+                      <div className={`bg-white w-5 h-5 rounded-full shadow-md transform transition-transform ${wireframeEnabled ? 'translate-x-4' : 'translate-x-0'}`} />
+                    </button>
+                  </div>
+
+                  {/* Tone Mapping */}
+                  <div className="flex flex-col gap-1.5 pt-1.5 border-t border-white/5">
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs font-medium text-zinc-200">Tone Mapping</span>
+                      <span className="text-[10px] text-zinc-500 font-mono uppercase">{effectsSettings?.toneMapping || 'ACESFilmic'}</span>
+                    </div>
+                    <div className="grid grid-cols-4 gap-1">
+                      {(['ACESFilmic', 'AgX', 'Linear', 'None'] as const).map((mode) => (
+                        <button
+                          key={mode}
+                          onClick={() => updateEffectsSettings({ toneMapping: mode })}
+                          className={`py-1 text-[9px] font-semibold rounded transition-all ${
+                            (effectsSettings?.toneMapping || 'ACESFilmic') === mode
+                              ? 'bg-blue-500 text-white shadow-sm'
+                              : 'bg-zinc-900/40 text-zinc-400 border border-white/5 hover:bg-zinc-700/50'
+                          }`}
+                        >
+                          {mode === 'ACESFilmic' ? 'ACES' : mode}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Ambient Occlusion */}
+                  <div className="flex flex-col gap-1.5 pt-1.5 border-t border-white/5">
+                    <div className="flex justify-between items-center">
+                      <div className="flex flex-col">
+                        <span className="text-xs font-medium text-zinc-200">Ambient Occlusion (AO)</span>
+                        <span className="text-[10px] text-zinc-500">Realistic contact shadows</span>
+                      </div>
+                      <button
+                        onClick={() => updateEffectsSettings({ aoEnabled: effectsSettings?.aoEnabled === false })}
+                        className={`w-10 h-6 flex items-center rounded-full p-0.5 transition-colors focus:outline-none shrink-0 ${effectsSettings?.aoEnabled !== false ? 'bg-blue-500' : 'bg-zinc-700'}`}
+                      >
+                        <div className={`bg-white w-5 h-5 rounded-full shadow-md transform transition-transform ${effectsSettings?.aoEnabled !== false ? 'translate-x-4' : 'translate-x-0'}`} />
+                      </button>
+                    </div>
+                    {effectsSettings?.aoEnabled !== false && (
+                      <div className="grid grid-cols-3 gap-1">
+                        {(['low', 'medium', 'high'] as const).map((q) => (
+                          <button
+                            key={q}
+                            onClick={() => updateEffectsSettings({ aoQuality: q })}
+                            className={`py-1 text-[9px] font-semibold rounded transition-all uppercase ${
+                              (effectsSettings?.aoQuality || 'medium') === q
+                                ? 'bg-blue-500 text-white shadow-sm'
+                                : 'bg-zinc-900/40 text-zinc-400 border border-white/5 hover:bg-zinc-700/50'
+                            }`}
+                          >
+                            {q}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Exposure Slider */}
+                  <div className="pt-1.5 border-t border-white/5">
+                    <SliderControl
+                      label="Renderer Exposure"
+                      value={effectsSettings?.exposure ?? 1.0}
+                      min="0.2"
+                      max="2.5"
+                      step="0.05"
+                      onChange={(v: number) =>
+                        updateEffectsSettings({ exposure: v })
+                      }
+                    />
+                  </div>
+                </div>
               </div>
 
               {currentLighting === "custom" && (
@@ -2404,140 +2587,7 @@ const RightPanel = ({ activeTab, onStartCamera, onStopCamera }: any) => {
           )}
 
           {activeTab === "mix" && (
-            <div className="space-y-4">
-              <div className="bg-gradient-to-br from-indigo-500/20 to-purple-500/20 rounded-lg p-4 border border-white/10 sticky top-0 z-10 backdrop-blur-md">
-                <div className="flex items-center gap-2 mb-3">
-                  <Box size={16} className="text-purple-400" />
-                  <span className="text-sm font-bold text-white">
-                    AI Texture Gen
-                  </span>
-                </div>
-                <p className="text-xs text-zinc-400 mb-3">
-                  Describe a style or theme.
-                </p>
-                <div className="flex gap-2">
-                  <input
-                    value={prompt}
-                    onChange={(e) => setPrompt(e.target.value)}
-                    className="bg-black/40 border border-white/10 rounded px-2 py-1 text-xs text-white flex-1 focus:outline-none focus:border-purple-500"
-                    placeholder="Prompt..."
-                    onKeyDown={(e) => e.key === "Enter" && handleGenerate()}
-                  />
-                  <button
-                    onClick={handleGenerate}
-                    disabled={isGenerating}
-                    className="bg-purple-600 hover:bg-purple-500 text-white rounded p-1.5 transition-colors disabled:opacity-50"
-                  >
-                    {isGenerating ? (
-                      <Loader2 size={14} className="animate-spin" />
-                    ) : (
-                      <ChevronRight size={14} />
-                    )}
-                  </button>
-                </div>
-              </div>
-              <div className="max-h-[350px] overflow-y-auto custom-scrollbar pr-1">
-                {Object.keys(aiGroups).length === 0 ? (
-                  <div className="text-center py-4 bg-white/5 rounded-lg border border-dashed border-white/10">
-                    <span className="text-[10px] text-zinc-500">
-                      No generated materials yet.
-                    </span>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {Object.entries(aiGroups)
-                      .reverse()
-                      .map(([groupName, groupMats]) => {
-                        const isExpanded = expandedGroups[groupName];
-                        return (
-                          <div
-                            key={groupName}
-                            className="bg-zinc-800/50 rounded-lg border border-white/5 overflow-hidden"
-                          >
-                            <div
-                              className="p-2 flex items-center justify-between cursor-pointer hover:bg-white/5 transition-colors"
-                              onClick={() => toggleGroup(groupName)}
-                            >
-                              <div className="flex items-center gap-2 overflow-hidden">
-                                {isExpanded ? (
-                                  <ChevronDown
-                                    size={12}
-                                    className="text-zinc-500"
-                                  />
-                                ) : (
-                                  <ChevronRight
-                                    size={12}
-                                    className="text-zinc-500"
-                                  />
-                                )}
-                                <span
-                                  className="text-[10px] font-medium text-zinc-300 truncate flex-1"
-                                  title={groupName}
-                                >
-                                  {groupName.length > 25
-                                    ? groupName.substring(0, 25) + "..."
-                                    : groupName}
-                                </span>
-                                <span className="text-[9px] text-zinc-600 bg-black/20 px-1.5 py-0.5 rounded-full">
-                                  {groupMats.length}
-                                </span>
-                              </div>
-                              <button
-                                onClick={(e) => handleDeleteGroup(e, groupName)}
-                                className="p-1 hover:text-red-400 text-zinc-600 transition-colors"
-                              >
-                                <Trash2 size={12} />
-                              </button>
-                            </div>
-
-                            {isExpanded && (
-                              <div className="p-2 pt-0 grid grid-cols-2 gap-2 animate-in slide-in-from-top-2">
-                                {groupMats.map((mat) => (
-                                  <div
-                                    key={mat.id}
-                                    onClick={() => handleMaterialClick(mat.id)}
-                                    className={`group relative h-16 rounded-lg overflow-hidden cursor-pointer transition-all border ${partMaterials[selectedPart || ""] === mat.id ? "border-purple-500 ring-1 ring-blue-500" : "border-transparent hover:border-white/30"}`}
-                                  >
-                                    <div
-                                      className="absolute inset-0"
-                                      style={{
-                                        backgroundImage: mat.textureUrl
-                                          ? `url(${mat.textureUrl})`
-                                          : "none",
-                                        backgroundSize: "cover",
-                                      }}
-                                    ></div>
-                                    <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-transparent" />
-                                    <div className="absolute left-2 top-1/2 -translate-y-1/2">
-                                      <p className="text-[10px] font-medium text-white shadow-sm truncate w-20">
-                                        {mat.name}
-                                      </p>
-                                    </div>
-                                    <button
-                                      onClick={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        removeMaterial(mat.id);
-                                      }}
-                                      className="absolute top-1 right-1 p-1.5 bg-red-600 hover:bg-red-500 rounded-full text-white transition-all z-20 shadow-md backdrop-blur-sm opacity-0 group-hover:opacity-100 scale-75"
-                                    >
-                                      <Trash2 size={12} />
-                                    </button>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {activeTab === "admin" && (
-            <AdminDashboard />
+            <AISection />
           )}
         </div>
       </div>
@@ -2545,391 +2595,180 @@ const RightPanel = ({ activeTab, onStartCamera, onStopCamera }: any) => {
   );
 };
 
-// User Profile and Admin Panel Components
-const UserProfileWidget: React.FC = () => {
-  const user = useStore((s) => s.user);
-  const isAdmin = useStore((s) => s.isAdmin);
-  const setUser = useStore((s) => s.setUser);
-  const setIsAdmin = useStore((s) => s.setIsAdmin);
-  const [dropdownOpen, setDropdownOpen] = useState(false);
+const AISection = () => {
+  const {
+    isGenerating,
+    materials,
+    partMaterials,
+    selectedPart,
+    removeMaterial,
+    removeMaterialGroup,
+    generateFullDesign,
+  } = useStore();
+  const [prompt, setPrompt] = useState("");
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
 
-  if (!user) return null;
-
-  const handleLogout = async () => {
-    try {
-      await logoutUser();
-      setUser(null);
-      setIsAdmin(false);
-      window.location.reload();
-    } catch (e) {
-      console.error("Signout error:", e);
-    }
+  const handleGenerate = async () => {
+    if (!prompt.trim()) return;
+    await generateFullDesign(prompt);
+    setExpandedGroups((prev) => ({ ...prev, [prompt]: true }));
+    setPrompt("");
   };
 
-  const nameInitial = user.displayName
-    ? user.displayName.charAt(0).toUpperCase()
-    : user.email
-      ? user.email.charAt(0).toUpperCase()
-      : "?";
-
-  return (
-    <div className="fixed bottom-4 left-4 z-[95] pointer-events-auto flex flex-col items-center gap-1.5 select-none animate-in fade-in duration-350">
-      <div className="relative">
-        <button
-          onClick={() => setDropdownOpen(!dropdownOpen)}
-          className="flex items-center gap-2 p-1.5 pr-3 rounded-full bg-zinc-900/90 hover:bg-zinc-800 border border-white/10 backdrop-blur-xl transition-all cursor-pointer shadow-lg active:scale-95 group"
-        >
-          {user.photoURL ? (
-            <img
-              src={user.photoURL}
-              alt={user.displayName || "Avatar"}
-              className={`w-7 h-7 rounded-full object-cover border-2 ${isAdmin ? "border-amber-400" : "border-blue-500"}`}
-              referrerPolicy="no-referrer"
-            />
-          ) : (
-            <div
-              className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs ${isAdmin ? "bg-amber-500 text-zinc-950" : "bg-blue-600 text-zinc-100"}`}
-            >
-              {nameInitial}
-            </div>
-          )}
-          <div className="flex flex-col items-start hidden sm:flex">
-            <span className="text-[10px] font-bold text-zinc-200 tracking-tight leading-none group-hover:text-white transition-colors">
-              {user.displayName || "Designer"}
-            </span>
-            <span className="text-[8px] text-zinc-500 font-mono tracking-wider font-semibold uppercase leading-none mt-0.5">
-              {isAdmin ? "🛡️ Developer" : "Creative"}
-            </span>
-          </div>
-        </button>
-
-        {dropdownOpen && (
-          <>
-            <div
-              className="fixed inset-0 z-10"
-              onClick={() => setDropdownOpen(false)}
-            />
-            <div className="absolute left-0 bottom-full mb-2 w-56 rounded-2xl bg-zinc-950/95 border border-white/10 p-2 shadow-2xl z-20 backdrop-blur-2xl animate-in fade-in-20 slide-in-from-bottom-4 duration-150">
-              <div className="p-3 border-b border-white/5 bg-white/5 rounded-t-xl mb-1.5">
-                <p className="text-xs font-bold text-white truncate">
-                  {user.displayName || "Active Member"}
-                </p>
-                <p className="text-[9px] text-zinc-500 font-mono truncate">
-                  {user.email}
-                </p>
-                {isAdmin && (
-                  <span className="inline-block mt-1.5 px-2 py-0.5 rounded text-[8px] font-bold bg-amber-500/10 border border-amber-500/20 text-amber-400 font-mono">
-                    ADMIN DEVELOPER ROLE
-                  </span>
-                )}
-              </div>
-
-              <button
-                onClick={handleLogout}
-                className="w-full flex items-center gap-2.5 p-2 rounded-xl text-xs font-semibold text-red-100 hover:text-red-300 hover:bg-red-500/10 transition-colors text-left"
-              >
-                <LogOut size={14} />
-                <span>Disconnect Account</span>
-              </button>
-            </div>
-          </>
-        )}
-      </div>
-
-      {/* Attribution centered perfectly below the account widget */}
-      <span className="font-mono text-zinc-500 font-semibold tracking-widest text-[9px] uppercase opacity-70 pointer-events-none select-none">
-        by nkh
-      </span>
-    </div>
-  );
-};
-
-const AdminDashboard: React.FC = () => {
-  const [users, setUsers] = useState<any[]>([]);
-  const [admins, setAdmins] = useState<Record<string, boolean>>({});
-  const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [updatingId, setUpdatingId] = useState<string | null>(null);
-
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      const isPlayground =
-        !useStore.getState().user || auth.currentUser === null;
-      if (isPlayground) {
-        setUsers([
-          {
-            uid: auth.currentUser?.uid || "mock-admin-uid-1",
-            displayName: auth.currentUser?.displayName || "Mock Handshake (You)",
-            email: auth.currentUser?.email || "kitoruyasiru@gmail.com",
-            photoURL: auth.currentUser?.photoURL || "",
-            createdAt: { toDate: () => new Date() },
-            lastActive: { toDate: () => new Date() },
-            isDisabled: false,
-          },
-          {
-            uid: "designer-uid-100",
-            displayName: "Jane Creative Design",
-            email: "jane.design@creative.co",
-            photoURL: "",
-            createdAt: { toDate: () => new Date(Date.now() - 86400000) },
-            lastActive: { toDate: () => new Date() },
-            isDisabled: false,
-          },
-          {
-            uid: "tester-uid-240",
-            displayName: "Apex Test Lab",
-            email: "lab@apex-testing.org",
-            photoURL: "",
-            createdAt: { toDate: () => new Date(Date.now() - 172800000) },
-            lastActive: { toDate: () => new Date(Date.now() - 3600000) },
-            isDisabled: true,
-          },
-        ]);
-        setAdmins({
-          [auth.currentUser?.uid || "mock-admin-uid-1"]: true,
-        });
-      } else {
-        const usersSnap = await getDocs(collection(db, "users"));
-        const adminsSnap = await getDocs(collection(db, "admins"));
-
-        const fetchedUsers: any[] = [];
-        const fetchedAdmins: Record<string, boolean> = {};
-
-        usersSnap.forEach((uDoc) => {
-          fetchedUsers.push({ uid: uDoc.id, ...uDoc.data() });
-        });
-
-        adminsSnap.forEach((aDoc) => {
-          fetchedAdmins[aDoc.id] = true;
-        });
-
-        setUsers(fetchedUsers);
-        setAdmins(fetchedAdmins);
-      }
-    } catch (err) {
-      console.error("Firestore loading error:", err);
-    } finally {
-      setLoading(false);
-    }
+  const handleMaterialClick = (matId: string) => {
+    if (selectedPart) useStore.getState().setMaterial(selectedPart, matId);
   };
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const handleToggleAdmin = async (userId: string, email: string) => {
-    setUpdatingId(userId);
-    try {
-      const isCurrentlyAdmin = admins[userId];
-
-      if (userId === auth.currentUser?.uid && isCurrentlyAdmin) {
-        alert("Self-demotion is restricted to prevent developer lockout.");
-        return;
-      }
-
-      if (isCurrentlyAdmin) {
-        await deleteDoc(doc(db, "admins", userId));
-        setAdmins((prev) => {
-          const updated = { ...prev };
-          delete updated[userId];
-          return updated;
-        });
-      } else {
-        await setDoc(doc(db, "admins", userId), {
-          email,
-          createdAt: serverTimestamp(),
-        });
-        setAdmins((prev) => ({ ...prev, [userId]: true }));
-      }
-    } catch (err) {
-      console.error("Error setting privileges:", err);
-      setAdmins((prev) => {
-        const isCurrentlyAdmin = prev[userId];
-        const updated = { ...prev };
-        if (isCurrentlyAdmin) {
-          delete updated[userId];
-        } else {
-          updated[userId] = true;
-        }
-        return updated;
-      });
-    } finally {
-      setUpdatingId(null);
-    }
+  const toggleGroup = (groupName: string) => {
+    setExpandedGroups((prev) => ({ ...prev, [groupName]: !prev[groupName] }));
   };
 
-  const handleToggleBlock = async (userId: string, currentStatus: boolean) => {
-    setUpdatingId(userId);
-    try {
-      if (userId === auth.currentUser?.uid) {
-        alert("Blocking yourself is restricted.");
-        return;
-      }
-
-      await updateDoc(doc(db, "users", userId), {
-        isDisabled: !currentStatus,
-      });
-
-      setUsers((prev) =>
-        prev.map((u) =>
-          u.uid === userId ? { ...u, isDisabled: !currentStatus } : u
-        )
-      );
-    } catch (err) {
-      console.error("Error updating status:", err);
-      setUsers((prev) =>
-        prev.map((u) =>
-          u.uid === userId ? { ...u, isDisabled: !currentStatus } : u
-        )
-      );
-    } finally {
-      setUpdatingId(null);
-    }
+  const handleDeleteGroup = (e: React.MouseEvent, groupName: string) => {
+    e.stopPropagation();
+    removeMaterialGroup(groupName);
   };
 
-  const filteredUsers = users.filter((u) => {
-    const term = searchQuery.toLowerCase();
-    return (
-      u.displayName?.toLowerCase().includes(term) ||
-      u.email?.toLowerCase().includes(term) ||
-      u.uid.toLowerCase().includes(term)
-    );
+  const aiMaterials = materials.filter((m) => m.type === "ai-generated");
+  const aiGroups: Record<string, typeof aiMaterials> = {};
+  aiMaterials.forEach((m) => {
+    const groupName = m.group || "Older Generations";
+    if (!aiGroups[groupName]) aiGroups[groupName] = [];
+    aiGroups[groupName].push(m);
   });
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-2 bg-black/40 border border-white/10 rounded-xl p-2 items-center">
-        <Search size={14} className="text-zinc-500 ml-1.5" />
-        <input
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Filter by Name, Email, or UID..."
-          className="bg-transparent border-0 flex-1 text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-0 leading-none py-1.5"
-        />
-      </div>
-
-      {loading ? (
-        <div className="flex flex-col items-center justify-center py-10 gap-3">
-          <Loader2 className="animate-spin text-blue-500" size={24} />
-          <span className="text-xs text-zinc-500 font-mono tracking-wider uppercase">
-            Scanning Database...
+      <div className="bg-gradient-to-br from-indigo-500/20 to-purple-500/20 rounded-lg p-4 border border-white/10 sticky top-0 z-10 backdrop-blur-md">
+        <div className="flex items-center gap-2 mb-3">
+          <Box size={16} className="text-purple-400" />
+          <span className="text-sm font-bold text-white">
+            AI Texture Gen
           </span>
         </div>
-      ) : (
-        <div className="max-h-[350px] overflow-y-auto custom-scrollbar space-y-2.5 pr-1">
-          {filteredUsers.length === 0 ? (
-            <div className="text-center py-10 bg-white/5 border border-dashed border-white/10 rounded-2xl">
-              <Users className="mx-auto text-zinc-600 mb-2" size={20} />
-              <p className="text-[10px] text-zinc-500 font-mono">
-                No matching developers found.
-              </p>
-            </div>
-          ) : (
-            filteredUsers.map((u) => {
-              const isUserAdmin =
-                admins[u.uid] || u.email === "kitoruyasiru@gmail.com";
-              const createdDate = u.createdAt?.toDate
-                ? u.createdAt.toDate().toLocaleDateString()
-                : "N/A";
-              const lastActiveDate = u.lastActive?.toDate
-                ? u.lastActive.toDate().toLocaleDateString()
-                : "N/A";
-
-              return (
-                <div
-                  key={u.uid}
-                  className={`bg-zinc-950/40 border p-3 rounded-2xl flex flex-col gap-2.5 transition-all
-                  ${u.isDisabled ? "border-red-950/40 bg-red-950/5" : isUserAdmin ? "border-amber-500/20 hover:border-amber-500/40" : "border-white/5 hover:border-white/10"}`}
-                >
-                  <div className="flex items-start gap-2.5">
-                    {u.photoURL ? (
-                      <img
-                        src={u.photoURL}
-                        alt={u.displayName}
-                        className="w-8 h-8 rounded-full border border-white/10 object-cover"
-                      />
-                    ) : (
-                      <div
-                        className={`w-8 h-8 rounded-full font-bold flex items-center justify-center text-xs text-zinc-100 ${isUserAdmin ? "bg-amber-600" : "bg-blue-600"}`}
+        <p className="text-xs text-zinc-400 mb-3">
+          Describe a style or theme.
+        </p>
+        <div className="flex gap-2">
+          <input
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            className="bg-black/40 border border-white/10 rounded px-2 py-1 text-xs text-white flex-1 focus:outline-none focus:border-purple-500"
+            placeholder="Prompt..."
+            onKeyDown={(e) => e.key === "Enter" && handleGenerate()}
+          />
+          <button
+            onClick={handleGenerate}
+            disabled={isGenerating}
+            className="bg-purple-600 hover:bg-purple-500 text-white rounded p-1.5 transition-colors disabled:opacity-50"
+          >
+            {isGenerating ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : (
+              <ChevronRight size={14} />
+            )}
+          </button>
+        </div>
+      </div>
+      <div className="max-h-[350px] overflow-y-auto custom-scrollbar pr-1">
+        {Object.keys(aiGroups).length === 0 ? (
+          <div className="text-center py-4 bg-white/5 rounded-lg border border-dashed border-white/10">
+            <span className="text-[10px] text-zinc-500">
+              No generated materials yet.
+            </span>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {Object.entries(aiGroups)
+              .reverse()
+              .map(([groupName, groupMats]) => {
+                const isExpanded = expandedGroups[groupName];
+                return (
+                  <div
+                    key={groupName}
+                    className="bg-zinc-800/50 rounded-lg border border-white/5 overflow-hidden"
+                  >
+                    <div
+                      className="p-2 flex items-center justify-between cursor-pointer hover:bg-white/5 transition-colors"
+                      onClick={() => toggleGroup(groupName)}
+                    >
+                      <div className="flex items-center gap-2 overflow-hidden">
+                        {isExpanded ? (
+                          <ChevronDown
+                            size={12}
+                            className="text-zinc-500"
+                          />
+                        ) : (
+                          <ChevronRight
+                            size={12}
+                            className="text-zinc-500"
+                          />
+                        )}
+                        <span
+                          className="text-[10px] font-medium text-zinc-300 truncate flex-1"
+                          title={groupName}
+                        >
+                          {groupName.length > 25
+                            ? groupName.substring(0, 25) + "..."
+                            : groupName}
+                        </span>
+                        <span className="text-[9px] text-zinc-600 bg-black/20 px-1.5 py-0.5 rounded-full">
+                          {groupMats.length}
+                        </span>
+                      </div>
+                      <button
+                        onClick={(e) => handleDeleteGroup(e, groupName)}
+                        className="p-1 hover:text-red-400 text-zinc-600 transition-colors"
                       >
-                        {u.displayName ? u.displayName.charAt(0).toUpperCase() : "?"}
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+
+                    {isExpanded && (
+                      <div className="p-2 pt-0 grid grid-cols-2 gap-2 animate-in slide-in-from-top-2">
+                        {groupMats.map((mat) => (
+                          <div
+                            key={mat.id}
+                            onClick={() => handleMaterialClick(mat.id)}
+                            className={`group relative h-16 rounded-lg overflow-hidden cursor-pointer transition-all border ${partMaterials[selectedPart || ""] === mat.id ? "border-purple-500 ring-1 ring-blue-500" : "border-transparent hover:border-white/30"}`}
+                          >
+                            <div
+                              className="absolute inset-0"
+                              style={{
+                                backgroundImage: mat.textureUrl
+                                  ? `url(${mat.textureUrl})`
+                                  : "none",
+                                backgroundSize: "cover",
+                              }}
+                            ></div>
+                            <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-transparent" />
+                            <div className="absolute left-2 top-1/2 -translate-y-1/2">
+                              <p className="text-[10px] font-medium text-white shadow-sm truncate w-20">
+                                {mat.name}
+                              </p>
+                            </div>
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                removeMaterial(mat.id);
+                              }}
+                              className="absolute top-1 right-1 p-1.5 bg-red-600 hover:bg-red-500 rounded-full text-white transition-all z-20 shadow-md backdrop-blur-sm opacity-0 group-hover:opacity-100 scale-75"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
+                        ))}
                       </div>
                     )}
-
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-xs font-bold text-zinc-100 truncate block">
-                          {u.displayName || "Anonymous Developer"}
-                        </span>
-                        {isUserAdmin && (
-                          <span className="text-[8px] bg-amber-500/10 border border-amber-500/20 text-amber-400 font-bold px-1 py-0.5 rounded font-mono uppercase shrink-0 scale-90">
-                            Developer
-                          </span>
-                        )}
-                        {u.isDisabled && (
-                          <span className="text-[8px] bg-red-600/10 border border-red-600/20 text-red-400 font-bold px-1 py-0.5 rounded font-mono uppercase shrink-0 scale-90">
-                            Blocked
-                          </span>
-                        )}
-                      </div>
-                      <span
-                        className="text-[9px] text-zinc-500 font-mono block truncate"
-                        title={u.email}
-                      >
-                        {u.email || u.uid}
-                      </span>
-                    </div>
                   </div>
-
-                  <div className="grid grid-cols-2 gap-1.5 border-t border-white/5 pt-2 text-[8px] font-mono text-zinc-600 uppercase">
-                    <div>
-                      Created: <span className="text-zinc-400">{createdDate}</span>
-                    </div>
-                    <div>
-                      Last Active:{" "}
-                      <span className="text-zinc-400">{lastActiveDate}</span>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2 items-center justify-end border-t border-white/5 pt-2 shrink-0">
-                    <button
-                      onClick={() => handleToggleAdmin(u.uid, u.email)}
-                      disabled={updatingId !== null}
-                      className={`px-2 py-1 rounded-lg border text-[9px] font-sans font-bold flex items-center gap-1 cursor-pointer transition-colors disabled:opacity-50
-                        ${isUserAdmin ? "bg-zinc-900 border-zinc-750 hover:bg-zinc-800 text-amber-500" : "bg-amber-500 hover:bg-amber-400 text-zinc-950 border-amber-600"}`}
-                    >
-                      <ShieldAlert size={10} />
-                      <span>{isUserAdmin ? "Revoke Admin" : "Make Developer"}</span>
-                    </button>
-
-                    <button
-                      onClick={() => handleToggleBlock(u.uid, u.isDisabled)}
-                      disabled={updatingId !== null}
-                      className={`px-2 py-1 rounded-lg border text-[9px] font-sans font-bold cursor-pointer transition-colors disabled:opacity-50
-                        ${u.isDisabled ? "bg-red-600 text-zinc-100 hover:bg-red-500 border-red-700" : "bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border-zinc-700"}`}
-                    >
-                      <span>{u.isDisabled ? "Enable Access" : "Block User"}</span>
-                    </button>
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </div>
-      )}
-
-      <div className="bg-white/5 rounded-2xl border border-white/5 p-3 flex justify-between items-center text-[9px] text-zinc-500 font-mono tracking-wider uppercase shrink-0">
-        <div>
-          Users synced: <span className="text-zinc-200 font-bold">{users.length}</span>
-        </div>
-        <button
-          onClick={fetchData}
-          className="text-blue-400 font-bold hover:text-blue-300 uppercase"
-        >
-          Refresh Logs
-        </button>
+                );
+              })}
+          </div>
+        )}
       </div>
     </div>
   );
 };
+
+
+// --- Camera Logic ---

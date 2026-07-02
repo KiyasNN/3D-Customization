@@ -4,7 +4,7 @@ import { Canvas } from '@react-three/fiber';
 // @ts-ignore
 import { useThree, useFrame, useLoader } from '@react-three/fiber';
 // @ts-ignore
-import { Environment, OrbitControls, MeshReflectorMaterial, SoftShadows, ContactShadows } from '@react-three/drei';
+import { Environment, OrbitControls, MeshReflectorMaterial, ContactShadows, Stage, PerspectiveCamera, TransformControls, Outlines } from '@react-three/drei';
 // @ts-ignore
 import { EffectComposer, Bloom, Vignette, Noise, ChromaticAberration, TiltShift2, N8AO, SMAA } from '@react-three/postprocessing';
 import * as THREE from 'three';
@@ -13,9 +13,6 @@ import { Interface } from './components/Interface';
 import { ShoeModel } from './components/ShoeModel';
 import { Mannequin } from './components/Mannequin'; // Import Mannequin
 import { useStore } from './store';
-import { onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
-import { auth, db, syncUserProfile, loginWithGoogle, handleRedirectResult } from './services/firebase';
 
 // Fix for Three.js r165+ deprecation warning in three-stdlib
 if (THREE.LoaderUtils && typeof TextDecoder !== 'undefined') {
@@ -86,6 +83,18 @@ const ScreenshotHandler = () => {
 
   return null;
 };
+
+// Manager for scene interactions
+const SceneManager = ({ setControlsSize, sceneRef }: any) => {
+  useFrame(() => {
+    if (sceneRef.current) {
+        const box = new THREE.Box3().setFromObject(sceneRef.current);
+        const size = box.getSize(new THREE.Vector3()).length();
+        setControlsSize(Math.max(0.5, size / 5));
+    }
+  });
+  return null;
+}
 
 // Controls the camera animation based on store state
 const CameraRig = () => {
@@ -269,6 +278,7 @@ const HDRI = ({ file, background = false, intensity = 1 }: { file: string, backg
 // Sub-component to load custom environment texture with appropriate loader
 const CustomEnv = ({ url, extension }: { url: string, extension: string }) => {
    const settings = useStore(s => s.environmentSettings);
+   const showEnvironmentBackground = useStore(s => s.showEnvironmentBackground);
    const { scene } = useThree();
    
    // Determine correct loader based on extension
@@ -302,7 +312,7 @@ const CustomEnv = ({ url, extension }: { url: string, extension: string }) => {
 
            // Apply directly to scene
            scene.environment = texture;
-           scene.background = texture;
+           scene.background = showEnvironmentBackground ? texture : null;
        }
        
        return () => {
@@ -316,7 +326,7 @@ const CustomEnv = ({ url, extension }: { url: string, extension: string }) => {
                scene.backgroundRotation.set(0, 0, 0);
            }
        };
-   }, [texture, extension, scene]);
+   }, [texture, extension, scene, showEnvironmentBackground]);
 
    // Apply rotation updates without reloading texture
    useLayoutEffect(() => {
@@ -335,85 +345,114 @@ const SceneLighting = () => {
   const currentLighting = useStore(s => s.currentLighting);
   const customEnvironment = useStore(s => s.customEnvironment);
   const settings = useStore(s => s.environmentSettings);
+  const lightingEnabled = useStore(s => s.lightingEnabled);
+  const showEnvironmentBackground = useStore(s => s.showEnvironmentBackground);
   const envIntensity = settings.intensity ?? 1.0;
 
   return (
     <group>
-       <ambientLight intensity={(currentLighting === 'night' ? 0.2 : 0.4) * envIntensity} />
+       {/* Environment - IBL */}
+       <Environment 
+          preset={settings.preset as any} 
+          intensity={envIntensity} 
+       />
+       {lightingEnabled && <ambientLight intensity={(currentLighting === 'night' ? 0.2 : 0.4) * envIntensity} />}
        
        {currentLighting === 'studio' && (
          <>
-           {/* Key Light - Warm & Strong for Contrast */}
-           <spotLight 
-             position={[5, 6, 5]} 
-             angle={0.5} 
-             penumbra={0.5} 
-             intensity={25.0 * envIntensity} 
-             castShadow 
-             shadow-bias={-0.0001} 
-             shadow-mapSize={[2048, 2048]} 
-             color="#ffffff"
-           />
-           {/* Fill Light - Cooler & Softer */}
-           <pointLight position={[-4, 3, -4]} intensity={6.0 * envIntensity} color="#dceeff" />
-           {/* Back Rim Light - Intense & Cool for separation (Hero Effect) */}
-           <spotLight 
-             position={[0, 4, -6]} 
-             angle={0.6} 
-             penumbra={0.4} 
-             intensity={35.0 * envIntensity} 
-             color="#eef2ff" 
-             castShadow
-             shadow-mapSize={[1024, 1024]}
-           />
+           {lightingEnabled && (
+             <>
+               {/* Key Light - Warm & Strong for Contrast */}
+               <spotLight 
+                 position={[5, 6, 5]} 
+                 angle={0.5} 
+                 penumbra={0.5} 
+                 intensity={25.0 * envIntensity} 
+                 castShadow 
+                 shadow-bias={-0.0001} 
+                 shadow-mapSize={[2048, 2048]} 
+                 color="#ffffff"
+               />
+               {/* Fill Light - Cooler & Softer */}
+               <pointLight position={[-4, 3, -4]} intensity={6.0 * envIntensity} color="#dceeff" />
+               {/* Back Rim Light - Intense & Cool for separation (Hero Effect) */}
+               <spotLight 
+                 position={[0, 4, -6]} 
+                 angle={0.6} 
+                 penumbra={0.4} 
+                 intensity={35.0 * envIntensity} 
+                 color="#eef2ff" 
+                 castShadow
+                 shadow-mapSize={[1024, 1024]}
+               />
+             </>
+           )}
            {/* HDRI for reflections */}
-           <HDRI file={PRESETS.studio} intensity={1.0 * envIntensity} />
+           <HDRI file={PRESETS.studio} intensity={1.0 * envIntensity} background={showEnvironmentBackground} />
          </>
        )}
 
        {currentLighting === 'sunset' && (
          <>
-           <directionalLight position={[-5, 5, 5]} intensity={10.0 * envIntensity} color="#ffaa00" castShadow shadow-mapSize={[2048, 2048]} />
-           <pointLight position={[5, 4, -5]} intensity={6.0 * envIntensity} color="#ff5500" />
-           <HDRI file={PRESETS.sunset} intensity={1.5 * envIntensity} background />
+           {lightingEnabled && (
+             <>
+               <directionalLight position={[-5, 5, 5]} intensity={10.0 * envIntensity} color="#ffaa00" castShadow shadow-mapSize={[2048, 2048]} />
+               <pointLight position={[5, 4, -5]} intensity={6.0 * envIntensity} color="#ff5500" />
+             </>
+           )}
+           <HDRI file={PRESETS.sunset} intensity={1.5 * envIntensity} background={showEnvironmentBackground} />
          </>
        )}
 
        {currentLighting === 'dawn' && (
          <>
-           <directionalLight position={[5, 5, 5]} intensity={8.0 * envIntensity} color="#aaccff" castShadow shadow-mapSize={[2048, 2048]} />
-           <pointLight position={[-5, 5, -5]} intensity={5.0 * envIntensity} color="#d4e1ff" />
-           <HDRI file={PRESETS.dawn} intensity={1.5 * envIntensity} background />
+           {lightingEnabled && (
+             <>
+               <directionalLight position={[5, 5, 5]} intensity={8.0 * envIntensity} color="#aaccff" castShadow shadow-mapSize={[2048, 2048]} />
+               <pointLight position={[-5, 5, -5]} intensity={5.0 * envIntensity} color="#d4e1ff" />
+             </>
+           )}
+           <HDRI file={PRESETS.dawn} intensity={1.5 * envIntensity} background={showEnvironmentBackground} />
          </>
        )}
        
        {currentLighting === 'warehouse' && (
          <>
-           <spotLight position={[0, 10, 0]} angle={0.6} penumbra={0.5} intensity={15.0 * envIntensity} castShadow shadow-mapSize={[2048, 2048]} />
-           <HDRI file={PRESETS.warehouse} intensity={1.4 * envIntensity} background />
+           {lightingEnabled && (
+             <spotLight position={[0, 10, 0]} angle={0.6} penumbra={0.5} intensity={15.0 * envIntensity} castShadow shadow-mapSize={[2048, 2048]} />
+           )}
+           <HDRI file={PRESETS.warehouse} intensity={1.4 * envIntensity} background={showEnvironmentBackground} />
          </>
        )}
 
        {currentLighting === 'night' && (
          <>
-           <pointLight position={[3, 4, 3]} intensity={15.0 * envIntensity} color="#0088ff" />
-           <pointLight position={[-3, 4, -3]} intensity={15.0 * envIntensity} color="#ff00cc" />
-           <HDRI file={PRESETS.night} intensity={0.8 * envIntensity} background />
+           {lightingEnabled && (
+             <>
+               <pointLight position={[3, 4, 3]} intensity={15.0 * envIntensity} color="#0088ff" />
+               <pointLight position={[-3, 4, -3]} intensity={15.0 * envIntensity} color="#ff00cc" />
+             </>
+           )}
+           <HDRI file={PRESETS.night} intensity={0.8 * envIntensity} background={showEnvironmentBackground} />
          </>
        )}
 
        {currentLighting === 'forest' && (
          <>
-           <spotLight position={[2, 10, 2]} angle={0.5} penumbra={1} intensity={8.0 * envIntensity} color="#ffffdd" castShadow shadow-mapSize={[2048, 2048]} />
-           <HDRI file={PRESETS.forest} intensity={1.5 * envIntensity} background />
+           {lightingEnabled && (
+             <spotLight position={[2, 10, 2]} angle={0.5} penumbra={1} intensity={8.0 * envIntensity} color="#ffffdd" castShadow shadow-mapSize={[2048, 2048]} />
+           )}
+           <HDRI file={PRESETS.forest} intensity={1.5 * envIntensity} background={showEnvironmentBackground} />
          </>
        )}
 
        {currentLighting === 'custom' && customEnvironment && (
          <>
+           {lightingEnabled && (
              <directionalLight position={[5, 10, 5]} intensity={5.0 * envIntensity} castShadow shadow-bias={-0.0001} shadow-mapSize={[2048, 2048]} />
-             {/* Key ensures component remounts when environment asset changes, preventing loader conflicts */}
-             <CustomEnv key={customEnvironment.id} url={customEnvironment.url} extension={customEnvironment.extension} />
+           )}
+           {/* Key ensures component remounts when environment asset changes, preventing loader conflicts */}
+           <CustomEnv key={customEnvironment.id} url={customEnvironment.url} extension={customEnvironment.extension} />
          </>
        )}
     </group>
@@ -501,6 +540,8 @@ const Floor = () => {
 const Effects = () => {
   const isMobile = useStore(s => s.isMobile);
   const recordingStatus = useStore(s => s.recordingStatus);
+  const effectsSettings = useStore(s => s.effectsSettings);
+  const bloomIntensity = effectsSettings?.bloomIntensity ?? 0.6;
 
   // Disable expensive effects during recording or on mobile to save performance/battery
   const enabled = !isMobile && recordingStatus === 'idle';
@@ -513,15 +554,17 @@ const Effects = () => {
        <SMAA />
 
        {/* N8AO for realistic contact shadows */}
-       <N8AO 
-         aoRadius={0.5} 
-         intensity={3.0} 
-         screenSpaceRadius={true} 
-         color="black" 
-         distanceFalloff={2.0}
-         quality="medium"
-         halfRes={true}
-       />
+       {effectsSettings?.aoEnabled !== false && (
+         <N8AO 
+           aoRadius={0.5} 
+           intensity={3.0} 
+           screenSpaceRadius={true} 
+           color="black" 
+           distanceFalloff={2.0}
+           quality={effectsSettings?.aoQuality || "medium"}
+           halfRes={true}
+         />
+       )}
        
        {/* Chromatic Aberration mimics real lens imperfection - subtle */}
        <ChromaticAberration offset={[0.0005, 0.0005]} radialModulation={false} modulationOffset={0} />
@@ -531,7 +574,7 @@ const Effects = () => {
           luminanceThreshold={1.0} 
           luminanceSmoothing={0.4}
           mipmapBlur 
-          intensity={0.6} 
+          intensity={bloomIntensity} 
           radius={0.5}
        />
        
@@ -547,6 +590,29 @@ const Effects = () => {
   );
 }
 
+// Dynamically adjusts Three.js renderer settings (tone mapping, exposure) based on store state
+const RendererConfig = () => {
+  const { gl } = useThree();
+  const effectsSettings = useStore(s => s.effectsSettings);
+
+  useLayoutEffect(() => {
+    let mapping = THREE.ACESFilmicToneMapping;
+    if (effectsSettings?.toneMapping === 'AgX') {
+      mapping = THREE.AgXToneMapping;
+    } else if (effectsSettings?.toneMapping === 'Linear') {
+      mapping = THREE.LinearToneMapping;
+    } else if (effectsSettings?.toneMapping === 'None') {
+      mapping = THREE.NoToneMapping;
+    }
+    
+    gl.toneMapping = mapping;
+    gl.toneMappingExposure = effectsSettings?.exposure ?? 1.0;
+    gl.needsUpdate = true;
+  }, [gl, effectsSettings?.toneMapping, effectsSettings?.exposure]);
+
+  return null;
+};
+
 export default function App() {
   const currentView = useStore(s => s.currentView);
   const isWalking = useStore(s => s.isWalking);
@@ -556,103 +622,17 @@ export default function App() {
   const setIsMobile = useStore(s => s.setIsMobile);
   const currentLighting = useStore(s => s.currentLighting);
   const showFloor = useStore(s => s.showFloor);
+  const showEnvironmentBackground = useStore(s => s.showEnvironmentBackground);
+  const showTransformGizmo = useStore(s => s.showTransformGizmo);
+  const isDragging = useStore(s => s.isDragging);
+  const setIsDragging = useStore(s => s.setIsDragging);
+  const isExploded = useStore(s => s.isExploded);
+  const [controlsSize, setControlsSize] = useState(1);
+  const sceneRef = useRef<THREE.Group>(null);
   
-  const user = useStore(s => s.user);
-  const authLoading = useStore(s => s.authLoading);
-  const isAdmin = useStore(s => s.isAdmin);
-  const setUser = useStore(s => s.setUser);
-  const setAuthLoading = useStore(s => s.setAuthLoading);
-  const setIsAdmin = useStore(s => s.setIsAdmin);
-  const [authError, setAuthError] = useState<string | null>(null);
-
-  // Auth Status Subscriber
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentFirebaseUser) => {
-      try {
-        if (currentFirebaseUser) {
-          const isBootstrapped = currentFirebaseUser.email === 'kitoruyasiru@gmail.com';
-          let dbAdmin = false;
-          
-          if (!isBootstrapped) {
-            try {
-              const adminDoc = await getDoc(doc(db, 'admins', currentFirebaseUser.uid));
-              dbAdmin = adminDoc.exists();
-            } catch (e) {
-              console.warn("Could not retrieve admin permissions:", e);
-            }
-          }
-          
-          setUser(currentFirebaseUser);
-          setIsAdmin(isBootstrapped || dbAdmin);
-          await syncUserProfile(currentFirebaseUser);
-        } else {
-          setUser(null);
-          setIsAdmin(false);
-        }
-      } catch (err) {
-        console.error("Auth status change event failed:", err);
-      } finally {
-        setAuthLoading(false);
-      }
-    });
-    return () => unsubscribe();
-  }, [setUser, setIsAdmin, setAuthLoading]);
-
-  // Handle mock bypass login
-  const handleBypassLogin = async () => {
-    setAuthLoading(true);
-    try {
-      const mockUser = {
-        uid: "mock-uid-123",
-        email: "kitoruyasiru@gmail.com",
-        displayName: "Mock Handshake",
-        photoURL: "https://lh3.googleusercontent.com/a/mock",
-        emailVerified: true
-      };
-      setUser(mockUser);
-      setIsAdmin(true); // Grant admin privileges for live evaluation/testing
-    } catch (err) {
-      console.error("Bypass login failed:", err);
-    } finally {
-      setAuthLoading(false);
-    }
-  };
-
-  const handleGoogleLogin = async () => {
-    setAuthLoading(true);
-    setAuthError(null);
-    try {
-      const loggedUser = await loginWithGoogle();
-      if (loggedUser) {
-        setUser(loggedUser);
-        const isB = loggedUser.email === 'kitoruyasiru@gmail.com';
-        let dbAdmin = false;
-        try {
-          const adminDoc = await getDoc(doc(db, 'admins', loggedUser.uid));
-          dbAdmin = adminDoc.exists();
-        } catch (e) {}
-        setIsAdmin(isB || dbAdmin);
-        await syncUserProfile(loggedUser);
-      }
-    } catch (err: any) {
-      if (err.code === 'auth/popup-closed-by-user') {
-        console.warn("Login popup was closed before completion.");
-        setAuthError("Popup login ditutup sebelum selesai. Silakan coba lagi.");
-      } else if (err.code === 'auth/network-request-failed') {
-        console.warn("Network request failed. Please check your internet connection.");
-        setAuthError("Network error or 3rd-party cookies blocked in iframe. Please open in a new tab.");
-      } else {
-        console.error("Google authentication error:", err);
-        setAuthError("Authentication failed. Please try again.");
-      }
-    } finally {
-      setAuthLoading(false);
-    }
-  };
-
   // Calculate control states
   const isRecording = recordingStatus === 'recording';
-  const shouldAutoRotate = isTurntableActive && !isRecording && !isWalking;
+  const shouldAutoRotate = isTurntableActive && !isRecording && !isWalking && !showTransformGizmo;
   const controlsEnabled = !isRecording; 
   
   useEffect(() => {
@@ -661,103 +641,37 @@ export default function App() {
     };
     handleResize(); // Init
     window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [setIsMobile]);
 
-  if (authLoading) {
-    return (
-      <div className="w-full h-screen bg-zinc-950 flex flex-col items-center justify-center font-sans">
-        <div className="relative flex items-center justify-center">
-          <div className="w-16 h-16 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin"></div>
-          <div className="absolute font-mono text-[10px] text-blue-400 font-bold uppercase animate-pulse">3D</div>
-        </div>
-        <p className="mt-6 text-sm text-zinc-400 tracking-wide font-medium">Securing Customizer Environment...</p>
-      </div>
-    );
-  }
+    const handleGlobalMouseUp = () => {
+      setIsDragging(false);
+    };
+    window.addEventListener('mouseup', handleGlobalMouseUp);
 
-  if (!user) {
-    return (
-      <div className="w-full h-screen bg-zinc-950 overflow-hidden relative z-50 font-sans flex items-center justify-center">
-        {/* Sleek Dark Background with Ambient Glow */}
-        <div className="absolute inset-0 z-0 bg-[radial-gradient(circle_at_50%_40%,rgba(59,130,246,0.12),transparent_55%)]" />
-        
-        {/* Clean, high-contrast display card */}
-        <div className="relative z-50 w-full max-w-[360px] p-8 rounded-[28px] bg-zinc-900/90 border border-white/10 backdrop-blur-2xl shadow-2xl flex flex-col items-center text-center">
-          
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/15 mb-5 active:scale-95 transition-transform">
-             <span className="font-mono text-base font-black text-white tracking-widest pl-0.5 select-none">3D</span>
-          </div>
-
-          <h1 className="text-lg font-bold text-white tracking-tight mb-1.5">
-            3D.Customizer
-          </h1>
-          <p className="text-zinc-400 text-xs leading-relaxed mb-6 px-1">
-            Sign in with Google to craft models, persist custom variants, and unlock professional design controls.
-          </p>
-
-          <div className="w-full flex flex-col gap-2.5">
-            {/* Google Login button */}
-            <button
-              onClick={handleGoogleLogin}
-              className="w-full py-3 px-5 rounded-xl flex items-center justify-center gap-3 bg-white text-zinc-950 hover:bg-zinc-100 active:scale-[0.98] transition-all font-semibold text-xs cursor-pointer shadow-lg shadow-white/5"
-            >
-              <svg className="w-5 h-5 flex-shrink-0" width="20" height="20" viewBox="0 0 24 24" fill="none">
-                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l3.66-2.85z" fill="#FBBC05"/>
-                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.85c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-              </svg>
-              <span>Continue with Google</span>
-            </button>
-            {authError && (
-              <div className="mt-2 text-xs text-red-400 bg-red-400/10 border border-red-400/20 p-2.5 rounded-lg text-left leading-relaxed">
-                <span className="font-semibold block mb-1">Login Blocked</span>
-                {authError}
-                <div className="mt-2 text-[10px] text-zinc-400">
-                  Tip: Use the 'Open in new tab' button in the top right of the preview pane.
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="mt-5 text-center">
-            <p className="text-[9px] text-zinc-500 font-mono tracking-wider uppercase select-none">
-              SECURE WORKSPACE
-            </p>
-          </div>
-        </div>
-
-        {/* Attribution bottom left of the screen */}
-        <div className="absolute bottom-4 left-4 z-50 pointer-events-none select-none">
-          <span className="font-mono text-zinc-600 font-semibold tracking-widest text-[9px] uppercase opacity-75">
-            by nkh
-          </span>
-        </div>
-      </div>
-    );
-  }
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('mouseup', handleGlobalMouseUp);
+    };
+  }, [setIsMobile, setIsDragging]);
 
   return (
     <div className="w-full h-screen bg-zinc-900 overflow-hidden relative font-sans select-none">
       
       {/* 3D Scene */}
       <div className="absolute inset-0 z-0">
-        <Canvas 
-          shadows
-          camera={{ position: [4, 2, 4], fov: 45 }} 
-          dpr={[1, 1.5]} 
-          gl={{ 
-             preserveDrawingBuffer: true, 
-             alpha: true, 
-             antialias: true,
-             toneMapping: THREE.ACESFilmicToneMapping,
-             toneMappingExposure: 1.2,
-             // useLegacyLights has been removed to fix deprecation warning
-          }}
-        >
-          {/* Only show solid color and fog in Studio mode. Outdoor modes use Environment background. */}
-          {currentLighting === 'studio' && (
+         <Canvas 
+           shadows={{ type: THREE.PCFShadowMap }}
+           dpr={[1, 2]} 
+           gl={{ 
+              preserveDrawingBuffer: true, 
+              alpha: true, 
+              antialias: true,
+           }}
+         >
+           <PerspectiveCamera makeDefault position={[0, 0, 10]} fov={50} />
+           <SceneManager setControlsSize={setControlsSize} sceneRef={sceneRef} />
+           <RendererConfig />
+          {/* Apply background color and fog if environment background is disabled. */}
+          {!showEnvironmentBackground && (
             <>
               <color attach="background" args={['#080808']} />
               <fog attach="fog" args={['#080808', 8, 30]} />
@@ -777,32 +691,29 @@ export default function App() {
              {/* Dynamic Lighting */}
              <SceneLighting />
             
-              {/* Realism: Soft Shadows & Contact Shadows */}
-              {currentLighting === 'studio' && !isWalking && (
-                <>
-                  <SoftShadows size={20} samples={10} focus={0.5} />
-                  <ContactShadows 
-                    position={[0, 0, 0]} 
-                    opacity={0.7} 
-                    scale={10} 
-                    blur={2.5} 
-                    far={1}
-                    resolution={512}
-                    color="#000000"
-                  />
-                </>
+              {/* Realism: Contact Shadows */}
+              {currentLighting === 'studio' && !isWalking && showFloor && (
+                <ContactShadows 
+                  position={[0, 0, 0]} 
+                  opacity={0.7} 
+                  scale={10} 
+                  blur={2.5} 
+                  far={1}
+                  resolution={512}
+                  color="#000000"
+                />
               )}
 
-            {/* 3D Content - Centered at Y=0 */}
-            <group position={[0, 0, 0]}>
-              {isWalking ? (
-                <group scale={12} position={[0, 0, 0]}>
-                   <Mannequin />
-                </group>
-              ) : (
-                <ShoeModel />
-              )}
-            </group>
+             {/* 3D Content - Centered at Y=0 */}
+             <group ref={sceneRef} position={[0, 0, 0]}>
+                {isWalking ? (
+                  <group scale={12} position={[0, 0, 0]}>
+                     <Mannequin />
+                  </group>
+                ) : (
+                  <ShoeModel />
+                )}
+             </group>
 
             {/* Dynamic Floor - At Y=-0.01 (Just below shoe) */}
             {showFloor && <Floor />}
@@ -816,11 +727,11 @@ export default function App() {
                minPolarAngle={0} 
                maxPolarAngle={Math.PI} // Allow full rotation to see bottom
                enablePan={false}
-               enableRotate={currentView !== 'left' && currentView !== 'right' && controlsEnabled}
+               enableRotate={controlsEnabled}
                enableZoom={true} 
                autoRotate={shouldAutoRotate}
                autoRotateSpeed={turntableSpeed} 
-               enabled={controlsEnabled}
+               enabled={controlsEnabled && !isDragging}
                target={[0, 0.5, 0]} // Lowered target to center on volume
             />
           </Suspense>
