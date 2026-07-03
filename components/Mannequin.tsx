@@ -6,7 +6,7 @@ import { useGLTF, useAnimations } from '@react-three/drei';
 import { SkeletonUtils } from 'three-stdlib';
 import * as THREE from 'three';
 import { useStore } from '../store';
-import { ShoeModel } from './ShoeModel';
+import { ShoeModel, ShoeMeshOnly, useModelLoader } from './ShoeModel';
 
 // Preload the asset to avoid pop-in
 useGLTF.preload('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/models/gltf/Soldier.glb');
@@ -125,6 +125,10 @@ export const Mannequin = () => {
   const leftScaleX = baseShoeType === 'right' ? -1 : 1;
   const rightScaleX = baseShoeType === 'left' ? -1 : 1;
 
+  const isObj = currentModel?.extension === 'obj';
+  const isUsdz = currentModel?.extension === 'usdz';
+  const { data: shoeScene } = useModelLoader(currentModel?.url, isObj, isUsdz, currentModel?.resources);
+
   return (
     <group ref={group} dispose={null}>
        <primitive object={clone} />
@@ -135,7 +139,7 @@ export const Mannequin = () => {
           <group rotation={ROTATION_OFFSET} position={POSITION_OFFSET} scale={[CONTAINER_SCALE, CONTAINER_SCALE, CONTAINER_SCALE]}>
              <group scale={[leftScaleX, 1, 1]} rotation={[0, rotationY, 0]}>
                 {/* DO NOT pass customScale here. Let it normalize. */}
-                <ShoeModel interactive={false} />
+                <ShoeMeshOnly scene={shoeScene} interactive={false} />
              </group>
           </group>
        </group>
@@ -144,7 +148,7 @@ export const Mannequin = () => {
        <group ref={rightShoeRef}>
           <group rotation={ROTATION_OFFSET} position={POSITION_OFFSET} scale={[CONTAINER_SCALE, CONTAINER_SCALE, CONTAINER_SCALE]}>
              <group scale={[rightScaleX, 1, 1]} rotation={[0, rotationY, 0]}>
-                <ShoeModel interactive={false} />
+                <ShoeMeshOnly scene={shoeScene} interactive={false} />
              </group>
           </group>
        </group>

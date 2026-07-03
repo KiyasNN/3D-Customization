@@ -678,6 +678,12 @@ export default function App() {
   const computedTurntableSpeed = turntableSettings.direction === 'clockwise' ? turntableSpeed : -turntableSpeed;
   const controlsEnabled = !isRecording; 
   
+  const mouseButtons = useMemo(() => ({
+    LEFT: THREE.MOUSE.ROTATE,
+    MIDDLE: THREE.MOUSE.PAN,
+    RIGHT: THREE.MOUSE.ROTATE
+  }), []);
+  
   useEffect(() => {
     const handleResize = () => {
       setIsMobile(window.innerWidth < 768);
@@ -756,7 +762,8 @@ export default function App() {
                makeDefault 
                minPolarAngle={0} 
                maxPolarAngle={Math.PI} // Allow full rotation to see bottom
-               enablePan={false}
+               enablePan={true}
+               mouseButtons={mouseButtons}
                enableRotate={controlsEnabled}
                enableZoom={true} 
                autoRotate={shouldAutoRotate}

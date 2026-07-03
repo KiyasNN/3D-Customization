@@ -45,6 +45,7 @@ export interface EnvironmentSettings {
   radius: number;
   scale: number;
   intensity: number;
+  preset?: string;
 }
 
 export interface EffectsSettings {
@@ -116,6 +117,7 @@ export interface AppState {
   isMobile: boolean; // New: responsive state
 
   selectedPart: string | null;
+  selectedParts: string[]; // New: list of multi-selected parts
   hoveredPart: string | null;
   partMaterials: Record<string, string>; // partId -> materialId
   partVisibility: Record<string, boolean>; // partId -> visible
@@ -169,6 +171,7 @@ export interface AppState {
   currentView: 'default' | 'left' | 'right' | 'back' | 'free';
   showMeasurements: boolean;
   showAnnotations: boolean; // New: Toggle annotation visibility
+  labelSize: number; // New: Global label size scale multiplier
   showFloor: boolean; // New: Toggle floor visibility
   showHelp: boolean;
   lightingEnabled: boolean; // New: Toggle standard virtual lights
@@ -186,6 +189,9 @@ export interface AppState {
   transformGizmoSize: number; // Controls the size of the 3D transform cursor/gizmo
   transformMode: 'translate' | 'rotate' | 'scale';
   isDragging: boolean;
+  
+  // Part Groups
+  partGroups: Record<string, string[]>; // Map of groupName -> list of partIds in that group
   
   // Camera / Video
   activeVideoStream: MediaStream | null;
@@ -256,6 +262,7 @@ export interface AppState {
   setCustomParts: (parts: string[]) => void;
   toggleMeasurements: () => void;
   toggleAnnotations: () => void; // New
+  setLabelSize: (size: number) => void; // New
   toggleHelp: () => void;
   setLightingEnabled: (enabled: boolean) => void; // New
   setWireframeEnabled: (enabled: boolean) => void; // New
@@ -264,6 +271,15 @@ export interface AppState {
   setShowTransformGizmo: (showTransformGizmo: boolean) => void; // New
   setTransformGizmoSize: (size: number) => void; // New
   setLighting: (preset: LightingPreset) => void;
+  resetEnvironmentSettings: () => void; // New: Reset environment to defaults
+  groupPart: (partId: string, groupName: string) => void; // New: Add selected part to a group
+  groupParts: (partIds: string[], groupName: string) => void; // New: Add multiple selected parts to a group
+  renameGroup: (oldName: string, newName: string) => void; // New: Rename a group
+  releasePartFromGroup: (partId: string) => void; // New: Remove selected part from its group
+  ungroupGroup: (groupName: string) => void; // New: Dissolve the entire group
+  toggleSelectPartMulti: (partId: string) => void; // New: Toggle part in multi-select list
+  setSelectedParts: (partIds: string[]) => void; // New: Set multi-selected parts directly
+  clearSelectedParts: () => void; // New: Clear multi-selection list
   setFloor: (floor: FloorType) => void;
   setVideoStream: (stream: MediaStream | null) => void;
   

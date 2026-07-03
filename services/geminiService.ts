@@ -9,9 +9,10 @@ export const generateTexture = async (prompt: string): Promise<Material | null> 
   try {
     // Initializing Gemini client within the function to ensure it uses the correct environment API key.
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-    const texturePrompt = `High quality, seamless texture pattern of ${prompt}. Flat lighting, top down view, filling the frame. 2k resolution.`;
-    // Use gemini-2.5-flash-image for general image generation tasks.
-    const model = 'gemini-2.5-flash-image'; 
+    // Ensure we force the image generator to create a flat, tileable, macro-view physical material texture (like textile, fabric pattern, leather grain, synthetic polymer, or brushed metal) rather than a realistic photograph of a scenery, landscape, or animal.
+    const texturePrompt = `A seamless, tileable, flat, top-down macro close-up texture pattern of ${prompt}. Must look like a physical fabrication material (such as woven textile fabric, canvas, leather grain, suede, carbon fiber, knits, soft synthetic polymer, sporty mesh, or brushed metal). Flat uniform lighting, zero perspective distortion, completely seamless and tileable on all sides, filling the entire frame. No photographic landscapes, no realistic scenes, no animals, no skies, no human subjects, no 3D depth, no shadows. Industrial design material swatch, high quality, 2k resolution.`;
+    // Use gemini-3.1-flash-lite-image for general image generation tasks.
+    const model = 'gemini-3.1-flash-lite-image'; 
     
     const response = await ai.models.generateContent({
       model: model,
@@ -63,15 +64,17 @@ export const generateShoeConfig = async (prompt: string, parts: string[]): Promi
     // Initializing Gemini client within the function to ensure the correct API key is used.
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const response = await ai.models.generateContent({
-      // Use gemini-3-pro-preview for complex reasoning tasks like full design generation.
-      model: 'gemini-3-pro-preview',
+      // Use gemini-3.1-pro-preview for complex reasoning tasks like full design generation.
+      model: 'gemini-3.1-pro-preview',
       contents: `Create a cohesive color and material design for a shoe based on the theme: "${prompt}". 
                  The shoe has these parts: ${parts.join(', ')}. 
                  
                  Return a list of material specifications for each part to match the theme.
                  
                  IMPORTANT:
-                 - Provide a 'texturePrompt' describing the visual surface pattern (e.g. 'seamless red carbon fiber texture', 'worn brown leather texture') for image generation.
+                 - Do NOT use photographic or scenic images. All materials must be actual shoe fabrication materials like: premium leather, suede, sport mesh, canvas, knitted fabric, synthetic TPU, carbon fiber, high-density nylon, or brushed metal.
+                 - Provide a 'texturePrompt' describing the physical surface pattern or grain (e.g., 'seamless red carbon fiber weave pattern', 'premium black full-grain leather texture', 'sporty breathable mesh textile', 'tech-wear high-density nylon fabric').
+                 - Never suggest scenic photography, landscapes, skies, or outer space photos. If the theme is "stormy ocean", interpret it as "deep navy blue sporty mesh texture" or "slate gray synthetic leather pattern".
                  - If parts share the SAME material (e.g. Left and Right upper), use the EXACT SAME 'texturePrompt' and 'materialName' so we can reuse the generated texture.
                  - If a texture is used, set 'color' to '#ffffff' to ensure the texture renders with its original colors, unless you specifically want to tint it.`,
       config: {

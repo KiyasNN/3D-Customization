@@ -1,19 +1,51 @@
 // @ts-nocheck
-import React, { useRef, useMemo, useEffect, useState, useLayoutEffect, useCallback } from 'react';
+import React, { useRef, useMemo, useEffect, useState, useLayoutEffect, useCallback, useContext } from 'react';
 // @ts-ignore
 import { Html, Outlines, Edges, Line, Text, Billboard, TransformControls } from '@react-three/drei';
 import * as THREE from 'three';
 // @ts-ignore
 import { useLoader, useFrame, useThree } from '@react-three/fiber';
-import { OBJLoader } from 'three-stdlib';
-import { GLTFLoader } from 'three-stdlib';
+import { OBJLoader, GLTFLoader, SkeletonUtils } from 'three-stdlib';
 import { USDLoader } from 'three/examples/jsm/loaders/USDLoader.js';
 import { useStore } from '../store';
 import { SHOE_PARTS } from '../constants';
 import { Material, TextureConfig } from '../types';
 
-// Texture Cache to prevent reloading same URL
-const textureCache: Record<string, THREE.Texture> = {};
+const InitialPositionsContext = React.createContext({ 
+  initialPositions: new Map<string, THREE.Vector3>(), 
+  initialRotations: new Map<string, THREE.Euler>(), 
+  initialScales: new Map<string, THREE.Vector3>() 
+});
+
+export const ShoeMeshOnly = ({ scene: preloadedScene, url, isObj, isUsdz, interactive = false, videoTexture }: any) => {
+  const currentModel = useStore(s => s.currentModel);
+  const resources = currentModel?.resources;
+  const { data: scene, loading } = preloadedScene ? { data: preloadedScene, loading: false } : useModelLoader(url, isObj, isUsdz, resources);
+  
+  const model = useMemo(() => {
+    if (!scene) return null;
+    const clonedScene = SkeletonUtils.clone(scene);
+    let m: any = clonedScene;
+    if (clonedScene.scene && clonedScene.scene.isObject3D) m = clonedScene.scene;
+    else if (clonedScene.scenes && clonedScene.scenes[0]) m = clonedScene.scenes[0];
+    return m;
+  }, [scene]);
+
+  if (loading || !model) return null;
+
+  return (
+    <group>
+      {model && model.children?.map((child: any, i: number) => (
+        <RecursivePart 
+            key={child.uuid || i} 
+            object={child} 
+            interactive={interactive}
+            videoTexture={videoTexture}
+        />
+      ))}
+    </group>
+  );
+};
 const clonedTextureCache: Record<string, THREE.Texture> = {};
 const materialCache: Record<string, THREE.MeshStandardMaterial> = {};
 
@@ -232,6 +264,7 @@ const getThreeMaterial = (
 // Memoized Dimensions to prevent update loops
 const Dimensions = React.memo(({ geometry }: { geometry: THREE.BufferGeometry }) => {
   const showMeasurements = useStore(s => s.showMeasurements);
+  const labelSize = useStore(s => s.labelSize);
   const ref = useRef<THREE.Group>(null);
   const [dims, setDims] = React.useState<THREE.Vector3>(new THREE.Vector3());
   const [center, setCenter] = React.useState<THREE.Vector3>(new THREE.Vector3());
@@ -290,23 +323,29 @@ const Dimensions = React.memo(({ geometry }: { geometry: THREE.BufferGeometry })
        </mesh>
 
        <Html position={[dims.x/2, -dims.y/2, dims.z/2]} zIndexRange={[100, 0]}>
-         <div className="transform translate-x-2 translate-y-2 bg-zinc-900/90 text-white text-[10px] px-2 py-1 rounded border border-red-500/30 whitespace-nowrap flex items-center gap-1 shadow-xl pointer-events-none">
-           <span className="text-red-400 font-bold">X</span>
-           <span className="font-mono">{(dims.x * scale).toFixed(0)}mm</span>
+         <div style={{ transform: `scale(${labelSize})`, transformOrigin: 'center' }} className="pointer-events-none">
+           <div className="transform translate-x-2 translate-y-2 bg-zinc-900/90 text-white text-[10px] px-2 py-1 rounded border border-red-500/30 whitespace-nowrap flex items-center gap-1 shadow-xl pointer-events-none">
+             <span className="text-red-400 font-bold">X</span>
+             <span className="font-mono">{(dims.x * scale).toFixed(0)}mm</span>
+           </div>
          </div>
        </Html>
        
        <Html position={[-dims.x/2, dims.y/2, dims.z/2]} zIndexRange={[100, 0]}>
-         <div className="transform -translate-x-full -translate-y-full mr-2 mb-2 bg-zinc-900/90 text-white text-[10px] px-2 py-1 rounded border border-green-500/30 whitespace-nowrap flex items-center gap-1 shadow-xl pointer-events-none">
-           <span className="text-green-400 font-bold">Y</span>
-           <span className="font-mono">{(dims.y * scale).toFixed(0)}mm</span>
+         <div style={{ transform: `scale(${labelSize})`, transformOrigin: 'center' }} className="pointer-events-none">
+           <div className="transform -translate-x-full -translate-y-full mr-2 mb-2 bg-zinc-900/90 text-white text-[10px] px-2 py-1 rounded border border-green-500/30 whitespace-nowrap flex items-center gap-1 shadow-xl pointer-events-none">
+             <span className="text-green-400 font-bold">Y</span>
+             <span className="font-mono">{(dims.y * scale).toFixed(0)}mm</span>
+           </div>
          </div>
        </Html>
        
        <Html position={[-dims.x/2, -dims.y/2, -dims.z/2]} zIndexRange={[100, 0]}>
-         <div className="transform -translate-x-full translate-y-2 mr-2 bg-zinc-900/90 text-white text-[10px] px-2 py-1 rounded border border-blue-500/30 whitespace-nowrap flex items-center gap-1 shadow-xl pointer-events-none">
-           <span className="text-blue-400 font-bold">Z</span>
-           <span className="font-mono">{(dims.z * scale).toFixed(0)}mm</span>
+         <div style={{ transform: `scale(${labelSize})`, transformOrigin: 'center' }} className="pointer-events-none">
+           <div className="transform -translate-x-full translate-y-2 mr-2 bg-zinc-900/90 text-white text-[10px] px-2 py-1 rounded border border-blue-500/30 whitespace-nowrap flex items-center gap-1 shadow-xl pointer-events-none">
+             <span className="text-blue-400 font-bold">Z</span>
+             <span className="font-mono">{(dims.z * scale).toFixed(0)}mm</span>
+           </div>
          </div>
        </Html>
     </group>
@@ -315,8 +354,9 @@ const Dimensions = React.memo(({ geometry }: { geometry: THREE.BufferGeometry })
 
 // --- 3D Label Component for Video Recording & Snapshot ---
 const ThreeLabel = ({ data, isSelected }: { data: any, isSelected: boolean }) => {
+  const labelSize = useStore((s) => s.labelSize);
   return (
-    <Billboard follow={true} lockX={false} lockY={false} lockZ={false}>
+    <Billboard follow={true} lockX={false} lockY={false} lockZ={false} scale={[labelSize, labelSize, 1]}>
         <mesh position={[0, -0.02, -0.01]} renderOrder={999}>
             <planeGeometry args={[0.7, 0.25]} />
             <meshBasicMaterial 
@@ -386,6 +426,7 @@ const AnnotationManager = ({ scene }: { scene: THREE.Group }) => {
   const selectedPart = useStore(s => s.selectedPart);
   const recordingStatus = useStore(s => s.recordingStatus);
   const isSnapshotting = useStore(s => s.isSnapshotting);
+  const labelSize = useStore(s => s.labelSize);
   
   const { camera } = useThree();
   
@@ -541,12 +582,15 @@ const AnnotationManager = ({ scene }: { scene: THREE.Group }) => {
                    renderOrder={998}
                 />
                 
-                <group ref={(el) => { if(el) labelGroupsRef.current[id] = el; }}>
+                 <group ref={(el) => { if(el) labelGroupsRef.current[id] = el; }}>
                    {use3DLabels ? (
                       <ThreeLabel data={data} isSelected={selectedPart === id} />
                    ) : (
                       <Html distanceFactor={8} zIndexRange={[100, 0]} center>
-                          <div className={`flex flex-col ${selectedPart === id ? 'scale-110' : 'scale-100'} transition-transform duration-300 origin-center`}>
+                          <div 
+                            className="flex flex-col transition-all duration-300 origin-center"
+                            style={{ transform: `scale(${labelSize * (selectedPart === id ? 1.1 : 1.0)})`, transformOrigin: 'center' }}
+                          >
                             <div className={`
                                 px-3 py-1.5 rounded backdrop-blur-md border shadow-lg flex flex-col gap-0.5
                                 ${selectedPart === id ? 'bg-blue-900/80 border-blue-400' : 'bg-zinc-900/80 border-white/20'}
@@ -642,6 +686,7 @@ const ShoePartMesh = ({ id, geometry, position, scale, explodeOffset, interactiv
   // Use Specific Selectors to avoid unnecessary re-renders
   const selectPart = useStore(s => s.selectPart);
   const hoverPart = useStore(s => s.hoverPart);
+  const toggleSelectPartMulti = useStore(s => s.toggleSelectPartMulti);
   const materials = useStore(s => s.materials);
   const isExploded = useStore(s => s.isExploded);
 
@@ -862,7 +907,11 @@ const ShoePartMesh = ({ id, geometry, position, scale, explodeOffset, interactiv
       onClick={interactive ? (e) => {
         e.stopPropagation();
         if (isDraggingMesh.current) return; // Don't select if we were dragging
-        selectPart(isSelected ? null : id);
+        if (e.shiftKey) {
+          toggleSelectPartMulti(id);
+        } else {
+          selectPart(isSelected ? null : id);
+        }
       } : undefined}
       onPointerOver={interactive ? (e) => {
         e.stopPropagation();
@@ -936,7 +985,7 @@ const ShoePartMesh = ({ id, geometry, position, scale, explodeOffset, interactiv
   );
 };
 
-const useModelLoader = (url: string, isObj: boolean, isUsdz: boolean, resources: any) => {
+export const useModelLoader = (url: string, isObj: boolean, isUsdz: boolean, resources: any) => {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<any>(null);
@@ -1018,12 +1067,12 @@ const useModelLoader = (url: string, isObj: boolean, isUsdz: boolean, resources:
 };
 
 // --- RESTORED INTERACTIVE MODEL ---
-const InteractiveModel = ({ url, isObj, isUsdz, customScale, customPosition, customRotation, interactive, videoTexture }: any) => {
+const InteractiveModel = ({ scene: preloadedScene, url, isObj, isUsdz, customScale, customPosition, customRotation, interactive, videoTexture }: any) => {
   const setCustomParts = useStore(s => s.setCustomParts);
   const currentModel = useStore(s => s.currentModel);
   const resources = currentModel?.resources;
   
-  const { data: scene, loading } = useModelLoader(url, isObj, isUsdz, resources);
+  const { data: scene, loading } = preloadedScene ? { data: preloadedScene, loading: false } : useModelLoader(url, isObj, isUsdz, resources);
   
   // High-robustness model normalization
   let model: any = null;
@@ -1044,6 +1093,9 @@ const InteractiveModel = ({ url, isObj, isUsdz, customScale, customPosition, cus
   }
 
   const [sceneRef, setSceneRef] = useState<THREE.Group | null>(null);
+  const initialPositions = useRef(new Map<string, THREE.Vector3>());
+  const initialRotations = useRef(new Map<string, THREE.Euler>());
+  const initialScales = useRef(new Map<string, THREE.Vector3>());
   
   // Auto-scaling state
   const [normalization, setNormalization] = useState({ scale: 1, position: [0, 0, 0] });
@@ -1058,6 +1110,9 @@ const InteractiveModel = ({ url, isObj, isUsdz, customScale, customPosition, cus
          child.receiveShadow = true;
          if (!child.name) child.name = `part_${child.id}`;
          foundParts.push(child.name);
+         initialPositions.current.set(child.uuid, child.position.clone());
+         initialRotations.current.set(child.uuid, child.rotation.clone());
+         initialScales.current.set(child.uuid, child.scale.clone());
       }
     });
     const unique = [...new Set(foundParts)];
@@ -1120,22 +1175,28 @@ const InteractiveModel = ({ url, isObj, isUsdz, customScale, customPosition, cus
       rotation={finalRotation}
       scale={finalScale}
     >
-       <group
-         scale={model ? [model.scale.x, model.scale.y, model.scale.z] : [1, 1, 1]}
-         position={model ? [model.position.x, model.position.y, model.position.z] : [0, 0, 0]}
-         rotation={model ? [model.rotation.x, model.rotation.y, model.rotation.z] : [0, 0, 0]}
-       >
-         {model && model.children?.map((child: any, i: number) => {
-             return (
-               <RecursivePart 
-                  key={child.uuid || i} 
-                  object={child} 
-                  interactive={interactive}
-                  videoTexture={videoTexture}
-               />
-             );
-         })}
-       </group>
+       <InitialPositionsContext.Provider value={{
+         initialPositions: initialPositions.current,
+         initialRotations: initialRotations.current,
+         initialScales: initialScales.current
+       }}>
+         <group
+           scale={model ? [model.scale.x, model.scale.y, model.scale.z] : [1, 1, 1]}
+           position={model ? [model.position.x, model.position.y, model.position.z] : [0, 0, 0]}
+           rotation={model ? [model.rotation.x, model.rotation.y, model.rotation.z] : [0, 0, 0]}
+         >
+           {model && model.children?.map((child: any, i: number) => {
+               return (
+                 <RecursivePart 
+                    key={child.uuid || i} 
+                    object={child} 
+                    interactive={interactive}
+                    videoTexture={videoTexture}
+                 />
+               );
+           })}
+         </group>
+       </InitialPositionsContext.Provider>
        {sceneRef && <AnnotationManager scene={sceneRef} />}
     </group>
   );
@@ -1143,6 +1204,7 @@ const InteractiveModel = ({ url, isObj, isUsdz, customScale, customPosition, cus
 
 // Memoized mesh node component to prevent unnecessary updates
 const RecursiveMeshPart = React.memo(({ object, interactive, videoTexture }: any) => {
+    const { initialPositions, initialRotations, initialScales } = useContext(InitialPositionsContext);
     const id = object.name || object.uuid;
     
     const isSelected = useStore(s => s.selectedPart === id);
@@ -1156,6 +1218,7 @@ const RecursiveMeshPart = React.memo(({ object, interactive, videoTexture }: any
 
     const selectPart = useStore(s => s.selectPart);
     const hoverPart = useStore(s => s.hoverPart);
+    const toggleSelectPartMulti = useStore(s => s.toggleSelectPartMulti);
 
     // Gizmo actions and settings
     const isTransforming = useStore(s => s.isTransforming);
@@ -1180,9 +1243,19 @@ const RecursiveMeshPart = React.memo(({ object, interactive, videoTexture }: any
     const meshRef = useRef<THREE.Mesh>(null);
     const isDraggingGizmo = useRef(false);
 
-    const originalPosition = useRef(object.position.clone());
-    const originalRotation = useRef(object.rotation.clone());
-    const originalScale = useRef(object.scale.clone());
+    const initialPos = initialPositions.get(object.uuid) || object.position.clone();
+    const initialRot = initialRotations.get(object.uuid) || object.rotation.clone();
+    const initialScl = initialScales.get(object.uuid) || object.scale.clone();
+
+    const originalPosition = useRef(initialPos.clone());
+    const originalRotation = useRef(initialRot.clone());
+    const originalScale = useRef(initialScl.clone());
+
+    useEffect(() => {
+        object.position.copy(initialPos);
+        object.rotation.copy(initialRot);
+        object.scale.copy(initialScl);
+    }, []);
 
     // Center geometry origin to visual center for better gizmo placement (Idempotent version)
     useLayoutEffect(() => {
@@ -1221,12 +1294,6 @@ const RecursiveMeshPart = React.memo(({ object, interactive, videoTexture }: any
             object.userData.__pivotCentered = true;
         }
     }, [object]);
-    
-    useEffect(() => {
-        originalPosition.current.copy(object.position);
-        originalRotation.current.copy(object.rotation);
-        originalScale.current.copy(object.scale);
-    }, [object.position, object.rotation, object.scale]);
     
     const lastConfigSignature = useRef<string>("");
     const isSettled = useRef(false);
@@ -1396,7 +1463,11 @@ const RecursiveMeshPart = React.memo(({ object, interactive, videoTexture }: any
           onClick={interactive ? (e) => {
               e.stopPropagation();
               if (isDraggingMesh.current) return; // Don't select if we were dragging
-              selectPart(isSelected ? null : id);
+              if (e.shiftKey) {
+                toggleSelectPartMulti(id);
+              } else {
+                selectPart(isSelected ? null : id);
+              }
           } : undefined}
           onPointerOver={interactive ? (e) => {
               e.stopPropagation();

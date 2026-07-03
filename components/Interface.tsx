@@ -67,6 +67,10 @@ import {
   Type as TypeIcon,
   Tag,
   Grid3X3,
+  Unlink,
+  FolderPlus,
+  Folder,
+  FolderOpen,
 } from "lucide-react";
 
 // Reusable Slider Component
@@ -341,20 +345,6 @@ const TopToolbar = ({
               active={isSingleMode}
               color="orange"
               disabled={!selectedPart}
-            />
-            <TopButton
-              icon={<Ruler />}
-              label="Ruler"
-              onClick={toggleMeasurements}
-              active={showMeasurements}
-              color="blue"
-            />
-            <TopButton
-              icon={<Tag />}
-              label="Info"
-              onClick={toggleAnnotations}
-              active={showAnnotations}
-              color="blue"
             />
           </div>
         </div>
@@ -790,6 +780,9 @@ const PartProperties = () => {
     toggleAnnotations,
     showMeasurements,
     toggleMeasurements,
+    labelSize,
+    setLabelSize,
+    selectedParts = [],
   } = useStore();
 
   // Logic to determine defaults if annotation doesn't exist yet
@@ -888,6 +881,15 @@ const PartProperties = () => {
             max="200"
             step="5"
             onChange={(v: number) => handleUpdate("offset", v)}
+          />
+          <SliderControl
+            label="Global Label Size"
+            value={labelSize}
+            min="0.05"
+            max="2.5"
+            step="0.05"
+            displayValue={`${labelSize % 0.1 === 0 ? labelSize.toFixed(1) : labelSize.toFixed(2)}x`}
+            onChange={(v: number) => setLabelSize(v)}
           />
           <button
             onClick={toggleAnnotations}
@@ -1023,7 +1025,7 @@ const PartProperties = () => {
                   className="text-red-400 group-hover:-rotate-90 transition-transform"
                 />
                 <span className="text-[10px] text-red-400">
-                  Reset All Transforms
+                  {selectedPart || selectedParts.length > 0 ? "Reset Selected Transforms" : "Reset All Transforms"}
                 </span>
               </button>
             </>
@@ -1073,6 +1075,10 @@ export const Interface: React.FC = () => {
   >("dashboard");
   const [showWalkModal, setShowWalkModal] = useState(false);
   const [showLeftPanel, setShowLeftPanel] = useState(!isMobile);
+  const setShowLeftPanelRef = useRef(setShowLeftPanel);
+  useEffect(() => {
+    setShowLeftPanelRef.current = setShowLeftPanel;
+  }, [setShowLeftPanel]);
   const [isCameraOverlayOpen, setIsCameraOverlayOpen] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -1635,7 +1641,7 @@ export const Interface: React.FC = () => {
         </span>
 
         {/* LEFT PANEL */}
-        <LeftPanel showLeftPanel={showLeftPanel} />
+        <LeftPanel showLeftPanel={showLeftPanel} setShowLeftPanel={setShowLeftPanel} />
 
         <div className="flex-1" />
 
@@ -1697,7 +1703,7 @@ export const Interface: React.FC = () => {
 };
 
 // Sub-components
-const LeftPanel = ({ showLeftPanel }: any) => {
+const LeftPanel = ({ showLeftPanel, setShowLeftPanel }: any) => {
   const isMobile = useStore((s) => s.isMobile);
   const recordingStatus = useStore((s) => s.recordingStatus);
   const customParts = useStore((s) => s.customParts);
@@ -1708,8 +1714,189 @@ const LeftPanel = ({ showLeftPanel }: any) => {
     return customParts.map((id) => ({ id, name: id }));
   }, [currentModel, customParts]);
   const selectedPart = useStore((s) => s.selectedPart);
+  const selectedParts = useStore((s) => s.selectedParts || []);
   const selectPart = useStore((s) => s.selectPart);
+  const toggleSelectPartMulti = useStore((s) => s.toggleSelectPartMulti);
+  const clearSelectedParts = useStore((s) => s.clearSelectedParts);
+  const setSelectedParts = useStore((s) => s.setSelectedParts);
   const showAnnotations = useStore((s) => s.showAnnotations);
+
+  const partGroups = useStore((s) => s.partGroups || {});
+  const groupPart = useStore((s) => s.groupPart);
+  const groupParts = useStore((s) => s.groupParts);
+  const releasePartFromGroup = useStore((s) => s.releasePartFromGroup);
+  const ungroupGroup = useStore((s) => s.ungroupGroup);
+  const toggleExploded = useStore((s) => s.toggleExploded);
+  const toggleFloor = useStore((s) => s.toggleFloor);
+  const triggerFitView = useStore((s) => s.triggerFitView);
+  const singlePart = useStore((s) => s.singlePart);
+  const hidePart = useStore((s) => s.hidePart);
+  const showAllParts = useStore((s) => s.showAllParts);
+  const setShowLeftPanelRef = useRef(setShowLeftPanel);
+  useEffect(() => {
+    setShowLeftPanelRef.current = setShowLeftPanel;
+  }, [setShowLeftPanel]);
+
+  const selectedPartGroup = React.useMemo(() => {
+    if (!selectedPart) return null;
+    return Object.entries(partGroups).find(([_, parts]) => parts.includes(selectedPart))?.[0] || null;
+  }, [selectedPart, partGroups]);
+
+  const [groupInput, setGroupInput] = useState("");
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
+  const [editingGroupName, setEditingGroupName] = useState<string | null>(null);
+  const [editGroupNameInput, setEditGroupNameInput] = useState("");
+  const renameGroup = useStore((s) => s.renameGroup);
+
+  const handleRenameGroupSubmit = (oldName: string) => {
+    const trimmed = editGroupNameInput.trim();
+    if (trimmed && trimmed !== oldName) {
+      renameGroup(oldName, trimmed);
+    }
+    setEditingGroupName(null);
+  };
+
+  // Keyboard shortcut listener for Ctrl+G / Cmd+G
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Check if typing in an input
+      if (["INPUT", "TEXTAREA"].includes((e.target as HTMLElement).tagName)) return;
+
+      const isCtrlOrMeta = e.ctrlKey || e.metaKey;
+      if (isCtrlOrMeta && e.key.toLowerCase() === "g") {
+        const partsToGroup = selectedParts.length > 0 ? selectedParts : (selectedPart ? [selectedPart] : []);
+        if (partsToGroup.length > 0) {
+          e.preventDefault();
+          let groupIndex = Object.keys(partGroups).length + 1;
+          let groupName = `Group ${groupIndex}`;
+          while (partGroups[groupName]) {
+            groupIndex++;
+            groupName = `Group ${groupIndex}`;
+          }
+          groupParts(partsToGroup, groupName);
+          clearSelectedParts();
+        }
+      } else if (isCtrlOrMeta && e.key.toLowerCase() === "u") {
+        e.preventDefault();
+        // Ungroup
+        if (selectedPart) {
+          const group = Object.entries(partGroups).find(([_, parts]) => parts.includes(selectedPart))?.[0];
+          if (group) ungroupGroup(group);
+        }
+      } else if (e.key.toLowerCase() === "h") {
+        if (e.shiftKey) {
+          showAllParts();
+        } else if (e.ctrlKey || e.metaKey) {
+          hidePart();
+        } else {
+          singlePart();
+        }
+      } else if (e.key.toLowerCase() === "e") {
+        toggleExploded();
+      } else if (e.key.toLowerCase() === "f") {
+        toggleFloor();
+      } else if (e.key.toLowerCase() === "v") {
+        triggerFitView();
+      } else if (e.key.toLowerCase() === "l") {
+        setShowLeftPanelRef.current((prev: boolean) => !prev);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [selectedParts, selectedPart, partGroups, groupParts, clearSelectedParts, ungroupGroup, toggleExploded, toggleFloor, triggerFitView, singlePart, hidePart, showAllParts]);
+
+  // Construct structured hierarchy of parts
+  const { groupedPartsMap, ungroupedParts } = React.useMemo(() => {
+    const groupedMap: Record<string, typeof displayParts> = {};
+    const ungrouped: typeof displayParts = [];
+
+    Object.keys(partGroups).forEach((groupName) => {
+      groupedMap[groupName] = [];
+    });
+
+    displayParts.forEach((part) => {
+      const parentGroup = Object.entries(partGroups).find(([_, parts]) => parts.includes(part.id))?.[0];
+      if (parentGroup) {
+        if (!groupedMap[parentGroup]) {
+          groupedMap[parentGroup] = [];
+        }
+        groupedMap[parentGroup].push(part);
+      } else {
+        ungrouped.push(part);
+      }
+    });
+
+    return { groupedPartsMap: groupedMap, ungroupedParts: ungrouped };
+  }, [displayParts, partGroups]);
+
+  const toggleGroupCollapse = (groupName: string) => {
+    setCollapsedGroups((prev) => ({
+      ...prev,
+      [groupName]: !prev[groupName],
+    }));
+  };
+
+  const handleGroupClick = (groupName: string, e: React.MouseEvent) => {
+    const partsInGroup = groupedPartsMap[groupName] || [];
+    const memberIds = partsInGroup.map((p) => p.id);
+    if (memberIds.length === 0) return;
+
+    if (e.shiftKey) {
+      e.preventDefault();
+      // Toggle selection for all members of the group
+      const allSelected = memberIds.every((id) => selectedParts.includes(id));
+      let newSelected: string[];
+      if (allSelected) {
+        newSelected = selectedParts.filter((id) => !memberIds.includes(id));
+      } else {
+        newSelected = Array.from(new Set([...selectedParts, ...memberIds]));
+      }
+      setSelectedParts(newSelected);
+      if (newSelected.length > 0) {
+        selectPart(newSelected[newSelected.length - 1]);
+      } else {
+        selectPart(null);
+      }
+    } else {
+      // Standard group click: select all group parts and highlight first one
+      setSelectedParts([...memberIds]);
+      selectPart(memberIds[0]);
+    }
+  };
+
+  const handlePartClick = (partId: string, e: React.MouseEvent) => {
+    if (e.shiftKey) {
+      e.preventDefault();
+      if (selectedParts.length === 0 || !selectedPart) {
+        toggleSelectPartMulti(partId);
+      } else {
+        const lastIdx = displayParts.findIndex((p) => p.id === selectedPart);
+        const currentIdx = displayParts.findIndex((p) => p.id === partId);
+        if (lastIdx !== -1 && currentIdx !== -1) {
+          const start = Math.min(lastIdx, currentIdx);
+          const end = Math.max(lastIdx, currentIdx);
+          const rangeIds = displayParts.slice(start, end + 1).map((p) => p.id);
+          const newSelection = Array.from(new Set([...selectedParts, ...rangeIds]));
+          setSelectedParts(newSelection);
+        } else {
+          toggleSelectPartMulti(partId);
+        }
+      }
+    } else {
+      selectPart(selectedPart === partId ? null : partId);
+      setSelectedParts(selectedPart === partId ? [] : [partId]);
+    }
+  };
+
+  const handleGroupSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedPart || !groupInput.trim()) return;
+    groupPart(selectedPart, groupInput.trim());
+    setGroupInput("");
+  };
 
   if (!showLeftPanel || displayParts.length === 0) return null;
 
@@ -1723,24 +1910,234 @@ const LeftPanel = ({ showLeftPanel }: any) => {
       >
         <div className="p-3 border-b border-white/5 bg-white/5 backdrop-blur-xl flex justify-between items-center shrink-0">
           <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-2">
-            <List size={14} /> Parts Layer
+            <Layers size={14} /> Layers
           </h3>
         </div>
-        <div className="overflow-y-auto custom-scrollbar p-2 space-y-1 max-h-[400px] flex-1">
-          {displayParts.map((part) => (
-            <button
-              key={part.id}
-              onClick={() =>
-                selectPart(selectedPart === part.id ? null : part.id)
-              }
-              className={`w-full text-left px-3 py-2 rounded-lg text-xs font-medium transition-all flex items-center justify-between group ${selectedPart === part.id ? "bg-blue-600 text-white shadow-lg shadow-blue-900/20" : "text-zinc-400 hover:text-white hover:bg-white/10"}`}
-            >
-              <span className="truncate">{part.name}</span>
-              {selectedPart === part.id && (
-                <CheckCircle size={12} className="text-white/80" />
+        
+        <div className="overflow-y-auto custom-scrollbar p-2 space-y-1 max-h-[350px] flex-1">
+          {/* 1. Grouped Sections */}
+          {Object.entries(groupedPartsMap).map(([groupName, parts]) => {
+            if (parts.length === 0) return null;
+
+            const isCollapsed = !!collapsedGroups[groupName];
+            const memberIds = parts.map((p) => p.id);
+            const isGroupFullySelected = memberIds.length > 0 && memberIds.every((id) => selectedParts.includes(id));
+            const isGroupPartiallySelected = memberIds.some((id) => selectedParts.includes(id)) && !isGroupFullySelected;
+
+            return (
+              <div key={groupName} className="space-y-0.5">
+                {/* Group Folder Row */}
+                <div
+                  onClick={(e) => handleGroupClick(groupName, e)}
+                  onDoubleClick={(e) => {
+                    e.stopPropagation();
+                    setEditingGroupName(groupName);
+                    setEditGroupNameInput(groupName);
+                  }}
+                  className={`group flex items-center justify-between px-2 py-1.5 rounded-lg text-xs font-semibold cursor-pointer select-none transition-all border ${
+                    isGroupFullySelected
+                      ? "bg-indigo-600/25 text-white border-indigo-500/40"
+                      : isGroupPartiallySelected
+                      ? "bg-indigo-600/10 text-zinc-200 border-indigo-500/20"
+                      : "text-zinc-400 hover:text-white hover:bg-white/5 border-transparent"
+                  }`}
+                  title="Double-click to rename group"
+                >
+                  <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                    {/* Expand/Collapse Chevron */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleGroupCollapse(groupName);
+                      }}
+                      className="p-0.5 hover:bg-white/10 rounded transition-colors text-zinc-500 hover:text-zinc-300 cursor-pointer"
+                    >
+                      {isCollapsed ? <ChevronRight size={10} /> : <ChevronDown size={10} />}
+                    </button>
+                    {/* Folder Icon */}
+                    <span className="text-indigo-400 shrink-0">
+                      {isCollapsed ? <Folder size={12} /> : <FolderOpen size={12} />}
+                    </span>
+                    {editingGroupName === groupName ? (
+                      <input
+                        type="text"
+                        value={editGroupNameInput}
+                        onChange={(e) => setEditGroupNameInput(e.target.value)}
+                        onBlur={() => handleRenameGroupSubmit(groupName)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            handleRenameGroupSubmit(groupName);
+                          } else if (e.key === "Escape") {
+                            setEditingGroupName(null);
+                          }
+                        }}
+                        autoFocus
+                        onClick={(e) => e.stopPropagation()}
+                        onDoubleClick={(e) => e.stopPropagation()}
+                        className="flex-1 bg-black/60 border border-indigo-500/50 rounded px-1.5 py-0.5 text-[11px] text-white focus:outline-none min-w-0"
+                      />
+                    ) : (
+                      <span className="truncate flex-1">{groupName}</span>
+                    )}
+                    <span className="text-[9px] font-mono text-zinc-500 px-1 bg-black/30 rounded shrink-0">
+                      {parts.length}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Indented Children List */}
+                {!isCollapsed && (
+                  <div className="pl-3 border-l border-white/5 ml-3 space-y-0.5 my-0.5">
+                    {parts.map((part) => {
+                      const isPartSelected = selectedPart === part.id;
+                      const isPartMultiSelected = selectedParts.includes(part.id);
+
+                      return (
+                        <div
+                          key={part.id}
+                          onClick={(e) => handlePartClick(part.id, e)}
+                          className={`w-full flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] font-medium cursor-pointer select-none transition-all border ${
+                            isPartSelected
+                              ? "bg-blue-600 text-white shadow-lg shadow-blue-900/20 border-transparent"
+                              : isPartMultiSelected
+                              ? "bg-blue-600/30 text-blue-200 border-blue-500/25 border"
+                              : "text-zinc-400 hover:text-white hover:bg-white/5 border-transparent"
+                          }`}
+                        >
+                          <Layers
+                            size={10}
+                            className={`${isPartSelected ? "text-white" : isPartMultiSelected ? "text-blue-300" : "text-zinc-500"}`}
+                          />
+                          <span className="truncate flex-1" title={part.name}>
+                            {part.name}
+                          </span>
+                          {isPartSelected && <CheckCircle size={10} className="text-white/80 shrink-0 ml-1" />}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          {/* 2. Ungrouped Root Parts */}
+          {ungroupedParts.length > 0 && (
+            <div className="space-y-0.5 pt-1">
+              {ungroupedParts.map((part) => {
+                const isPartSelected = selectedPart === part.id;
+                const isPartMultiSelected = selectedParts.includes(part.id);
+
+                return (
+                  <div
+                    key={part.id}
+                    onClick={(e) => handlePartClick(part.id, e)}
+                    className={`w-full flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-medium cursor-pointer select-none transition-all border ${
+                      isPartSelected
+                        ? "bg-blue-600 text-white shadow-lg shadow-blue-900/20 border-transparent"
+                        : isPartMultiSelected
+                        ? "bg-blue-600/30 text-blue-200 border-blue-500/25 border"
+                        : "text-zinc-400 hover:text-white hover:bg-white/10 border-transparent"
+                    }`}
+                  >
+                    <Layers
+                      size={10}
+                      className={`${isPartSelected ? "text-white" : isPartMultiSelected ? "text-blue-300" : "text-zinc-500"}`}
+                    />
+                    <span className="truncate flex-1" title={part.name}>
+                      {part.name}
+                    </span>
+                    {isPartSelected && <CheckCircle size={10} className="text-white/80 shrink-0 ml-1" />}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Group Controls at Bottom */}
+        <div className="p-2 border-t border-white/5 bg-white/5 shrink-0">
+          {selectedParts.length > 1 ? (
+            <div className="space-y-2">
+              <div className="flex justify-between items-center px-1">
+                <span className="text-[9px] font-bold uppercase tracking-wider text-zinc-400 block">
+                  Group {selectedParts.length} Parts
+                </span>
+                <span className="text-[8px] font-mono text-zinc-500 bg-black/40 px-1 py-0.5 rounded border border-white/5">
+                  Ctrl+G
+                </span>
+              </div>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (!groupInput.trim()) return;
+                  groupParts(selectedParts, groupInput.trim());
+                  setGroupInput("");
+                }}
+                className="flex gap-1 px-1"
+              >
+                <input
+                  type="text"
+                  value={groupInput}
+                  onChange={(e) => setGroupInput(e.target.value)}
+                  placeholder="Group name... (Press Enter)"
+                  className="flex-1 bg-black/40 border border-white/10 rounded px-1.5 py-1 text-[10px] text-white focus:outline-none focus:border-blue-500/50 min-w-0"
+                />
+              </form>
+              <button
+                onClick={() => clearSelectedParts()}
+                className="w-full py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white rounded text-[9px] font-medium transition-all cursor-pointer"
+              >
+                Clear Multi-Selection
+              </button>
+            </div>
+          ) : selectedPart ? (
+            <div className="space-y-2">
+              <span className="text-[9px] font-bold uppercase tracking-wider text-zinc-400 block px-1">
+                Group Manager
+              </span>
+
+              {selectedPartGroup ? (
+                <div className="space-y-1.5 px-1">
+                  <div className="flex items-center justify-between bg-indigo-500/10 border border-indigo-500/20 rounded p-1.5 text-[10px] text-zinc-300">
+                    <span className="truncate font-semibold text-indigo-300">Group: {selectedPartGroup}</span>
+                    <span className="text-[9px] text-zinc-500 font-mono">({partGroups[selectedPartGroup]?.length})</span>
+                  </div>
+                  <div className="flex gap-1">
+                    <button
+                      onClick={() => releasePartFromGroup(selectedPart)}
+                      className="flex-1 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded text-[10px] font-medium flex items-center justify-center gap-1 transition-all cursor-pointer"
+                      title="Release selected part from group"
+                    >
+                      <Unlink size={10} /> Release
+                    </button>
+                    <button
+                      onClick={() => ungroupGroup(selectedPartGroup)}
+                      className="flex-1 py-1 bg-red-950/40 hover:bg-red-900/30 text-red-300 border border-red-900/20 rounded text-[10px] font-medium flex items-center justify-center gap-1 transition-all cursor-pointer"
+                      title="Ungroup/dissolve this group entirely"
+                    >
+                      <Trash2 size={10} /> Ungroup
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <form onSubmit={handleGroupSubmit} className="flex gap-1 px-1">
+                  <input
+                    type="text"
+                    value={groupInput}
+                    onChange={(e) => setGroupInput(e.target.value)}
+                    placeholder="Group name... (Press Enter)"
+                    className="flex-1 bg-black/40 border border-white/10 rounded px-1.5 py-1 text-[10px] text-white focus:outline-none focus:border-blue-500/50 min-w-0"
+                  />
+                </form>
               )}
-            </button>
-          ))}
+            </div>
+          ) : (
+            <div className="text-center py-2 text-[10px] text-zinc-500">
+              Shift+Click layers to multi-select
+            </div>
+          )}
         </div>
       </div>
 
@@ -1755,7 +2152,7 @@ const LeftPanel = ({ showLeftPanel }: any) => {
   );
 };
 
-const RightPanel = ({ activeTab, onStartCamera, onStopCamera }: any) => {
+const RightPanel = ({ activeTab, showLeftPanel, onStartCamera, onStopCamera }: any) => {
   const {
     isMobile,
     recordingStatus,
@@ -1800,6 +2197,7 @@ const RightPanel = ({ activeTab, onStartCamera, onStopCamera }: any) => {
     updateEnvironmentSettings,
     updateEffectsSettings,
     removeMaterialGroup,
+    resetEnvironmentSettings,
   } = useStore();
 
   const [showLibrary, setShowLibrary] = useState(false);
@@ -1942,7 +2340,7 @@ const RightPanel = ({ activeTab, onStartCamera, onStopCamera }: any) => {
       id="tour-right-panel"
       className={`
         flex flex-col gap-3 animate-in slide-in-from-right duration-500 absolute pointer-events-none z-20 transition-all
-        ${recordingStatus === "recording" ? "opacity-0" : "opacity-100"}
+        ${recordingStatus === "recording" || !showLeftPanel ? "opacity-0 pointer-events-none translate-x-10 invisible" : "opacity-100"}
         ${
           isMobile
             ? "w-full bottom-[80px] left-0 right-0 px-2 slide-in-from-bottom-10"
@@ -2392,12 +2790,21 @@ const RightPanel = ({ activeTab, onStartCamera, onStopCamera }: any) => {
                   <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
                     Lighting
                   </h4>
-                  <button
-                    onClick={() => environmentInputRef.current?.click()}
-                    className="text-[10px] text-blue-400 hover:text-blue-300 flex items-center gap-1"
-                  >
-                    <Upload size={10} /> Custom HDR/EXR
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={resetEnvironmentSettings}
+                      className="text-[10px] text-zinc-400 hover:text-white flex items-center gap-1 transition-colors"
+                      title="Reset environment settings to default"
+                    >
+                      <RotateCcw size={10} /> Reset
+                    </button>
+                    <button
+                      onClick={() => environmentInputRef.current?.click()}
+                      className="text-[10px] text-blue-400 hover:text-blue-300 flex items-center gap-1"
+                    >
+                      <Upload size={10} /> Custom HDR/EXR
+                    </button>
+                  </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2 mb-4">
                   {[
@@ -2689,6 +3096,14 @@ const RightPanel = ({ activeTab, onStartCamera, onStopCamera }: any) => {
                   </div>
                 </div>
               )}
+
+              <button
+                onClick={resetEnvironmentSettings}
+                className="w-full py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-white/5 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 mt-2 transition-all cursor-pointer"
+              >
+                <RotateCcw size={14} />
+                Reset Environment to Default
+              </button>
             </div>
           )}
 

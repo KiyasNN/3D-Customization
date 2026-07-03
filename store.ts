@@ -24,15 +24,22 @@ export const DEMO_ASSET: UploadedAsset = {
   extension: "demo",
 };
 
+const getGroupParts = (state: any, partId: string): string[] => {
+  const group = Object.values(state.partGroups || {}).find((parts: any) => parts.includes(partId)) as string[] | undefined;
+  return group || [partId];
+};
+
 export const useStore = create<AppState>((set, get) => ({
   isMobile: false,
 
   selectedPart: null,
+  selectedParts: [], // Init empty list of multi-selected parts
   hoveredPart: null,
   partMaterials: { ...INITIAL_STATE },
   partVisibility: { ...INITIAL_VISIBILITY },
   partTextureScales: {},
   partConfigs: {},
+  partGroups: {}, // Init empty part groups
   partAnnotations: {}, // Init empty
   materials: [...INITIAL_MATERIALS],
   uploadedAssets: [],
@@ -80,6 +87,7 @@ export const useStore = create<AppState>((set, get) => ({
   currentView: 'default',
   showMeasurements: false,
   showAnnotations: true, // Default to visible
+  labelSize: 1.0, // Default label size scale multiplier
   showFloor: false, // Default floor off
   showHelp: false,
   lightingEnabled: false, // Default flat virtual lights to OFF for beautiful contrast
@@ -127,15 +135,19 @@ export const useStore = create<AppState>((set, get) => ({
        partsList.forEach(id => {
          newVisibility[id] = id === partId;
        });
-       return { selectedPart: partId, partVisibility: newVisibility, isDragging: false };
+       return { selectedPart: partId, selectedParts: partId ? [partId] : [], partVisibility: newVisibility, isDragging: false };
     }
-    return { selectedPart: partId, isDragging: false };
+    return { selectedPart: partId, selectedParts: partId ? [partId] : [], isDragging: false };
   }),
 
   hoverPart: (partId) => set({ hoveredPart: partId }),
 
   setMaterial: (partId, materialId) => set((state) => {
-    const newMaterials = { ...state.partMaterials, [partId]: materialId };
+    const partsToUpdate = getGroupParts(state, partId);
+    const newMaterials = { ...state.partMaterials };
+    partsToUpdate.forEach(id => {
+      newMaterials[id] = materialId;
+    });
     const newHistory = state.history.slice(0, state.historyIndex + 1);
     newHistory.push(newMaterials);
     return {
@@ -155,14 +167,21 @@ export const useStore = create<AppState>((set, get) => ({
   }),
 
   updatePartConfig: (partId, config) => set((state) => {
-    const current = state.partConfigs[partId] || { scale: 2, normalScale: 1, roughness: 0.5, displacementScale: 0 };
+    const partsToUpdate = getGroupParts(state, partId);
+    const newPartConfigs = { ...state.partConfigs };
+    const newTextureScales = { ...state.partTextureScales };
+    
+    partsToUpdate.forEach(id => {
+      const current = newPartConfigs[id] || { scale: 2, normalScale: 1, roughness: 0.5, displacementScale: 0 };
+      newPartConfigs[id] = { ...current, ...config };
+      if (config.scale) {
+        newTextureScales[id] = config.scale;
+      }
+    });
+
     return {
-      partConfigs: {
-        ...state.partConfigs,
-        [partId]: { ...current, ...config }
-      },
-      // Sync legacy scale if it changed
-      ...(config.scale ? { partTextureScales: { ...state.partTextureScales, [partId]: config.scale } } : {})
+      partConfigs: newPartConfigs,
+      ...(config.scale ? { partTextureScales: newTextureScales } : {})
     };
   }),
 
@@ -267,11 +286,13 @@ export const useStore = create<AppState>((set, get) => ({
 
   hidePart: () => set((state) => {
     if (!state.selectedPart) return {};
+    const partsToUpdate = getGroupParts(state, state.selectedPart);
+    const newVisibility = { ...state.partVisibility };
+    partsToUpdate.forEach(id => {
+      newVisibility[id] = false;
+    });
     return {
-      partVisibility: {
-        ...state.partVisibility,
-        [state.selectedPart]: false
-      }
+      partVisibility: newVisibility
     };
   }),
 
@@ -307,7 +328,23 @@ export const useStore = create<AppState>((set, get) => ({
 
   resetAllExplode: () => set((state) => {
     const newConfigs = { ...state.partConfigs };
-    Object.keys(newConfigs).forEach(key => {
+    const selectedParts = state.selectedParts || [];
+    const selectedPart = state.selectedPart;
+    
+    let partsToReset: string[] = [];
+    if (selectedParts.length > 0) {
+      const allSelectedWithGroups = new Set<string>();
+      selectedParts.forEach((partId: string) => {
+        getGroupParts(state, partId).forEach(id => allSelectedWithGroups.add(id));
+      });
+      partsToReset = Array.from(allSelectedWithGroups);
+    } else if (selectedPart) {
+      partsToReset = getGroupParts(state, selectedPart);
+    } else {
+      partsToReset = Object.keys(newConfigs);
+    }
+
+    partsToReset.forEach(key => {
       newConfigs[key] = {
         ...newConfigs[key],
         explosionOffset: undefined,
@@ -323,11 +360,12 @@ export const useStore = create<AppState>((set, get) => ({
   toggleFloor: () => set((state) => ({ showFloor: !state.showFloor })),
 
   resetPart: (partId) => set((state) => {
-    const defaultMat = (INITIAL_STATE as any)[partId] || 'mat-leather-white';
-    const newMaterials = { 
-       ...state.partMaterials, 
-       [partId]: defaultMat
-    };
+    const partsToUpdate = getGroupParts(state, partId);
+    const newMaterials = { ...state.partMaterials };
+    partsToUpdate.forEach(id => {
+      const defaultMat = (INITIAL_STATE as any)[id] || 'mat-leather-white';
+      newMaterials[id] = defaultMat;
+    });
     return { partMaterials: newMaterials };
   }),
 
@@ -340,21 +378,23 @@ export const useStore = create<AppState>((set, get) => ({
        state.customParts.forEach(p => delete newMaterials[p]);
        // Increment counter to force InteractiveModel to remount/reset
        resetCounter += 1;
-    } else {
-       // For default shoe, revert to specific initial configuration
-       newMaterials = { ...INITIAL_STATE };
-    }
+     } else {
+        // For default shoe, revert to specific initial configuration
+        newMaterials = { ...INITIAL_STATE };
+     }
 
-    const newHistory = state.history.slice(0, state.historyIndex + 1);
-    newHistory.push(newMaterials);
+     const newHistory = state.history.slice(0, state.historyIndex + 1);
+     newHistory.push(newMaterials);
 
-    return { 
-      partMaterials: newMaterials,
-      modelResetCounter: resetCounter,
-      history: newHistory,
-      historyIndex: newHistory.length - 1,
-      partAnnotations: {} // Clear annotations on reset
-    };
+     return { 
+       partMaterials: newMaterials,
+       modelResetCounter: resetCounter,
+       history: newHistory,
+       historyIndex: newHistory.length - 1,
+       partAnnotations: {}, // Clear annotations on reset
+       selectedPart: null,
+       selectedParts: []
+     };
   }),
 
   triggerSnapshot: (mode = 'download') => {
@@ -692,6 +732,8 @@ export const useStore = create<AppState>((set, get) => ({
   
   toggleAnnotations: () => set((state) => ({ showAnnotations: !state.showAnnotations })),
 
+  setLabelSize: (size) => set({ labelSize: size }),
+
   toggleHelp: () => set((state) => ({ showHelp: !state.showHelp })),
 
   setLightingEnabled: (enabled) => set({ lightingEnabled: enabled }),
@@ -703,6 +745,133 @@ export const useStore = create<AppState>((set, get) => ({
   setTransformMode: (transformMode) => set({ transformMode }),
 
   setLighting: (preset) => set({ currentLighting: preset }),
+  resetEnvironmentSettings: () => set({
+    lightingEnabled: false,
+    wireframeEnabled: false,
+    showEnvironmentBackground: false,
+    currentLighting: 'studio',
+    environmentSettings: {
+      rotationX: 0,
+      rotationY: 0,
+      rotationZ: 0,
+      height: 2.5,
+      radius: 120,
+      scale: 100,
+      intensity: 0.6,
+      preset: 'studio'
+    },
+    effectsSettings: {
+      postProcessingEnabled: false,
+      bloomIntensity: 0.6,
+      toneMapping: 'ACESFilmic',
+      exposure: 1.0,
+      aoEnabled: false,
+      aoQuality: 'medium'
+    }
+  }),
+  groupPart: (partId, groupName) => set((state) => {
+    const newGroups = { ...state.partGroups };
+    
+    // First, remove partId from any existing group
+    Object.keys(newGroups).forEach((name) => {
+      newGroups[name] = newGroups[name].filter((id) => id !== partId);
+      if (newGroups[name].length === 0) {
+        delete newGroups[name];
+      }
+    });
+
+    // Add to the new group
+    if (!newGroups[groupName]) {
+      newGroups[groupName] = [];
+    }
+    if (!newGroups[groupName].includes(partId)) {
+      newGroups[groupName].push(partId);
+    }
+
+    return { partGroups: newGroups };
+  }),
+
+  groupParts: (partIds, groupName) => set((state) => {
+    const newGroups = { ...state.partGroups };
+    
+    // First, remove each partId from any existing group
+    partIds.forEach(partId => {
+      Object.keys(newGroups).forEach((name) => {
+        newGroups[name] = newGroups[name].filter((id) => id !== partId);
+        if (newGroups[name].length === 0) {
+          delete newGroups[name];
+        }
+      });
+    });
+
+    // Add them to the new group
+    if (!newGroups[groupName]) {
+      newGroups[groupName] = [];
+    }
+    partIds.forEach(partId => {
+      if (!newGroups[groupName].includes(partId)) {
+        newGroups[groupName].push(partId);
+      }
+    });
+
+    return { partGroups: newGroups, selectedParts: [] };
+  }),
+
+  renameGroup: (oldName, newName) => set((state) => {
+    const newGroups = { ...state.partGroups };
+    if (newGroups[oldName] && oldName !== newName && newName.trim() !== "") {
+      newGroups[newName] = newGroups[oldName];
+      delete newGroups[oldName];
+    }
+    return { partGroups: newGroups };
+  }),
+
+  releasePartFromGroup: (partId) => set((state) => {
+    const newGroups = { ...state.partGroups };
+    
+    Object.keys(newGroups).forEach((name) => {
+      newGroups[name] = newGroups[name].filter((id) => id !== partId);
+      if (newGroups[name].length === 0) {
+        delete newGroups[name];
+      }
+    });
+
+    return { partGroups: newGroups };
+  }),
+
+  ungroupGroup: (groupName) => set((state) => {
+    const newGroups = { ...state.partGroups };
+    delete newGroups[groupName];
+    return { partGroups: newGroups };
+  }),
+
+  toggleSelectPartMulti: (partId) => set((state) => {
+    const selectedParts = state.selectedParts || [];
+    const isAlreadySelected = selectedParts.includes(partId);
+    let newSelectedParts: string[];
+    
+    if (isAlreadySelected) {
+      newSelectedParts = selectedParts.filter((id) => id !== partId);
+    } else {
+      newSelectedParts = [...selectedParts, partId];
+    }
+    
+    // Sync single-selectedPart to keep the gizmo on the latest active selected part
+    let newSelectedPart = state.selectedPart;
+    if (!isAlreadySelected) {
+      newSelectedPart = partId;
+    } else if (state.selectedPart === partId) {
+      newSelectedPart = newSelectedParts.length > 0 ? newSelectedParts[newSelectedParts.length - 1] : null;
+    }
+    
+    return { 
+      selectedParts: newSelectedParts,
+      selectedPart: newSelectedPart
+    };
+  }),
+
+  setSelectedParts: (partIds) => set({ selectedParts: partIds }),
+  clearSelectedParts: () => set({ selectedParts: [] }),
   setFloor: (floor) => set({ currentFloor: floor }),
   
   setVideoStream: (stream) => set({ activeVideoStream: stream }),
