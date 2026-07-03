@@ -43,6 +43,7 @@ export const useStore = create<AppState>((set, get) => ({
   partAnnotations: {}, // Init empty
   materials: [...INITIAL_MATERIALS],
   uploadedAssets: [],
+  modelCalibrations: {},
   currentModel: DEMO_ASSET,
   customParts: [],
   modelResetCounter: 0,
@@ -479,6 +480,24 @@ export const useStore = create<AppState>((set, get) => ({
   toggleReverseWalk: () => set((state) => ({ reverseWalk: !state.reverseWalk })),
   setWalkSpeed: (speed) => set({ walkSpeed: speed }),
   setBaseShoeType: (type) => set({ baseShoeType: type }),
+
+  updateModelCalibration: (modelId, calibration) => set((state) => {
+    const current = state.modelCalibrations[modelId] || {
+      scale: 1.0,
+      rotationX: 0,
+      rotationY: 0,
+      rotationZ: 0,
+      positionX: 0,
+      positionY: 0,
+      positionZ: 0,
+    };
+    return {
+      modelCalibrations: {
+        ...state.modelCalibrations,
+        [modelId]: { ...current, ...calibration }
+      }
+    };
+  }),
   
   openRecordingSettings: () => set({ isRecordingSettingsOpen: true }),
   closeRecordingSettings: () => set({ isRecordingSettingsOpen: false }),

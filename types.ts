@@ -290,4 +290,24 @@ export interface AppState {
   // AI
   generateFullDesign: (prompt: string) => Promise<void>; // New Main Action
   applyAIStyle: (styles: AIStyleConfig[], sourcePrompt: string) => void;
+
+  // Custom Model Calibration
+  modelCalibrations: Record<string, {
+    scale: number;
+    rotationX: number;
+    rotationY: number;
+    rotationZ: number;
+    positionX: number;
+    positionY: number;
+    positionZ: number;
+  }>;
+  updateModelCalibration: (modelId: string, calibration: Partial<{
+    scale: number;
+    rotationX: number;
+    rotationY: number;
+    rotationZ: number;
+    positionX: number;
+    positionY: number;
+    positionZ: number;
+  }>) => void;
 }

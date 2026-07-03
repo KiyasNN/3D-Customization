@@ -18,6 +18,9 @@ const InitialPositionsContext = React.createContext({
 });
 
 export const ShoeMeshOnly = ({ scene, interactive = false, videoTexture }: any) => {
+  const currentModel = useStore(s => s.currentModel);
+  const calibrations = useStore(s => s.modelCalibrations) || {};
+
   const model = useMemo(() => {
     if (!scene) return null;
     let actualModel: any = null;
@@ -48,18 +51,84 @@ export const ShoeMeshOnly = ({ scene, interactive = false, videoTexture }: any) 
     }
   }, [scene]);
 
+  // Center and normalize sizing to standard shoe length (~2.8 units)
+  const normalization = useMemo(() => {
+    if (!model || typeof model.updateMatrixWorld !== 'function') {
+      return { scale: 1, position: [0, 0, 0] };
+    }
+    model.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(model);
+    const size = new THREE.Vector3();
+    box.getSize(size);
+    const center = new THREE.Vector3();
+    box.getCenter(center);
+
+    const maxDim = Math.max(size.x, size.y, size.z) || 1.0;
+    const scale = 2.8 / maxDim;
+
+    const xOffset = -center.x * scale;
+    const yOffset = -box.min.y * scale;
+    const zOffset = -center.z * scale;
+
+    return {
+      scale: scale,
+      position: [xOffset, yOffset, zOffset]
+    };
+  }, [model]);
+
   if (!model) return null;
 
+  const calibration = currentModel ? (calibrations[currentModel.id] || {
+    scale: 1.0,
+    rotationX: 0,
+    rotationY: 0,
+    rotationZ: 0,
+    positionX: 0,
+    positionY: 0,
+    positionZ: 0,
+  }) : {
+    scale: 1.0,
+    rotationX: 0,
+    rotationY: 0,
+    rotationZ: 0,
+    positionX: 0,
+    positionY: 0,
+    positionZ: 0,
+  };
+
+  const finalScaleValue = normalization.scale * calibration.scale;
+  const finalScale = [finalScaleValue, finalScaleValue, finalScaleValue];
+  const finalPosition = [
+    normalization.position[0] + calibration.positionX,
+    normalization.position[1] + calibration.positionY,
+    normalization.position[2] + calibration.positionZ
+  ];
+  const finalRotation = [
+    calibration.rotationX,
+    calibration.rotationY,
+    calibration.rotationZ
+  ];
+
   return (
-    <group>
-      {model && model.children?.map((child: any, i: number) => (
-        <RecursivePart 
-            key={child.uuid || i} 
-            object={child} 
-            interactive={interactive}
-            videoTexture={videoTexture}
-        />
-      ))}
+    <group 
+      position={finalPosition} 
+      rotation={finalRotation} 
+      scale={finalScale}
+    >
+       <group
+         scale={model ? [model.scale.x, model.scale.y, model.scale.z] : [1, 1, 1]}
+         position={model ? [model.position.x, model.position.y, model.position.z] : [0, 0, 0]}
+         rotation={model ? [model.rotation.x, model.rotation.y, model.rotation.z] : [0, 0, 0]}
+       >
+         {model && model.children?.map((child: any, i: number) => (
+           <RecursivePart 
+               key={child.uuid || i} 
+               object={child} 
+               interactive={interactive}
+               videoTexture={videoTexture}
+           />
+         ))}
+       </group>
     </group>
   );
 };
@@ -1159,8 +1228,9 @@ const InteractiveModel = ({ url, isObj, isUsdz, customScale, customPosition, cus
     const center = new THREE.Vector3();
     box.getCenter(center);
     
-    // Keep scale as 1 to follow original object scale and size "apa adanya"
-    const scale = 1;
+    // Scale standardizer to 2.8 units on the longest dimension
+    const maxDim = Math.max(size.x, size.y, size.z) || 1.0;
+    const scale = 2.8 / maxDim;
     
     // Align bottom to Y=0 and Center X/Z
     const xOffset = -center.x * scale;
@@ -1182,12 +1252,39 @@ const InteractiveModel = ({ url, isObj, isUsdz, customScale, customPosition, cus
     });
   }, [model]);
 
-  // Use props if provided, else use normalization
-  const finalScale = customScale ? [customScale, customScale, customScale] : [normalization.scale, normalization.scale, normalization.scale];
-  const finalPosition = customPosition 
-      ? [customPosition[0], customPosition[1], customPosition[2]] 
-      : normalization.position;
-  const finalRotation = customRotation ? [customRotation[0], customRotation[1], customRotation[2]] : [0,0,0];
+  // Load custom calibration settings for the current custom model
+  const calibrations = useStore(s => s.modelCalibrations) || {};
+  const calibration = currentModel ? (calibrations[currentModel.id] || {
+    scale: 1.0,
+    rotationX: 0,
+    rotationY: 0,
+    rotationZ: 0,
+    positionX: 0,
+    positionY: 0,
+    positionZ: 0,
+  }) : {
+    scale: 1.0,
+    rotationX: 0,
+    rotationY: 0,
+    rotationZ: 0,
+    positionX: 0,
+    positionY: 0,
+    positionZ: 0,
+  };
+
+  // Combine auto-normalization with manual calibration overrides
+  const finalScaleValue = normalization.scale * calibration.scale;
+  const finalScale = [finalScaleValue, finalScaleValue, finalScaleValue];
+  const finalPosition = [
+    normalization.position[0] + calibration.positionX,
+    normalization.position[1] + calibration.positionY,
+    normalization.position[2] + calibration.positionZ
+  ];
+  const finalRotation = [
+    calibration.rotationX,
+    calibration.rotationY,
+    calibration.rotationZ
+  ];
 
   return (
     <group 
