@@ -125,9 +125,10 @@ export const Mannequin = () => {
   const leftScaleX = baseShoeType === 'right' ? -1 : 1;
   const rightScaleX = baseShoeType === 'left' ? -1 : 1;
 
+  const isDemo = currentModel?.id === 'demo-shoe';
   const isObj = currentModel?.extension === 'obj';
   const isUsdz = currentModel?.extension === 'usdz';
-  const { data: shoeScene } = useModelLoader(currentModel?.url, isObj, isUsdz, currentModel?.resources);
+  const { data: shoeScene } = useModelLoader(isDemo ? "" : (currentModel?.url || ""), isObj, isUsdz, currentModel?.resources);
 
   return (
     <group ref={group} dispose={null}>
@@ -139,7 +140,11 @@ export const Mannequin = () => {
           <group rotation={ROTATION_OFFSET} position={POSITION_OFFSET} scale={[CONTAINER_SCALE, CONTAINER_SCALE, CONTAINER_SCALE]}>
              <group scale={[leftScaleX, 1, 1]} rotation={[0, rotationY, 0]}>
                 {/* DO NOT pass customScale here. Let it normalize. */}
-                <ShoeMeshOnly scene={shoeScene} interactive={false} />
+                {isDemo ? (
+                  <ShoeModel interactive={false} />
+                ) : (
+                  <ShoeMeshOnly scene={shoeScene} interactive={false} />
+                )}
              </group>
           </group>
        </group>
@@ -148,7 +153,11 @@ export const Mannequin = () => {
        <group ref={rightShoeRef}>
           <group rotation={ROTATION_OFFSET} position={POSITION_OFFSET} scale={[CONTAINER_SCALE, CONTAINER_SCALE, CONTAINER_SCALE]}>
              <group scale={[rightScaleX, 1, 1]} rotation={[0, rotationY, 0]}>
-                <ShoeMeshOnly scene={shoeScene} interactive={false} />
+                {isDemo ? (
+                  <ShoeModel interactive={false} />
+                ) : (
+                  <ShoeMeshOnly scene={shoeScene} interactive={false} />
+                )}
              </group>
           </group>
        </group>

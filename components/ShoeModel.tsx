@@ -17,21 +17,38 @@ const InitialPositionsContext = React.createContext({
   initialScales: new Map<string, THREE.Vector3>() 
 });
 
-export const ShoeMeshOnly = ({ scene: preloadedScene, url, isObj, isUsdz, interactive = false, videoTexture }: any) => {
-  const currentModel = useStore(s => s.currentModel);
-  const resources = currentModel?.resources;
-  const { data: scene, loading } = preloadedScene ? { data: preloadedScene, loading: false } : useModelLoader(url, isObj, isUsdz, resources);
-  
+export const ShoeMeshOnly = ({ scene, interactive = false, videoTexture }: any) => {
   const model = useMemo(() => {
     if (!scene) return null;
-    const clonedScene = SkeletonUtils.clone(scene);
-    let m: any = clonedScene;
-    if (clonedScene.scene && clonedScene.scene.isObject3D) m = clonedScene.scene;
-    else if (clonedScene.scenes && clonedScene.scenes[0]) m = clonedScene.scenes[0];
-    return m;
+    let actualModel: any = null;
+    if (scene.isObject3D) {
+      actualModel = scene;
+    } else if (scene.scene && scene.scene.isObject3D) {
+      actualModel = scene.scene;
+    } else if (scene.scenes && scene.scenes[0] && scene.scenes[0].isObject3D) {
+      actualModel = scene.scenes[0];
+    } else if (typeof scene.traverse === 'function') {
+      actualModel = scene;
+    } else if (scene.scene && typeof scene.scene.traverse === 'function') {
+      actualModel = scene.scene;
+    } else {
+      actualModel = scene;
+    }
+
+    if (!actualModel) return null;
+
+    try {
+      return SkeletonUtils.clone(actualModel);
+    } catch (e) {
+      console.warn("SkeletonUtils.clone failed, falling back to simple clone:", e);
+      if (typeof actualModel.clone === 'function') {
+        return actualModel.clone();
+      }
+      return actualModel;
+    }
   }, [scene]);
 
-  if (loading || !model) return null;
+  if (!model) return null;
 
   return (
     <group>
@@ -991,6 +1008,10 @@ export const useModelLoader = (url: string, isObj: boolean, isUsdz: boolean, res
   const [error, setError] = useState<any>(null);
 
   useEffect(() => {
+    if (!url) {
+      setLoading(false);
+      return;
+    }
     let active = true;
     setLoading(true);
 
@@ -1067,12 +1088,12 @@ export const useModelLoader = (url: string, isObj: boolean, isUsdz: boolean, res
 };
 
 // --- RESTORED INTERACTIVE MODEL ---
-const InteractiveModel = ({ scene: preloadedScene, url, isObj, isUsdz, customScale, customPosition, customRotation, interactive, videoTexture }: any) => {
+const InteractiveModel = ({ url, isObj, isUsdz, customScale, customPosition, customRotation, interactive, videoTexture }: any) => {
   const setCustomParts = useStore(s => s.setCustomParts);
   const currentModel = useStore(s => s.currentModel);
   const resources = currentModel?.resources;
   
-  const { data: scene, loading } = preloadedScene ? { data: preloadedScene, loading: false } : useModelLoader(url, isObj, isUsdz, resources);
+  const { data: scene, loading } = useModelLoader(url, isObj, isUsdz, resources);
   
   // High-robustness model normalization
   let model: any = null;
