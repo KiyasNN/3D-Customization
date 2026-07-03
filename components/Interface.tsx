@@ -2595,132 +2595,7 @@ const RightPanel = ({ activeTab, showLeftPanel, onStartCamera, onStopCamera }: a
                 )}
               </div>
 
-              {currentModel && currentModel.id !== "demo-shoe" && (
-                <div className="p-3 border border-white/10 rounded-lg bg-white/5 animate-in slide-in-from-bottom-2 flex flex-col gap-2.5 mt-1 text-left">
-                  <div className="flex items-center justify-between pb-1.5 border-b border-white/5">
-                    <div className="flex items-center gap-2">
-                      <Sliders size={14} className="text-blue-400" />
-                      <span className="text-xs font-bold text-zinc-300">
-                        Model Pivot & Orientation Calibration
-                      </span>
-                    </div>
-                    <button
-                      onClick={() => updateModelCalibration(currentModel.id, {
-                        scale: 1.0,
-                        rotationX: 0,
-                        rotationY: 0,
-                        rotationZ: 0,
-                        positionX: 0,
-                        positionY: 0,
-                        positionZ: 0,
-                      })}
-                      className="p-1 text-zinc-400 hover:text-white hover:bg-white/5 rounded transition-all flex items-center gap-1 text-[10px]"
-                      title="Reset Calibration"
-                    >
-                      <RotateCcw size={10} />
-                      <span>Reset</span>
-                    </button>
-                  </div>
 
-                  <span className="text-[10px] text-zinc-400 leading-relaxed">
-                    Tune your model's placement and rotation so it aligns perfectly with the standard coordinate system and mannequin animations.
-                  </span>
-
-                  <div className="space-y-3 mt-1">
-                    <SliderControl
-                      label="Scale Multiplier"
-                      value={modelCalibrations[currentModel.id]?.scale ?? 1.0}
-                      min="0.1"
-                      max="4.0"
-                      step="0.01"
-                      displayValue={`${((modelCalibrations[currentModel.id]?.scale ?? 1.0) * 100).toFixed(0)}%`}
-                      onChange={(v: number) =>
-                        updateModelCalibration(currentModel.id, { scale: v })
-                      }
-                    />
-
-                    <div className="text-[11px] font-semibold text-zinc-400 border-t border-white/5 pt-2 flex items-center gap-1">
-                      <Move size={12} className="text-zinc-500" /> Position Adjustments
-                    </div>
-
-                    <SliderControl
-                      label="Move X (Left / Right)"
-                      value={modelCalibrations[currentModel.id]?.positionX ?? 0.0}
-                      min="-3.0"
-                      max="3.0"
-                      step="0.02"
-                      displayValue={(modelCalibrations[currentModel.id]?.positionX ?? 0.0).toFixed(2)}
-                      onChange={(v: number) =>
-                        updateModelCalibration(currentModel.id, { positionX: v })
-                      }
-                    />
-
-                    <SliderControl
-                      label="Move Y (Height / Elevation)"
-                      value={modelCalibrations[currentModel.id]?.positionY ?? 0.0}
-                      min="-3.0"
-                      max="3.0"
-                      step="0.02"
-                      displayValue={(modelCalibrations[currentModel.id]?.positionY ?? 0.0).toFixed(2)}
-                      onChange={(v: number) =>
-                        updateModelCalibration(currentModel.id, { positionY: v })
-                      }
-                    />
-
-                    <SliderControl
-                      label="Move Z (Front / Back)"
-                      value={modelCalibrations[currentModel.id]?.positionZ ?? 0.0}
-                      min="-3.0"
-                      max="3.0"
-                      step="0.02"
-                      displayValue={(modelCalibrations[currentModel.id]?.positionZ ?? 0.0).toFixed(2)}
-                      onChange={(v: number) =>
-                        updateModelCalibration(currentModel.id, { positionZ: v })
-                      }
-                    />
-
-                    <div className="text-[11px] font-semibold text-zinc-400 border-t border-white/5 pt-2 flex items-center gap-1">
-                      <RotateCw size={12} className="text-zinc-500" /> Rotation Angles
-                    </div>
-
-                    <SliderControl
-                      label="Tilt X (Pitch)"
-                      value={modelCalibrations[currentModel.id]?.rotationX ?? 0.0}
-                      min={-Math.PI}
-                      max={Math.PI}
-                      step="0.02"
-                      displayValue={`${Math.round((modelCalibrations[currentModel.id]?.rotationX ?? 0.0) * (180 / Math.PI))}°`}
-                      onChange={(v: number) =>
-                        updateModelCalibration(currentModel.id, { rotationX: v })
-                      }
-                    />
-
-                    <SliderControl
-                      label="Turn Y (Yaw)"
-                      value={modelCalibrations[currentModel.id]?.rotationY ?? 0.0}
-                      min={-Math.PI}
-                      max={Math.PI}
-                      step="0.02"
-                      displayValue={`${Math.round((modelCalibrations[currentModel.id]?.rotationY ?? 0.0) * (180 / Math.PI))}°`}
-                      onChange={(v: number) =>
-                        updateModelCalibration(currentModel.id, { rotationY: v })
-                      }
-                    />
-
-                    <SliderControl
-                      label="Roll Z"
-                      value={modelCalibrations[currentModel.id]?.rotationZ ?? 0.0}
-                      min={-Math.PI}
-                      max={Math.PI}
-                      step="0.02"
-                      displayValue={`${Math.round((modelCalibrations[currentModel.id]?.rotationZ ?? 0.0) * (180 / Math.PI))}°`}
-                      onChange={(v: number) =>
-                        updateModelCalibration(currentModel.id, { rotationZ: v })
-                      }
-                    />
-                  </div>
-                </div>
-              )}
 
               <div className="grid grid-cols-2 gap-2 mt-1">
                 <button
@@ -3241,6 +3116,15 @@ const RightPanel = ({ activeTab, showLeftPanel, onStartCamera, onStopCamera }: a
           )}
         </div>
       </div>
+
+      {currentModel && currentModel.id !== "demo-shoe" && (
+        <CalibrationPanel
+          currentModel={currentModel}
+          modelCalibrations={modelCalibrations}
+          updateModelCalibration={updateModelCalibration}
+          isMobile={isMobile}
+        />
+      )}
     </div>
   );
 };
@@ -3416,6 +3300,178 @@ const AISection = () => {
           </div>
         )}
       </div>
+    </div>
+  );
+};
+
+const CalibrationPanel = ({
+  currentModel,
+  modelCalibrations,
+  updateModelCalibration,
+  isMobile
+}: any) => {
+  const [isOpen, setIsOpen] = useState(true);
+
+  const calibration = modelCalibrations[currentModel.id] || {
+    scale: 1.0,
+    rotationX: 0,
+    rotationY: 0,
+    rotationZ: 0,
+    positionX: 0,
+    positionY: 0,
+    positionZ: 0,
+  };
+
+  return (
+    <div
+      className={`bg-zinc-900/90 backdrop-blur-md border border-white/10 shadow-2xl pointer-events-auto transition-all duration-300 flex flex-col shrink-0 ${
+        isMobile ? "rounded-xl mx-2" : "rounded-xl"
+      }`}
+    >
+      {/* Header */}
+      <div
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full flex items-center justify-between p-3 text-left focus:outline-none cursor-pointer select-none"
+      >
+        <div className="flex items-center gap-2">
+          <Sliders size={14} className="text-blue-400" />
+          <div className="flex flex-col">
+            <span className="text-xs font-bold text-zinc-200">
+              Model Calibration
+            </span>
+            <span className="text-[9px] text-zinc-400 truncate max-w-[150px]">
+              Aligning: {currentModel.name}
+            </span>
+          </div>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              updateModelCalibration(currentModel.id, {
+                scale: 1.0,
+                rotationX: 0,
+                rotationY: 0,
+                rotationZ: 0,
+                positionX: 0,
+                positionY: 0,
+                positionZ: 0,
+              });
+            }}
+            className="p-1 text-zinc-400 hover:text-white hover:bg-white/5 rounded transition-all flex items-center gap-1 text-[9px]"
+            title="Reset Calibration"
+          >
+            <RotateCcw size={9} />
+            <span>Reset</span>
+          </button>
+          <div className="text-zinc-400 hover:text-white p-1">
+            {isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+          </div>
+        </div>
+      </div>
+
+      {/* Content */}
+      {isOpen && (
+        <div className="p-3 pt-0 border-t border-white/5 flex flex-col gap-2.5 text-left animate-in fade-in duration-200">
+          <span className="text-[10px] text-zinc-400 leading-relaxed">
+            Tune your model's placement and rotation so it aligns perfectly with the standard coordinate system and animations.
+          </span>
+
+          <div className="space-y-3 mt-1 pr-1">
+            <SliderControl
+              label="Scale Multiplier"
+              value={calibration.scale ?? 1.0}
+              min="0.1"
+              max="4.0"
+              step="0.01"
+              displayValue={`${((calibration.scale ?? 1.0) * 100).toFixed(0)}%`}
+              onChange={(v: number) =>
+                updateModelCalibration(currentModel.id, { scale: v })
+              }
+            />
+
+            <div className="text-[11px] font-semibold text-zinc-400 border-t border-white/5 pt-2 flex items-center gap-1">
+              <Move size={12} className="text-zinc-500" /> Position Adjustments
+            </div>
+
+            <SliderControl
+              label="Move X (Left / Right)"
+              value={calibration.positionX ?? 0.0}
+              min="-3.0"
+              max="3.0"
+              step="0.02"
+              displayValue={(calibration.positionX ?? 0.0).toFixed(2)}
+              onChange={(v: number) =>
+                updateModelCalibration(currentModel.id, { positionX: v })
+              }
+            />
+
+            <SliderControl
+              label="Move Y (Height / Elevation)"
+              value={calibration.positionY ?? 0.0}
+              min="-3.0"
+              max="3.0"
+              step="0.02"
+              displayValue={(calibration.positionY ?? 0.0).toFixed(2)}
+              onChange={(v: number) =>
+                updateModelCalibration(currentModel.id, { positionY: v })
+              }
+            />
+
+            <SliderControl
+              label="Move Z (Front / Back)"
+              value={calibration.positionZ ?? 0.0}
+              min="-3.0"
+              max="3.0"
+              step="0.02"
+              displayValue={(calibration.positionZ ?? 0.0).toFixed(2)}
+              onChange={(v: number) =>
+                updateModelCalibration(currentModel.id, { positionZ: v })
+              }
+            />
+
+            <div className="text-[11px] font-semibold text-zinc-400 border-t border-white/5 pt-2 flex items-center gap-1">
+              <RotateCw size={12} className="text-zinc-500" /> Rotation Angles
+            </div>
+
+            <SliderControl
+              label="Tilt X (Pitch)"
+              value={calibration.rotationX ?? 0.0}
+              min={-Math.PI}
+              max={Math.PI}
+              step="0.02"
+              displayValue={`${Math.round((calibration.rotationX ?? 0.0) * (180 / Math.PI))}°`}
+              onChange={(v: number) =>
+                updateModelCalibration(currentModel.id, { rotationX: v })
+              }
+            />
+
+            <SliderControl
+              label="Turn Y (Yaw)"
+              value={calibration.rotationY ?? 0.0}
+              min={-Math.PI}
+              max={Math.PI}
+              step="0.02"
+              displayValue={`${Math.round((calibration.rotationY ?? 0.0) * (180 / Math.PI))}°`}
+              onChange={(v: number) =>
+                updateModelCalibration(currentModel.id, { rotationY: v })
+              }
+            />
+
+            <SliderControl
+              label="Roll Z"
+              value={calibration.rotationZ ?? 0.0}
+              min={-Math.PI}
+              max={Math.PI}
+              step="0.02"
+              displayValue={`${Math.round((calibration.rotationZ ?? 0.0) * (180 / Math.PI))}°`}
+              onChange={(v: number) =>
+                updateModelCalibration(currentModel.id, { rotationZ: v })
+              }
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

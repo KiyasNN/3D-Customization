@@ -134,6 +134,7 @@ export const ShoeMeshOnly = ({ scene, interactive = false, videoTexture }: any) 
 };
 const clonedTextureCache: Record<string, THREE.Texture> = {};
 const materialCache: Record<string, THREE.MeshStandardMaterial> = {};
+const textureCache: Record<string, THREE.Texture> = {};
 
 // Constant for explosion scale
 const EXPLOSION_SCALE = 0.5; 
