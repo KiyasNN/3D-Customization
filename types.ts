@@ -14,6 +14,18 @@ export interface Material {
   metalness: number;
   type: 'leather' | 'fabric' | 'rubber' | 'metallic' | 'ai-generated' | 'video';
   group?: string; // Stores the source prompt for AI materials
+  // Camera captured crop / warp metadata
+  capturedTempImage?: string | null;
+  cropWarpMode?: 'square' | 'perspective';
+  cornerTL?: { x: number; y: number };
+  cornerTR?: { x: number; y: number };
+  cornerBL?: { x: number; y: number };
+  cornerBR?: { x: number; y: number };
+  cropX?: number;
+  cropY?: number;
+  cropSize?: number;
+  blendAmount?: number;
+  mirrorMode?: boolean;
 }
 
 export interface ShoePart {
@@ -65,6 +77,8 @@ export interface TextureConfig {
   explosionOffset?: [number, number, number]; // New: Custom explosion vector
   meshScale?: number; // New: Manual scale adjustment for the part
   meshRotation?: [number, number, number]; // New: Manual rotation adjustment for the part
+  projectionType?: 'planar' | 'box' | 'cylindrical' | 'uv';
+  uvScale?: number;
   projectedImageUrl?: string; // New: custom image projected URL
   projectionOffsetX?: number;
   projectionOffsetY?: number;

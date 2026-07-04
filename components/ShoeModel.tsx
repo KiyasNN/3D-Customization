@@ -1085,27 +1085,116 @@ export const useModelLoader = (url: string, isObj: boolean, isUsdz: boolean, res
     let active = true;
     setLoading(true);
 
-    const manager = new THREE.LoadingManager();
-    manager.setURLModifier((requestUrl: string) => {
-      if (!resources) return requestUrl;
-      const decodedUrl = decodeURIComponent(requestUrl);
-      const matchKey = Object.keys(resources).find((key) => {
-        const normalizedKey = key.replace(/^\.\//, "");
-        return (
-          decodedUrl.endsWith(normalizedKey) ||
-          decodedUrl.includes("/" + normalizedKey)
-        );
-      });
-      if (matchKey) {
-        return resources[matchKey];
-      }
-      return requestUrl;
-    });
+    const loadModelAsync = async () => {
+      let finalUrl = url;
+      const isGltf = !isObj && !isUsdz;
 
-    if (isUsdz) {
-      const loader = new USDLoader(manager);
+      if (isGltf && resources && Object.keys(resources).length > 0) {
+        try {
+          const response = await fetch(url);
+          const text = await response.text();
+          try {
+            const gltfJson = JSON.parse(text);
+            let modified = false;
+
+            if (Array.isArray(gltfJson.buffers)) {
+              gltfJson.buffers.forEach((buffer: any) => {
+                if (buffer.uri && !buffer.uri.startsWith("data:")) {
+                  const filename = buffer.uri.split("/").pop();
+                  if (resources[filename]) {
+                    buffer.uri = resources[filename];
+                    modified = true;
+                  } else {
+                    const matchKey = Object.keys(resources).find(k => k.toLowerCase() === filename.toLowerCase());
+                    if (matchKey) {
+                      buffer.uri = resources[matchKey];
+                      modified = true;
+                    }
+                  }
+                }
+              });
+            }
+
+            if (Array.isArray(gltfJson.images)) {
+              gltfJson.images.forEach((image: any) => {
+                if (image.uri && !image.uri.startsWith("data:")) {
+                  const filename = image.uri.split("/").pop();
+                  if (resources[filename]) {
+                    image.uri = resources[filename];
+                    modified = true;
+                  } else {
+                    const matchKey = Object.keys(resources).find(k => k.toLowerCase() === filename.toLowerCase());
+                    if (matchKey) {
+                      image.uri = resources[matchKey];
+                      modified = true;
+                    }
+                  }
+                }
+              });
+            }
+
+            if (modified) {
+              const updatedBlob = new Blob([JSON.stringify(gltfJson)], { type: "application/json" });
+              finalUrl = URL.createObjectURL(updatedBlob);
+            }
+          } catch {
+            // Not JSON (could be binary GLB), skip preprocessing
+          }
+        } catch (err) {
+          console.error("Error pre-resolving GLTF assets:", err);
+        }
+      }
+
+      if (!active) return;
+
+      const manager = new THREE.LoadingManager();
+      manager.setURLModifier((requestUrl: string) => {
+        if (!resources) return requestUrl;
+        const decodedUrl = decodeURIComponent(requestUrl);
+        const matchKey = Object.keys(resources).find((key) => {
+          const normalizedKey = key.replace(/^\.\//, "");
+          return (
+            decodedUrl.endsWith(normalizedKey) ||
+            decodedUrl.includes("/" + normalizedKey)
+          );
+        });
+        if (matchKey) {
+          return resources[matchKey];
+        }
+        return requestUrl;
+      });
+
+      if (isUsdz) {
+        const loader = new USDLoader(manager);
+        loader.load(
+          finalUrl,
+          (loadedData: any) => {
+            if (active) {
+              setData(loadedData);
+              setLoading(false);
+            }
+          },
+          undefined,
+          (err: any) => {
+            console.error("USD Loader error:", err);
+            if (active) {
+              setError(err);
+              setLoading(false);
+            }
+          }
+        );
+        return;
+      }
+
+      let loader: any;
+      if (isObj) {
+        loader = new OBJLoader(manager);
+      } else {
+        loader = new GLTFLoader(manager);
+      }
+
       loader.load(
-        url,
+        finalUrl,
         (loadedData: any) => {
           if (active) {
             setData(loadedData);
@@ -1114,40 +1203,16 @@ export const useModelLoader = (url: string, isObj: boolean, isUsdz: boolean, res
         },
         undefined,
         (err: any) => {
-          console.error("USD Loader error:", err);
+          console.error("Error loading model:", err);
           if (active) {
             setError(err);
             setLoading(false);
           }
         }
       );
-      return () => { active = false; };
-    }
+    };
 
-    let loader: any;
-    if (isObj) {
-      loader = new OBJLoader(manager);
-    } else {
-      loader = new GLTFLoader(manager);
-    }
-
-    loader.load(
-      url,
-      (loadedData: any) => {
-        if (active) {
-          setData(loadedData);
-          setLoading(false);
-        }
-      },
-      undefined,
-      (err: any) => {
-        console.error("Error loading model:", err);
-        if (active) {
-          setError(err);
-          setLoading(false);
-        }
-      }
-    );
+    loadModelAsync();
 
     return () => {
       active = false;

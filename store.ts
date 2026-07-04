@@ -190,9 +190,17 @@ export const useStore = create<AppState>((set, get) => ({
     partAnnotations: { ...state.partAnnotations, [partId]: annotation }
   })),
 
-  addMaterial: (material) => set((state) => ({ 
-    materials: [material, ...state.materials] 
-  })),
+  addMaterial: (material) => set((state) => {
+    const exists = state.materials.some(m => m.id === material.id);
+    if (exists) {
+      return {
+        materials: state.materials.map(m => m.id === material.id ? material : m)
+      };
+    }
+    return { 
+      materials: [material, ...state.materials] 
+    };
+  }),
 
   removeMaterial: (materialId) => set((state) => {
     // Filter out the material

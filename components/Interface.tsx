@@ -4,6 +4,7 @@ import { GuidedTour } from "./GuidedTour";
 import { Search } from "lucide-react";
 import { SHOE_PARTS, INITIAL_MATERIALS, MATERIAL_PRESETS } from "../constants";
 import { generatePDF } from "../services/pdfService";
+import { processPBRMaps } from "../services/materialEngine";
 import { Material, UploadedAsset } from "../types";
 import {
   Layers,
@@ -434,6 +435,8 @@ const MaterialTuning = () => {
         normalScale: 1,
         roughness: 0.5,
         displacementScale: 0,
+        uvScale: 1,
+        projectionType: 'uv',
       }
     : null;
 
@@ -455,6 +458,32 @@ const MaterialTuning = () => {
         displayValue={`${currentConfig.scale.toFixed(2)}x`}
         onChange={(v: number) => updatePartConfig(selectedPart, { scale: v })}
       />
+      
+      <SliderControl
+        label="UV Scale"
+        value={currentConfig.uvScale || 1}
+        min="0.1"
+        max="10"
+        step="0.1"
+        displayValue={`${(currentConfig.uvScale || 1).toFixed(1)}x`}
+        onChange={(v: number) => updatePartConfig(selectedPart, { uvScale: v })}
+      />
+
+      <div className="flex flex-col gap-1.5">
+        <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
+          UV Projection Type
+        </label>
+        <select
+          value={currentConfig.projectionType || 'uv'}
+          onChange={(e) => updatePartConfig(selectedPart, { projectionType: e.target.value as any })}
+          className="w-full bg-zinc-950 text-white text-xs p-2 rounded-lg border border-white/10"
+        >
+          <option value="uv">UV Map (Default)</option>
+          <option value="planar">Planar</option>
+          <option value="box">Box</option>
+          <option value="cylindrical">Cylindrical</option>
+        </select>
+      </div>
 
       <SliderControl
         label="Normal Strength (Bump)"
@@ -1080,9 +1109,418 @@ export const Interface: React.FC = () => {
     setShowLeftPanelRef.current = setShowLeftPanel;
   }, [setShowLeftPanel]);
   const [isCameraOverlayOpen, setIsCameraOverlayOpen] = useState(false);
+  const [capturedTempImage, setCapturedTempImage] = useState<string | null>(null);
+  const [cropX, setCropX] = useState<number>(10);
+  const [cropY, setCropY] = useState<number>(10);
+  const [cropSize, setCropSize] = useState<number>(80);
+  const [blendAmount, setBlendAmount] = useState<number>(15);
+  const [mirrorMode, setMirrorMode] = useState<boolean>(false);
+  const [processedTextureUrl, setProcessedTextureUrl] = useState<string>("");
+  const [editingMaterialId, setEditingMaterialId] = useState<string | null>(null);
+  const [isPBRMaterial, setIsPBRMaterial] = useState<boolean>(false);
+  const [isSavingMaterial, setIsSavingMaterial] = useState<boolean>(false);
+
+  const [cropWarpMode, setCropWarpMode] = useState<"square" | "perspective">("perspective");
+
+  const [cornerTL, setCornerTL] = useState<{ x: number; y: number }>({ x: 15, y: 15 });
+  const [cornerTR, setCornerTR] = useState<{ x: number; y: number }>({ x: 85, y: 15 });
+  const [cornerBL, setCornerBL] = useState<{ x: number; y: number }>({ x: 15, y: 85 });
+  const [cornerBR, setCornerBR] = useState<{ x: number; y: number }>({ x: 85, y: 85 });
+
+  const [dragMode, setDragMode] = useState<"move" | "tl" | "tr" | "bl" | "br" | null>(null);
+  const cropContainerRef = useRef<HTMLDivElement>(null);
+  const dragStartState = useRef({
+    cropX: 10,
+    cropY: 10,
+    cropSize: 80,
+    startXPct: 0,
+    startYPct: 0,
+    tl: { x: 15, y: 15 },
+    tr: { x: 85, y: 15 },
+    bl: { x: 15, y: 85 },
+    br: { x: 85, y: 85 }
+  });
+
+  const handleCropPointerDown = (e: React.PointerEvent, mode: "move" | "tl" | "tr" | "bl" | "br") => {
+    e.stopPropagation();
+    if (!cropContainerRef.current) return;
+    const rect = cropContainerRef.current.getBoundingClientRect();
+    const xPct = ((e.clientX - rect.left) / rect.width) * 100;
+    const yPct = ((e.clientY - rect.top) / rect.height) * 100;
+
+    setDragMode(mode);
+    dragStartState.current = {
+      cropX,
+      cropY,
+      cropSize,
+      startXPct: xPct,
+      startYPct: yPct,
+      tl: { ...cornerTL },
+      tr: { ...cornerTR },
+      bl: { ...cornerBL },
+      br: { ...cornerBR }
+    };
+    
+    try {
+      (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    } catch (err) {
+      // safe fallback
+    }
+  };
+
+  const handleCropPointerMove = (e: React.PointerEvent) => {
+    if (!dragMode || !cropContainerRef.current) return;
+    e.stopPropagation();
+
+    const rect = cropContainerRef.current.getBoundingClientRect();
+    const xPct = ((e.clientX - rect.left) / rect.width) * 100;
+    const yPct = ((e.clientY - rect.top) / rect.height) * 100;
+
+    const start = dragStartState.current;
+
+    if (cropWarpMode === "perspective") {
+      if (dragMode === "move") {
+        const dx = xPct - start.startXPct;
+        const dy = yPct - start.startYPct;
+        
+        let newTL_x = start.tl.x + dx;
+        let newTL_y = start.tl.y + dy;
+        let newTR_x = start.tr.x + dx;
+        let newTR_y = start.tr.y + dy;
+        let newBL_x = start.bl.x + dx;
+        let newBL_y = start.bl.y + dy;
+        let newBR_x = start.br.x + dx;
+        let newBR_y = start.br.y + dy;
+
+        const minX = Math.min(newTL_x, newTR_x, newBL_x, newBR_x);
+        const maxX = Math.max(newTL_x, newTR_x, newBL_x, newBR_x);
+        const minY = Math.min(newTL_y, newTR_y, newBL_y, newBR_y);
+        const maxY = Math.max(newTL_y, newTR_y, newBL_y, newBR_y);
+
+        let adjX = 0;
+        if (minX < 0) adjX = -minX;
+        else if (maxX > 100) adjX = 100 - maxX;
+
+        let adjY = 0;
+        if (minY < 0) adjY = -minY;
+        else if (maxY > 100) adjY = 100 - maxY;
+
+        setCornerTL({ x: Math.round(newTL_x + adjX), y: Math.round(newTL_y + adjY) });
+        setCornerTR({ x: Math.round(newTR_x + adjX), y: Math.round(newTR_y + adjY) });
+        setCornerBL({ x: Math.round(newBL_x + adjX), y: Math.round(newBL_y + adjY) });
+        setCornerBR({ x: Math.round(newBR_x + adjX), y: Math.round(newBR_y + adjY) });
+      } else {
+        const clampedX = Math.max(0, Math.min(xPct, 100));
+        const clampedY = Math.max(0, Math.min(yPct, 100));
+        const roundedPoint = { x: Math.round(clampedX), y: Math.round(clampedY) };
+
+        if (dragMode === "tl") {
+          setCornerTL(roundedPoint);
+        } else if (dragMode === "tr") {
+          setCornerTR(roundedPoint);
+        } else if (dragMode === "bl") {
+          setCornerBL(roundedPoint);
+        } else if (dragMode === "br") {
+          setCornerBR(roundedPoint);
+        }
+      }
+    } else {
+      if (dragMode === "move") {
+        const dx = xPct - start.startXPct;
+        const dy = yPct - start.startYPct;
+        let newX = start.cropX + dx;
+        let newY = start.cropY + dy;
+        
+        newX = Math.max(0, Math.min(newX, 100 - start.cropSize));
+        newY = Math.max(0, Math.min(newY, 100 - start.cropSize));
+        
+        const roundedX = Math.round(newX);
+        const roundedY = Math.round(newY);
+        setCropX(roundedX);
+        setCropY(roundedY);
+
+        setCornerTL({ x: roundedX, y: roundedY });
+        setCornerTR({ x: roundedX + cropSize, y: roundedY });
+        setCornerBL({ x: roundedX, y: roundedY + cropSize });
+        setCornerBR({ x: roundedX + cropSize, y: roundedY + cropSize });
+      } else if (dragMode === "tl") {
+        const x2 = start.cropX + start.cropSize;
+        const y2 = start.cropY + start.cropSize;
+        const sizeX = x2 - xPct;
+        const sizeY = y2 - yPct;
+        let size = Math.max(15, Math.min(sizeX, sizeY));
+        if (x2 - size < 0) size = x2;
+        if (y2 - size < 0) size = y2;
+        
+        const rX = Math.round(x2 - size);
+        const rY = Math.round(y2 - size);
+        const rSize = Math.round(size);
+
+        setCropX(rX);
+        setCropY(rY);
+        setCropSize(rSize);
+
+        setCornerTL({ x: rX, y: rY });
+        setCornerTR({ x: rX + rSize, y: rY });
+        setCornerBL({ x: rX, y: rY + rSize });
+        setCornerBR({ x: rX + rSize, y: rY + rSize });
+      } else if (dragMode === "tr") {
+        const x1 = start.cropX;
+        const y2 = start.cropY + start.cropSize;
+        const sizeX = xPct - x1;
+        const sizeY = y2 - yPct;
+        let size = Math.max(15, Math.min(sizeX, sizeY));
+        if (x1 + size > 100) size = 100 - x1;
+        if (y2 - size < 0) size = y2;
+
+        const rX = Math.round(x1);
+        const rY = Math.round(y2 - size);
+        const rSize = Math.round(size);
+
+        setCropX(rX);
+        setCropY(rY);
+        setCropSize(rSize);
+
+        setCornerTL({ x: rX, y: rY });
+        setCornerTR({ x: rX + rSize, y: rY });
+        setCornerBL({ x: rX, y: rY + rSize });
+        setCornerBR({ x: rX + rSize, y: rY + rSize });
+      } else if (dragMode === "bl") {
+        const x2 = start.cropX + start.cropSize;
+        const y1 = start.cropY;
+        const sizeX = x2 - xPct;
+        const sizeY = yPct - y1;
+        let size = Math.max(15, Math.min(sizeX, sizeY));
+        if (x2 - size < 0) size = x2;
+        if (y1 + size > 100) size = 100 - y1;
+
+        const rX = Math.round(x2 - size);
+        const rY = Math.round(y1);
+        const rSize = Math.round(size);
+
+        setCropX(rX);
+        setCropY(rY);
+        setCropSize(rSize);
+
+        setCornerTL({ x: rX, y: rY });
+        setCornerTR({ x: rX + rSize, y: rY });
+        setCornerBL({ x: rX, y: rY + rSize });
+        setCornerBR({ x: rX + rSize, y: rY + rSize });
+      } else if (dragMode === "br") {
+        const x1 = start.cropX;
+        const y1 = start.cropY;
+        const sizeX = xPct - x1;
+        const sizeY = yPct - y1;
+        let size = Math.max(15, Math.min(sizeX, sizeY));
+        if (x1 + size > 100) size = 100 - x1;
+        if (y1 + size > 100) size = 100 - y1;
+
+        const rX = Math.round(x1);
+        const rY = Math.round(y1);
+        const rSize = Math.round(size);
+
+        setCropX(rX);
+        setCropY(rY);
+        setCropSize(rSize);
+
+        setCornerTL({ x: rX, y: rY });
+        setCornerTR({ x: rX + rSize, y: rY });
+        setCornerBL({ x: rX, y: rY + rSize });
+        setCornerBR({ x: rX + rSize, y: rY + rSize });
+      }
+    }
+  };
+
+  const handleCropPointerUp = (e: React.PointerEvent) => {
+    if (!dragMode) return;
+    e.stopPropagation();
+    try {
+      (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+    } catch (err) {
+      // safe fallback
+    }
+    setDragMode(null);
+  };
+
+  const handleCropSizeChange = (val: number) => {
+    setCropSize(val);
+    if (cropX + val > 100) setCropX(Math.max(0, 100 - val));
+    if (cropY + val > 100) setCropY(Math.max(0, 100 - val));
+  };
+
+  const handleCropXChange = (val: number) => {
+    const maxVal = 100 - cropSize;
+    setCropX(Math.min(val, maxVal));
+  };
+
+  const handleCropYChange = (val: number) => {
+    const maxVal = 100 - cropSize;
+    setCropY(Math.min(val, maxVal));
+  };
+
+  // Synchronize modes when switching to square
+  useEffect(() => {
+    if (cropWarpMode === "square") {
+      setCornerTL({ x: cropX, y: cropY });
+      setCornerTR({ x: cropX + cropSize, y: cropY });
+      setCornerBL({ x: cropX, y: cropY + cropSize });
+      setCornerBR({ x: cropX + cropSize, y: cropY + cropSize });
+    }
+  }, [cropWarpMode, cropX, cropY, cropSize]);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+
+  // --- Seamless texture synthesizer ---
+  useEffect(() => {
+    if (!capturedTempImage) {
+      setProcessedTextureUrl("");
+      return;
+    }
+
+    const img = new Image();
+    img.onload = () => {
+      const sourceW = img.width;
+      const sourceH = img.height;
+
+      const canvas = document.createElement("canvas");
+      canvas.width = 512;
+      canvas.height = 512;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+
+      // Extract raw warped crop
+      const tempCanvas = document.createElement("canvas");
+      tempCanvas.width = 512;
+      tempCanvas.height = 512;
+      const tempCtx = tempCanvas.getContext("2d");
+      if (!tempCtx) return;
+
+      // Draw original image onto an offscreen canvas to access raw pixels
+      const srcCanvas = document.createElement("canvas");
+      srcCanvas.width = sourceW;
+      srcCanvas.height = sourceH;
+      const srcCtx = srcCanvas.getContext("2d");
+      if (!srcCtx) return;
+      srcCtx.drawImage(img, 0, 0);
+
+      const srcData = srcCtx.getImageData(0, 0, sourceW, sourceH);
+      const srcPixels = srcData.data;
+      const dstData = tempCtx.createImageData(512, 512);
+      const dstPixels = dstData.data;
+
+      // Extract corners in 0-1 normalized range
+      const x0 = cornerTL.x / 100;
+      const y0 = cornerTL.y / 100;
+      const x1 = cornerTR.x / 100;
+      const y1 = cornerTR.y / 100;
+      const x2 = cornerBR.x / 100;
+      const y2 = cornerBR.y / 100;
+      const x3 = cornerBL.x / 100;
+      const y3 = cornerBL.y / 100;
+
+      for (let y = 0; y < 512; y++) {
+        const v = y / 512;
+        const oneMinusV = 1 - v;
+        for (let x = 0; x < 512; x++) {
+          const u = x / 512;
+          const oneMinusU = 1 - u;
+
+          // Bilinear weights
+          const w0 = oneMinusU * oneMinusV;
+          const w1 = u * oneMinusV;
+          const w2 = u * v;
+          const w3 = oneMinusU * v;
+
+          const sxPct = w0 * x0 + w1 * x1 + w2 * x2 + w3 * x3;
+          const syPct = w0 * y0 + w1 * y1 + w2 * y2 + w3 * y3;
+
+          const px = Math.floor(sxPct * sourceW);
+          const py = Math.floor(syPct * sourceH);
+
+          const clampX = Math.max(0, Math.min(px, sourceW - 1));
+          const clampY = Math.max(0, Math.min(py, sourceH - 1));
+
+          const srcIdx = (clampY * sourceW + clampX) * 4;
+          const dstIdx = (y * 512 + x) * 4;
+
+          dstPixels[dstIdx] = srcPixels[srcIdx];
+          dstPixels[dstIdx + 1] = srcPixels[srcIdx + 1];
+          dstPixels[dstIdx + 2] = srcPixels[srcIdx + 2];
+          dstPixels[dstIdx + 3] = srcPixels[srcIdx + 3];
+        }
+      }
+      tempCtx.putImageData(dstData, 0, 0);
+
+      if (mirrorMode) {
+        // Draw 2x2 mirrored sections to create a guaranteed mathematically seamless tile
+        ctx.save();
+        ctx.scale(0.5, 0.5);
+        ctx.drawImage(tempCanvas, 0, 0);
+        ctx.restore();
+
+        ctx.save();
+        ctx.translate(512, 0);
+        ctx.scale(-0.5, 0.5);
+        ctx.drawImage(tempCanvas, 0, 0);
+        ctx.restore();
+
+        ctx.save();
+        ctx.translate(0, 512);
+        ctx.scale(0.5, -0.5);
+        ctx.drawImage(tempCanvas, 0, 0);
+        ctx.restore();
+
+        ctx.save();
+        ctx.translate(512, 512);
+        ctx.scale(-0.5, -0.5);
+        ctx.drawImage(tempCanvas, 0, 0);
+        ctx.restore();
+      } else if (blendAmount > 0) {
+        // Shift seams to center and do overlapping feather blend (Photoshop Offset Seamless filter style)
+        const half = 256;
+        const blendSize = Math.max(2, Math.round((blendAmount / 100) * 128));
+
+        // Draw shifted quadrants
+        ctx.drawImage(tempCanvas, half, half, half, half, 0, 0, half, half);
+        ctx.drawImage(tempCanvas, 0, half, half, half, half, 0, half, half);
+        ctx.drawImage(tempCanvas, half, 0, half, half, 0, half, half, half);
+        ctx.drawImage(tempCanvas, 0, 0, half, half, half, half, half, half);
+
+        ctx.save();
+        const stripWidth = blendSize * 2;
+
+        // Blend vertical seam at x = 256
+        for (let i = 0; i < stripWidth; i++) {
+          const alpha = 1 - (i / stripWidth);
+          ctx.globalAlpha = alpha;
+          ctx.drawImage(
+            tempCanvas,
+            i, 0, 1, 512,
+            half - blendSize + i, 0, 1, 512
+          );
+        }
+
+        // Blend horizontal seam at y = 256
+        for (let j = 0; j < stripWidth; j++) {
+          const alpha = 1 - (j / stripWidth);
+          ctx.globalAlpha = alpha;
+          ctx.drawImage(
+            tempCanvas,
+            0, j, 512, 1,
+            0, half - blendSize + j, 512, 1
+          );
+        }
+
+        ctx.restore();
+      } else {
+        ctx.drawImage(tempCanvas, 0, 0);
+      }
+
+      setProcessedTextureUrl(canvas.toDataURL("image/jpeg"));
+    };
+    img.src = capturedTempImage;
+  }, [capturedTempImage, cornerTL, cornerTR, cornerBL, cornerBR, blendAmount, mirrorMode]);
 
   // --- Walk Modal Logic ---
   const handleWalkClick = () => {
@@ -1119,6 +1557,7 @@ export const Interface: React.FC = () => {
         },
       });
       streamRef.current = stream;
+      setCapturedTempImage(null);
       setIsCameraOverlayOpen(true);
     } catch (err) {
       console.error("Error accessing camera:", err);
@@ -1133,7 +1572,11 @@ export const Interface: React.FC = () => {
       streamRef.current = null;
     }
     setVideoStream(null);
+    setCapturedTempImage(null);
     setIsCameraOverlayOpen(false);
+    setEditingMaterialId(null);
+    setIsPBRMaterial(false);
+    setIsSavingMaterial(false);
   };
 
   const captureSnapshot = () => {
@@ -1161,22 +1604,19 @@ export const Interface: React.FC = () => {
         );
 
         const dataUrl = canvas.toDataURL("image/jpeg");
-        const newMat = {
-          id: `cam-${Date.now()}`,
-          name: `Snapshot ${new Date().toLocaleTimeString()}`,
-          color: "#ffffff",
-          roughness: 0.6,
-          metalness: 0.0,
-          type: "fabric" as const,
-          textureUrl: dataUrl,
-        };
-        addMaterial(newMat);
-        if (selectedPart) {
-          setMaterial(selectedPart, newMat.id);
-        }
+        setCapturedTempImage(dataUrl);
+        setCropX(15);
+        setCropY(15);
+        setCropSize(70);
+        setBlendAmount(15);
+        setMirrorMode(false);
       }
     }
-    stopCamera();
+    // Stop camera feed to save battery/privacy while editing
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
   };
 
   const applyLiveTexture = () => {
@@ -1197,6 +1637,40 @@ export const Interface: React.FC = () => {
     }
     setMaterial(selectedPart, liveMatId);
     setIsCameraOverlayOpen(false);
+  };
+
+  const handleEditMaterialCrop = (mat: any) => {
+    setEditingMaterialId(mat.id);
+    setIsPBRMaterial(!!(mat.normalMapUrl || mat.roughnessMapUrl || mat.displacementMapUrl));
+    setCapturedTempImage(mat.capturedTempImage || mat.textureUrl || null);
+    setCropWarpMode(mat.cropWarpMode || "perspective");
+    setCornerTL(mat.cornerTL || { x: 15, y: 15 });
+    setCornerTR(mat.cornerTR || { x: 85, y: 15 });
+    setCornerBL(mat.cornerBL || { x: 15, y: 85 });
+    setCornerBR(mat.cornerBR || { x: 85, y: 85 });
+    setCropX(mat.cropX !== undefined ? mat.cropX : 10);
+    setCropY(mat.cropY !== undefined ? mat.cropY : 10);
+    setCropSize(mat.cropSize !== undefined ? mat.cropSize : 80);
+    setBlendAmount(mat.blendAmount !== undefined ? mat.blendAmount : 15);
+    setMirrorMode(mat.mirrorMode !== undefined ? mat.mirrorMode : false);
+    setIsCameraOverlayOpen(true);
+  };
+
+  const handlePBRImageReady = (dataUrl: string) => {
+    setCapturedTempImage(dataUrl);
+    setIsPBRMaterial(true);
+    setEditingMaterialId(null);
+    setCropWarpMode("perspective");
+    setCornerTL({ x: 15, y: 15 });
+    setCornerTR({ x: 85, y: 15 });
+    setCornerBL({ x: 15, y: 85 });
+    setCornerBR({ x: 85, y: 85 });
+    setCropX(10);
+    setCropY(10);
+    setCropSize(80);
+    setBlendAmount(15);
+    setMirrorMode(false);
+    setIsCameraOverlayOpen(true);
   };
 
   const handleSaveRecording = () => {
@@ -1512,64 +1986,509 @@ export const Interface: React.FC = () => {
       )}
 
       {isCameraOverlayOpen && (
-        <div className="absolute inset-0 bg-black z-[90] pointer-events-auto flex flex-col items-center justify-center">
-          <div className="flex justify-between items-center p-4 bg-black/50 absolute top-0 w-full z-10">
-            <span className="text-white font-medium">
-              Capture Texture (1:1)
-            </span>
-            <button onClick={stopCamera} className="text-white p-2">
-              <X size={24} />
-            </button>
-          </div>
+        <div className="absolute inset-0 bg-zinc-950/95 backdrop-blur-md z-[90] pointer-events-auto flex items-center justify-center p-2 md:p-4 overflow-hidden">
+          {capturedTempImage ? (
+            /* --- SEAMLESS TILING EDITOR VIEW --- */
+            <div className="flex flex-col w-full h-full max-w-[1580px] md:h-[95vh] md:max-h-[960px] bg-zinc-900 border border-white/10 rounded-2xl shadow-3xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 p-3 md:p-5 lg:p-6">
+              {/* Header */}
+              <div className="flex justify-between items-center pb-3 border-b border-white/10 mb-3 shrink-0">
+                <div className="flex items-center gap-3">
+                  {!isPBRMaterial && (
+                    <>
+                      <button
+                        onClick={() => {
+                          setCapturedTempImage(null);
+                          startCamera();
+                        }}
+                        className="text-zinc-400 hover:text-white p-2 hover:bg-white/5 rounded-lg transition-all flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider"
+                      >
+                        <ArrowLeftFromLine size={16} className="text-zinc-400" /> {editingMaterialId ? "New Snapshot" : "Retake"}
+                      </button>
+                      <div className="h-4 w-[1px] bg-white/10" />
+                    </>
+                  )}
+                  <span className="text-white font-bold text-sm md:text-base flex items-center gap-2">
+                    <Sparkles size={18} className="text-blue-400 animate-pulse" />
+                    Seamless Texture & Tiling Editor
+                  </span>
+                </div>
+                <button onClick={stopCamera} className="text-zinc-400 hover:text-white p-2 hover:bg-white/5 rounded-lg transition-colors">
+                  <X size={20} />
+                </button>
+              </div>
 
-          {/* Square Viewport */}
-          <div className="relative w-full max-md aspect-square bg-black overflow-hidden border-2 border-white/20 rounded-lg shadow-2xl mx-4">
-            <video
-              ref={videoRef}
-              autoPlay
-              playsInline
-              className="absolute inset-0 w-full h-full object-cover"
-            />
+              {/* Two Column Layout */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 lg:gap-8 items-stretch flex-1 overflow-y-auto md:overflow-hidden pr-1 min-h-0">
+                {/* Left Column: Interactive Crop Box on Raw Image */}
+                <div className="flex flex-col gap-3 h-full overflow-y-auto pr-1.5">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[10px] md:text-xs font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
+                      <CheckSquare size={14} className="text-blue-500" />
+                      1. Adjust Tiling Area & Perspective
+                    </span>
+                  </div>
 
-            {/* Grid Guide */}
-            <div className="absolute inset-0 grid grid-cols-3 grid-rows-3 pointer-events-none opacity-30">
-              <div className="border border-white/30"></div>
-              <div className="border border-white/30"></div>
-              <div className="border border-white/30"></div>
-              <div className="border border-white/30"></div>
-              <div className="border border-white/30"></div>
-              <div className="border border-white/30"></div>
-              <div className="border border-white/30"></div>
-              <div className="border border-white/30"></div>
-              <div className="border border-white/30"></div>
-            </div>
-          </div>
+                  {/* Mode Selector */}
+                  <div className="flex bg-zinc-950/60 border border-white/5 p-1 rounded-xl shrink-0">
+                    <button
+                      onClick={() => setCropWarpMode("perspective")}
+                      className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 text-xs rounded-lg transition-all ${cropWarpMode === "perspective" ? "bg-yellow-500 text-zinc-950 font-extrabold shadow" : "text-zinc-400 hover:text-zinc-200"}`}
+                    >
+                      <Sliders size={13} />
+                      Perspective Warp (Substance)
+                    </button>
+                    <button
+                      onClick={() => setCropWarpMode("square")}
+                      className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 text-xs rounded-lg transition-all ${cropWarpMode === "square" ? "bg-yellow-500 text-zinc-950 font-extrabold shadow" : "text-zinc-400 hover:text-zinc-200"}`}
+                    >
+                      <Square size={13} />
+                      Square Crop (Fixed)
+                    </button>
+                  </div>
 
-          <div className="absolute bottom-10 left-0 right-0 flex justify-center items-center gap-8 pb-8">
-            <div className="flex flex-col items-center gap-2">
-              <button
-                onClick={captureSnapshot}
-                className="w-16 h-16 rounded-full border-4 border-white flex items-center justify-center bg-white/20 active:bg-white/50 transition-colors"
-              >
-                <div className="w-12 h-12 bg-white rounded-full" />
-              </button>
-              <span className="text-xs text-white font-medium shadow-black drop-shadow-md">
-                Snapshot
-              </span>
+                  <div 
+                    ref={cropContainerRef}
+                    onPointerMove={handleCropPointerMove}
+                    onPointerUp={handleCropPointerUp}
+                    onPointerLeave={handleCropPointerUp}
+                    className="relative aspect-square w-full bg-zinc-900 rounded-xl overflow-hidden border border-white/10 shadow-2xl flex items-center justify-center touch-none select-none"
+                  >
+                    <img
+                      src={capturedTempImage}
+                      alt="Captured snapshot"
+                      className="absolute inset-0 w-full h-full object-cover select-none pointer-events-none opacity-95"
+                    />
+                    
+                    {/* SVG Vector Mask and Grid Overlay */}
+                    <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 w-full h-full pointer-events-none z-10">
+                      <defs>
+                        <mask id="crop-mask">
+                          <rect x="0" y="0" width="100" height="100" fill="white" />
+                          <polygon
+                            points={`${cornerTL.x},${cornerTL.y} ${cornerTR.x},${cornerTR.y} ${cornerBR.x},${cornerBR.y} ${cornerBL.x},${cornerBL.y}`}
+                            fill="black"
+                          />
+                        </mask>
+                      </defs>
+                      
+                      {/* Dark Overlay Mask */}
+                      <rect x="0" y="0" width="100" height="100" fill="rgba(0, 0, 0, 0.75)" mask="url(#crop-mask)" className="pointer-events-auto" />
+                      
+                      {/* Active Path Border */}
+                      <polygon
+                        points={`${cornerTL.x},${cornerTL.y} ${cornerTR.x},${cornerTR.y} ${cornerBR.x},${cornerBR.y} ${cornerBL.x},${cornerBL.y}`}
+                        fill="rgba(250, 204, 21, 0.04)"
+                        stroke="#fbbf24"
+                        strokeWidth="0.8"
+                        strokeDasharray="1.5 1.2"
+                        className="cursor-move pointer-events-auto"
+                        onPointerDown={(e) => handleCropPointerDown(e, "move")}
+                      />
+                      
+                      {/* Grid Lines inside custom Quad */}
+                      {/* Horizontal Grid Line 1 */}
+                      <line
+                        x1={cornerTL.x + (cornerBL.x - cornerTL.x) / 3}
+                        y1={cornerTL.y + (cornerBL.y - cornerTL.y) / 3}
+                        x2={cornerTR.x + (cornerBR.x - cornerTR.x) / 3}
+                        y2={cornerTR.y + (cornerBR.y - cornerTR.y) / 3}
+                        stroke="#fbbf24"
+                        strokeWidth="0.3"
+                        opacity="0.3"
+                      />
+                      {/* Horizontal Grid Line 2 */}
+                      <line
+                        x1={cornerTL.x + 2 * (cornerBL.x - cornerTL.x) / 3}
+                        y1={cornerTL.y + 2 * (cornerBL.y - cornerTL.y) / 3}
+                        x2={cornerTR.x + 2 * (cornerBR.x - cornerTR.x) / 3}
+                        y2={cornerTR.y + 2 * (cornerBR.y - cornerTR.y) / 3}
+                        stroke="#fbbf24"
+                        strokeWidth="0.3"
+                        opacity="0.3"
+                      />
+                      {/* Vertical Grid Line 1 */}
+                      <line
+                        x1={cornerTL.x + (cornerTR.x - cornerTL.x) / 3}
+                        y1={cornerTL.y + (cornerTR.y - cornerTL.y) / 3}
+                        x2={cornerBL.x + (cornerBR.x - cornerBL.x) / 3}
+                        y2={cornerBL.y + (cornerBR.y - cornerBL.y) / 3}
+                        stroke="#fbbf24"
+                        strokeWidth="0.3"
+                        opacity="0.3"
+                      />
+                      {/* Vertical Grid Line 2 */}
+                      <line
+                        x1={cornerTL.x + 2 * (cornerTR.x - cornerTL.x) / 3}
+                        y1={cornerTL.y + 2 * (cornerTR.y - cornerTL.y) / 3}
+                        x2={cornerBL.x + 2 * (cornerBR.x - cornerBL.x) / 3}
+                        y2={cornerBL.y + 2 * (cornerBR.y - cornerBL.y) / 3}
+                        stroke="#fbbf24"
+                        strokeWidth="0.3"
+                        opacity="0.3"
+                      />
+                    </svg>
+                    
+                    {/* Interactive Drag Handles */}
+                    {/* Top Left */}
+                    <div
+                      onPointerDown={(e) => handleCropPointerDown(e, "tl")}
+                      style={{ left: `${cornerTL.x}%`, top: `${cornerTL.y}%` }}
+                      className="absolute w-6 h-6 -ml-3 -mt-3 bg-yellow-400 hover:bg-yellow-300 active:scale-125 transition-transform border-2 border-zinc-950 rounded-full shadow-lg cursor-nwse-resize z-20 flex items-center justify-center touch-none"
+                      title="Drag corner"
+                    >
+                      <div className="w-1.5 h-1.5 bg-zinc-950 rounded-full" />
+                    </div>
+
+                    {/* Top Right */}
+                    <div
+                      onPointerDown={(e) => handleCropPointerDown(e, "tr")}
+                      style={{ left: `${cornerTR.x}%`, top: `${cornerTR.y}%` }}
+                      className="absolute w-6 h-6 -ml-3 -mt-3 bg-yellow-400 hover:bg-yellow-300 active:scale-125 transition-transform border-2 border-zinc-950 rounded-full shadow-lg cursor-nesw-resize z-20 flex items-center justify-center touch-none"
+                      title="Drag corner"
+                    >
+                      <div className="w-1.5 h-1.5 bg-zinc-950 rounded-full" />
+                    </div>
+
+                    {/* Bottom Right */}
+                    <div
+                      onPointerDown={(e) => handleCropPointerDown(e, "br")}
+                      style={{ left: `${cornerBR.x}%`, top: `${cornerBR.y}%` }}
+                      className="absolute w-6 h-6 -ml-3 -mt-3 bg-yellow-400 hover:bg-yellow-300 active:scale-125 transition-transform border-2 border-zinc-950 rounded-full shadow-lg cursor-nwse-resize z-20 flex items-center justify-center touch-none"
+                      title="Drag corner"
+                    >
+                      <div className="w-1.5 h-1.5 bg-zinc-950 rounded-full" />
+                    </div>
+
+                    {/* Bottom Left */}
+                    <div
+                      onPointerDown={(e) => handleCropPointerDown(e, "bl")}
+                      style={{ left: `${cornerBL.x}%`, top: `${cornerBL.y}%` }}
+                      className="absolute w-6 h-6 -ml-3 -mt-3 bg-yellow-400 hover:bg-yellow-300 active:scale-125 transition-transform border-2 border-zinc-950 rounded-full shadow-lg cursor-nesw-resize z-20 flex items-center justify-center touch-none"
+                      title="Drag corner"
+                    >
+                      <div className="w-1.5 h-1.5 bg-zinc-950 rounded-full" />
+                    </div>
+
+                    <span className="bg-yellow-400 text-zinc-950 text-[9px] font-extrabold uppercase tracking-widest px-1.5 py-0.5 rounded absolute bottom-2 right-2 select-none pointer-events-none z-20 shadow">
+                      {cropWarpMode === "perspective" ? "Perspective Warp Active" : `${cropSize}% Tile Area`}
+                    </span>
+                  </div>
+
+                  <span className="text-[10px] text-zinc-500 text-center italic">
+                    {cropWarpMode === "perspective"
+                      ? "Drag 4 corners to fit angled tiles. Bilinear interpolation will flatten it perfectly."
+                      : "Drag the highlighted square area to crop your seamless texture base."}
+                  </span>
+                </div>
+
+                {/* Right Column: Live 3x3 Repeat Preview & Controls */}
+                <div className="flex flex-col gap-4 bg-zinc-950/40 border border-white/5 p-3.5 md:p-4 rounded-2xl h-full overflow-y-auto justify-between min-h-0 pr-1.5">
+                  {/* Live Tiling Preview Header */}
+                  <div className="flex flex-col gap-3">
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-[10px] md:text-xs font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <Repeat size={14} className="text-green-500" />
+                        2. Live 3x3 Tiling Preview
+                      </span>
+                      <span className="text-[11px] text-zinc-500">
+                        Check how the seams align when repeated across surfaces.
+                      </span>
+                    </div>
+
+                    {/* 3x3 background-repeat box */}
+                    <div className="relative aspect-square w-full max-w-[180px] md:max-w-[260px] lg:max-w-[280px] xl:max-w-[320px] mx-auto bg-zinc-950 rounded-xl overflow-hidden border border-white/15 shadow-2xl">
+                      {processedTextureUrl ? (
+                        <div
+                          className="absolute inset-0"
+                          style={{
+                            backgroundImage: `url(${processedTextureUrl})`,
+                            backgroundRepeat: "repeat",
+                            backgroundSize: "33.33% 33.33%",
+                          }}
+                        />
+                      ) : (
+                        <div className="absolute inset-0 flex items-center justify-center text-zinc-600 text-xs font-mono">
+                          <Loader2 className="animate-spin text-zinc-500" size={18} /> Processing...
+                        </div>
+                      )}
+                      
+                      {/* Thin cross grid to emphasize the seam borders */}
+                      <div className="absolute inset-0 grid grid-cols-3 grid-rows-3 pointer-events-none opacity-20">
+                        <div className="border border-white/40"></div>
+                        <div className="border border-white/40"></div>
+                        <div className="border border-white/40"></div>
+                        <div className="border border-white/40"></div>
+                        <div className="border border-white/40"></div>
+                        <div className="border border-white/40"></div>
+                        <div className="border border-white/40"></div>
+                        <div className="border border-white/40"></div>
+                        <div className="border border-white/40"></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Calibration Controls */}
+                  <div className="space-y-3 pt-3 border-t border-white/10 flex-1">
+                    {/* Mirror Mode Toggle */}
+                    <div className="flex items-center justify-between p-2.5 bg-zinc-950/70 rounded-xl border border-white/5">
+                      <div className="flex flex-col pr-2">
+                        <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                          <CheckCircle size={13} className="text-blue-400" />
+                          Mirror Seamless Mode
+                        </span>
+                        <span className="text-[10px] text-zinc-500">
+                          Flips tiles horizontally & vertically to guarantee perfect seams.
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => setMirrorMode(!mirrorMode)}
+                        className={`w-10 h-6 rounded-full p-1 transition-colors duration-200 shrink-0 ${mirrorMode ? "bg-blue-600" : "bg-zinc-800"}`}
+                      >
+                        <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-200 ${mirrorMode ? "translate-x-4" : "translate-x-0"}`} />
+                      </button>
+                    </div>
+
+                    {/* Edge Blending Slider (disabled if Mirror is on) */}
+                    <div className={`space-y-1 p-2.5 rounded-xl border border-white/5 bg-zinc-950/40 transition-opacity duration-200 ${mirrorMode ? "opacity-30 pointer-events-none" : ""}`}>
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-zinc-300 font-semibold flex items-center gap-1.5">
+                          <Sliders size={13} className="text-purple-400" />
+                          Edge Feathering / Blend
+                        </span>
+                        <span className="font-mono text-zinc-400 text-[11px]">{blendAmount}%</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0"
+                        max="35"
+                        step="1"
+                        value={blendAmount}
+                        onChange={(e) => setBlendAmount(Number(e.target.value))}
+                        className="w-full h-1 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                      />
+                      <span className="text-[9px] text-zinc-500 block">
+                        Cross-fades opposite borders to smooth out alignment seams.
+                      </span>
+                    </div>
+
+                    {/* Sliders for Crop Area / Perspective Info */}
+                    {cropWarpMode === "square" ? (
+                      <div className="space-y-3 p-3 rounded-xl border border-white/5 bg-zinc-950/40 animate-in fade-in duration-200">
+                        {/* Crop Size */}
+                        <div className="space-y-1">
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="text-zinc-300 font-medium">Crop Size</span>
+                            <span className="font-mono text-zinc-400 text-[11px]">{cropSize}%</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="20"
+                            max="95"
+                            step="1"
+                            value={cropSize}
+                            onChange={(e) => handleCropSizeChange(Number(e.target.value))}
+                            className="w-full h-1 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                          />
+                        </div>
+
+                        {/* Position X */}
+                        <div className="space-y-1">
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="text-zinc-300 font-medium">Move Horizontal</span>
+                            <span className="font-mono text-zinc-400 text-[11px]">{cropX}%</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="0"
+                            max={100 - cropSize}
+                            step="1"
+                            value={cropX}
+                            onChange={(e) => handleCropXChange(Number(e.target.value))}
+                            className="w-full h-1 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                          />
+                        </div>
+
+                        {/* Position Y */}
+                        <div className="space-y-1">
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="text-zinc-300 font-medium">Move Vertical</span>
+                            <span className="font-mono text-zinc-400 text-[11px]">{cropY}%</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="0"
+                            max={100 - cropSize}
+                            step="1"
+                            value={cropY}
+                            onChange={(e) => handleCropYChange(Number(e.target.value))}
+                            className="w-full h-1 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="p-3.5 rounded-xl border border-yellow-500/10 bg-yellow-500/5 space-y-2 text-xs text-yellow-200/90 leading-relaxed animate-in fade-in duration-200">
+                        <p className="font-bold text-yellow-400 flex items-center gap-1.5">
+                          <Sparkles size={12} />
+                          Perspective Sampler Controls
+                        </p>
+                        <p className="text-[11px] text-yellow-100/70">
+                          To map perspective surfaces (e.g. brick walls, textiles at an angle):
+                        </p>
+                        <ul className="list-disc pl-4 space-y-1 text-[11px] text-yellow-100/60">
+                          <li>Drag the four corners to align with repeating patterns.</li>
+                          <li>Click & drag the center area to move the entire quad.</li>
+                          <li>Real-time bilinear warp renders a perfect 3D square.</li>
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Save Button */}
+                  <div className="flex gap-3 pt-4 border-t border-white/10 shrink-0">
+                    <button
+                      onClick={() => {
+                        if (editingMaterialId || isPBRMaterial) {
+                          stopCamera();
+                        } else {
+                          setCapturedTempImage(null);
+                          startCamera();
+                        }
+                      }}
+                      className="flex-1 py-3 px-4 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white font-semibold text-xs uppercase tracking-wider transition-all"
+                    >
+                      {editingMaterialId || isPBRMaterial ? "Cancel" : "Discard & Retake"}
+                    </button>
+                    <button
+                      onClick={async () => {
+                        if (!processedTextureUrl) return;
+                        const isEditing = !!editingMaterialId;
+                        const matId = editingMaterialId || `cam-${Date.now()}`;
+                        const matName = isEditing
+                          ? (materials.find((m) => m.id === editingMaterialId)?.name || (isPBRMaterial ? `Seamless PBR Material` : `Seamless Material`))
+                          : (isPBRMaterial ? `PBR Material ${new Date().toLocaleTimeString()}` : `Seamless Material ${new Date().toLocaleTimeString()}`);
+
+                        setIsSavingMaterial(true);
+                        try {
+                          let maps: any = {};
+                          if (isPBRMaterial) {
+                            maps = await processPBRMaps(processedTextureUrl);
+                          }
+
+                          const newMat = {
+                            id: matId,
+                            name: matName,
+                            color: "#ffffff",
+                            roughness: isPBRMaterial ? 1.0 : 0.6,
+                            metalness: 0.0,
+                            type: "fabric" as const,
+                            textureUrl: processedTextureUrl,
+                            normalMapUrl: maps.normalMapUrl || undefined,
+                            roughnessMapUrl: maps.roughnessMapUrl || undefined,
+                            displacementMapUrl: maps.displacementMapUrl || undefined,
+                            aoMapUrl: maps.aoMapUrl || undefined,
+                            capturedTempImage,
+                            cropWarpMode,
+                            cornerTL: { ...cornerTL },
+                            cornerTR: { ...cornerTR },
+                            cornerBL: { ...cornerBL },
+                            cornerBR: { ...cornerBR },
+                            cropX,
+                            cropY,
+                            cropSize,
+                            blendAmount,
+                            mirrorMode,
+                          };
+                          addMaterial(newMat);
+                          if (selectedPart && !isEditing) {
+                            setMaterial(selectedPart, newMat.id);
+                          }
+                          stopCamera();
+                        } catch (err) {
+                          console.error("Failed to save and generate material:", err);
+                        } finally {
+                          setIsSavingMaterial(false);
+                        }
+                      }}
+                      disabled={!processedTextureUrl || isSavingMaterial}
+                      className="flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold text-xs uppercase tracking-wider shadow-lg shadow-blue-500/20 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                      {isSavingMaterial ? (
+                        <>
+                          <Loader2 className="animate-spin" size={14} />
+                          Generating PBR...
+                        </>
+                      ) : editingMaterialId ? (
+                        "Save Changes"
+                      ) : (
+                        "Save & Apply"
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div className="flex flex-col items-center gap-2">
-              <button
-                onClick={applyLiveTexture}
-                disabled={!selectedPart}
-                className={`w-16 h-16 rounded-full border-4 border-blue-500 flex items-center justify-center bg-blue-500/20 active:bg-blue-500/50 transition-colors ${!selectedPart ? "opacity-50 cursor-not-allowed" : ""}`}
-              >
-                <Video size={32} className="text-white" />
-              </button>
-              <span className="text-xs text-white font-medium shadow-black drop-shadow-md">
-                Live Mode
-              </span>
-            </div>
-          </div>
+          ) : (
+            /* --- ACTIVE CAMERA SNAPSHOT VIEW --- */
+            <>
+              <div className="flex justify-between items-center p-4 bg-black/50 absolute top-0 w-full z-10">
+                <span className="text-white font-medium">
+                  Capture Texture (1:1)
+                </span>
+                <button onClick={stopCamera} className="text-white p-2">
+                  <X size={24} />
+                </button>
+              </div>
+
+              {/* Square Viewport */}
+              <div className="relative w-full max-w-md aspect-square bg-black overflow-hidden border-2 border-white/20 rounded-lg shadow-2xl mx-4">
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
+
+                {/* Grid Guide */}
+                <div className="absolute inset-0 grid grid-cols-3 grid-rows-3 pointer-events-none opacity-30">
+                  <div className="border border-white/30"></div>
+                  <div className="border border-white/30"></div>
+                  <div className="border border-white/30"></div>
+                  <div className="border border-white/30"></div>
+                  <div className="border border-white/30"></div>
+                  <div className="border border-white/30"></div>
+                  <div className="border border-white/30"></div>
+                  <div className="border border-white/30"></div>
+                  <div className="border border-white/30"></div>
+                </div>
+              </div>
+
+              <div className="absolute bottom-10 left-0 right-0 flex justify-center items-center gap-8 pb-8">
+                <div className="flex flex-col items-center gap-2">
+                  <button
+                    onClick={captureSnapshot}
+                    className="w-16 h-16 rounded-full border-4 border-white flex items-center justify-center bg-white/20 active:bg-white/50 transition-colors"
+                  >
+                    <div className="w-12 h-12 bg-white rounded-full" />
+                  </button>
+                  <span className="text-xs text-white font-medium shadow-black drop-shadow-md">
+                    Snapshot
+                  </span>
+                </div>
+                <div className="flex flex-col items-center gap-2">
+                  <button
+                    onClick={applyLiveTexture}
+                    disabled={!selectedPart}
+                    className={`w-16 h-16 rounded-full border-4 border-blue-500 flex items-center justify-center bg-blue-500/20 active:bg-blue-500/50 transition-colors ${!selectedPart ? "opacity-50 cursor-not-allowed" : ""}`}
+                  >
+                    <Video size={32} className="text-white" />
+                  </button>
+                  <span className="text-xs text-white font-medium shadow-black drop-shadow-md">
+                    Live Mode
+                  </span>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       )}
 
@@ -1651,6 +2570,8 @@ export const Interface: React.FC = () => {
           showLeftPanel={showLeftPanel}
           onStartCamera={startCamera}
           onStopCamera={stopCamera}
+          onEditMaterialCrop={handleEditMaterialCrop}
+          onPBRImageReady={handlePBRImageReady}
         />
       </div>
 
@@ -2152,7 +3073,7 @@ const LeftPanel = ({ showLeftPanel, setShowLeftPanel }: any) => {
   );
 };
 
-const RightPanel = ({ activeTab, showLeftPanel, onStartCamera, onStopCamera }: any) => {
+const RightPanel = ({ activeTab, showLeftPanel, onStartCamera, onStopCamera, onEditMaterialCrop, onPBRImageReady }: any) => {
   const {
     isMobile,
     recordingStatus,
@@ -2268,7 +3189,16 @@ const RightPanel = ({ activeTab, showLeftPanel, onStartCamera, onStopCamera }: a
 
   const handlePBRUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) createPBRMaterial(file);
+    if (file && onPBRImageReady) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          const dataUrl = event.target.result as string;
+          onPBRImageReady(dataUrl);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleGenerate = async () => {
@@ -2698,19 +3628,34 @@ const RightPanel = ({ activeTab, showLeftPanel, onStartCamera, onStopCamera }: a
                             {mat.name}
                           </p>
                         </div>
-                        {!INITIAL_MATERIALS.some(
+                         {!INITIAL_MATERIALS.some(
                           (init) => init.id === mat.id,
                         ) && (
-                          <button
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              removeMaterial(mat.id);
-                            }}
-                            className="absolute top-2 right-2 p-2 bg-red-600 hover:bg-red-500 rounded-full text-white transition-all z-20 shadow-md backdrop-blur-sm opacity-80 hover:opacity-100"
-                          >
-                            <Trash2 size={14} />
-                          </button>
+                          <div className="absolute top-2 right-2 flex gap-1.5 z-20">
+                            {!!mat.capturedTempImage && (
+                              <button
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  onEditMaterialCrop(mat);
+                                }}
+                                className="p-2 bg-yellow-500 hover:bg-yellow-400 text-zinc-950 rounded-full transition-all shadow-md backdrop-blur-sm opacity-80 hover:opacity-100 flex items-center justify-center"
+                                title="Edit Crop / Perspective Warp"
+                              >
+                                <Sliders size={14} />
+                              </button>
+                            )}
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                removeMaterial(mat.id);
+                              }}
+                              className="p-2 bg-red-600 hover:bg-red-500 rounded-full text-white transition-all shadow-md backdrop-blur-sm opacity-80 hover:opacity-100"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
                         )}
                         {mat.normalMapUrl && (
                           <div className="absolute bottom-2 right-2 bg-black/60 backdrop-blur-sm rounded-full p-1 border border-white/20">

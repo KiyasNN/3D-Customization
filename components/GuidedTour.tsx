@@ -65,15 +65,15 @@ export const GuidedTour: React.FC<GuidedTourProps> = ({
 
   const steps: Step[] = [
     {
-      title: "Selamat Datang di 3D Shoe Customizer!",
-      description: "Mari luangkan waktu 1 menit untuk menjelajahi fitur-fitur canggih di platform visualisasi model sepatu 3D ini. Anda bisa mendesain material dengan bantuan AI, merekam video turntable, dan banyak lagi!",
+      title: "Welcome to 3D Shoe Customizer!",
+      description: "Let's take 1 minute to explore the advanced features of this 3D shoe visualization platform. You can design custom materials with AI, record rotating turntable videos, and so much more!",
       icon: <Sparkles className="w-6 h-6 text-yellow-400 animate-pulse" />,
       selector: "",
       placement: "center"
     },
     {
-      title: "Bagian Sepatu (Parts Layer)",
-      description: "Panel kiri ini menampilkan daftar seluruh komponen sepatu (Sole, Midsole, Upper Body, dsb). Klik salah satu baris untuk memilih bagian spesifik mana yang ingin Anda cat atau pasangi material kustom.",
+      title: "Shoe Parts (Layer List)",
+      description: "The left panel displays a list of all shoe components (Sole, Midsole, Upper Body, etc.). Click on any row to select the specific part you want to paint or apply custom textures to.",
       icon: <Layers className="w-6 h-6 text-blue-400" />,
       selector: "#tour-left-panel",
       placement: "right",
@@ -83,7 +83,7 @@ export const GuidedTour: React.FC<GuidedTourProps> = ({
     },
     {
       title: "AI Texture Generator",
-      description: "Gunakan kecanggihan AI Gemini untuk membuat tekstur yang belum pernah ada! Cukup ketik deskripsi seperti 'cracked lava', 'golden circuit board', atau 'dragon scales'. AI akan melukis material seamless berkualitas tinggi secara instan.",
+      description: "Harness the power of Gemini AI to create textures that have never existed before! Simply type a prompt like 'cracked lava', 'golden circuit board', or 'dragon scales'. The AI will paint high-quality seamless materials instantly.",
       icon: <Sparkles className="w-6 h-6 text-purple-400" />,
       selector: "#tour-right-panel",
       placement: "left",
@@ -92,8 +92,8 @@ export const GuidedTour: React.FC<GuidedTourProps> = ({
       }
     },
     {
-      title: "Kustomisasi Material Fisik",
-      description: "Ingin mengubah sifat kilap sepatu? Tab Materials membekali Anda dengan presets material PBR kelas profesional. Atur kekasaran material (Roughness), kepekatan logam (Metalness), atau hubungkan live webcam feed untuk rendering material dinamis!",
+      title: "PBR Materials Customization",
+      description: "Want to change how reflective or shiny the shoe is? The Materials tab provides you with professional-grade PBR material presets. Adjust Roughness, Metalness, or even connect a live webcam feed for dynamic rendering!",
       icon: <Layers className="w-6 h-6 text-green-400" />,
       selector: "#tour-right-panel",
       placement: "left",
@@ -102,8 +102,8 @@ export const GuidedTour: React.FC<GuidedTourProps> = ({
       }
     },
     {
-      title: "Tata Cahaya & Kalibrasi Studio",
-      description: "Ubah atmosfer studio sesuai selera Anda. Tab Light memungkinkan kalibrasi derajat rotasi lampu HDRI kustom, sudut kemiringan bayangan (Tilt), kecerahan ambient, serta pengaturan tinggi permukaan lantai.",
+      title: "Lighting & Studio Calibration",
+      description: "Change the studio's atmosphere to your liking. The Light tab allows you to calibrate custom HDRI environment rotation, shadow tilt, ambient brightness, and ground floor height.",
       icon: <Sun className="w-6 h-6 text-amber-400" />,
       selector: "#tour-right-panel",
       placement: "left",
@@ -112,15 +112,15 @@ export const GuidedTour: React.FC<GuidedTourProps> = ({
       }
     },
     {
-      title: "Snapshot & Perekaman Turntable (MP4)",
-      description: "Ingin memamerkan hasil desain Anda? Ambil snapshot foto resolusi tinggi instan (.PNG), atau luncurkan studio turntable berputar otomatis untuk merekam video animasi berputar berformat MP4 berkelas sinematik!",
+      title: "Snapshots & Turntable Recording (MP4)",
+      description: "Ready to show off your designs? Take instant high-resolution PNG snapshots, or launch the automated rotating studio turntable to record cinematic MP4 video loops!",
       icon: <Clapperboard className="w-6 h-6 text-red-500 animate-bounce" />,
       selector: "#tour-top-toolbar",
       placement: "bottom"
     },
     {
-      title: "Siap Menyalakan Kreativitas Anda?",
-      description: "Sekarang giliran Anda meracik kreasi mode sepatu futuristik! Kapan saja Anda membutuhkan panduan lagi, Anda dapat menekan tombol petunjuk tur di bagian atas layar.",
+      title: "Ready to Unleash Your Creativity?",
+      description: "Now it's your turn to craft futuristic shoe designs! If you ever need a guide again, simply press the help button at any time.",
       icon: <Gift className="w-6 h-6 text-yellow-400" />,
       selector: "",
       placement: "center"
@@ -175,11 +175,11 @@ export const GuidedTour: React.FC<GuidedTourProps> = ({
           setIsOpen(true);
         }}
         className="fixed bottom-24 right-6 pointer-events-auto bg-zinc-900/90 border border-white/10 hover:border-blue-500 hover:bg-zinc-800 text-white p-3 rounded-full shadow-2xl flex items-center gap-2 text-xs transition-all duration-300 group z-40"
-        title="Mulai Tur Panduan"
+        title="Start Guided Tour"
         id="restart-tour-float"
       >
         <HelpCircle size={16} className="text-blue-500 animate-pulse group-hover:rotate-12 transition-transform" />
-        <span className="max-w-0 overflow-hidden group-hover:max-w-[100px] transition-all duration-500 ease-out font-medium">Mulai Tur</span>
+        <span className="max-w-0 overflow-hidden group-hover:max-w-[100px] transition-all duration-500 ease-out font-medium">Start Tour</span>
       </button>
     );
   }
@@ -301,7 +301,7 @@ export const GuidedTour: React.FC<GuidedTourProps> = ({
             <button 
               onClick={handleComplete}
               className="p-1 hover:bg-white/10 rounded-full text-zinc-500 hover:text-white transition-colors"
-              title="Lewati Tur"
+              title="Skip Tour"
             >
               <X size={16} />
             </button>
@@ -338,7 +338,7 @@ export const GuidedTour: React.FC<GuidedTourProps> = ({
                   className="px-2.5 py-1.5 text-[10px] uppercase font-bold text-zinc-400 hover:text-white flex items-center gap-1 transition-all"
                 >
                   <ChevronLeft size={12} />
-                  Kembali
+                  Back
                 </button>
               )}
               
@@ -346,7 +346,7 @@ export const GuidedTour: React.FC<GuidedTourProps> = ({
                 onClick={handleNext}
                 className="bg-blue-600 hover:bg-blue-500 text-white rounded px-3.5 py-1.5 text-[10px] uppercase font-bold flex items-center gap-1 transition-all shadow-md active:scale-95"
               >
-                {currentStep === steps.length - 1 ? "Selesai" : "Lanjut"}
+                {currentStep === steps.length - 1 ? "Finish" : "Next"}
                 <ChevronRight size={12} />
               </button>
             </div>
