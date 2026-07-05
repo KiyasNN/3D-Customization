@@ -67,10 +67,10 @@ export const AdminPanel = () => {
   };
 
   useEffect(() => {
-    if (isAdminPanelOpen && activeAdminTab === "users") {
+    if (isAdminPanelOpen) {
       loadProfiles();
     }
-  }, [isAdminPanelOpen, activeAdminTab]);
+  }, [isAdminPanelOpen]);
 
   // Tenant Form State
   const [newTenantName, setNewTenantName] = useState("");
@@ -230,14 +230,21 @@ export const AdminPanel = () => {
               </button>
               <button
                 onClick={() => setActiveAdminTab("users")}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold tracking-wide transition-all ${
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold tracking-wide transition-all ${
                   activeAdminTab === "users"
                     ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/20"
                     : "text-zinc-400 hover:bg-white/5 hover:text-white"
                 }`}
               >
-                <ShieldCheck size={15} />
-                User Authorization
+                <div className="flex items-center gap-3">
+                  <ShieldCheck size={15} />
+                  <span>User Authorization</span>
+                </div>
+                {profiles.filter((p) => p.status === "pending").length > 0 && (
+                  <span className="text-[9px] bg-amber-500 text-zinc-950 font-extrabold px-1.5 py-0.5 rounded-full animate-pulse shrink-0">
+                    {profiles.filter((p) => p.status === "pending").length}
+                  </span>
+                )}
               </button>
             </div>
 
@@ -910,6 +917,55 @@ export const AdminPanel = () => {
                     <RefreshCw size={12} className={loadingProfiles ? "animate-spin" : ""} />
                     <span>Sync Profiles</span>
                   </button>
+                </div>
+
+                {/* USER STATISTICS OVERVIEW CARDS */}
+                <div className="grid grid-cols-4 gap-4">
+                  <div className="bg-zinc-950/60 border border-white/5 rounded-xl p-3.5 flex flex-col relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 w-16 h-16 bg-indigo-500/5 rounded-full blur-xl group-hover:bg-indigo-500/10 transition-all duration-300" />
+                    <div className="flex items-center justify-between mb-1 z-10">
+                      <span className="text-[9px] uppercase font-bold text-zinc-400 tracking-wider">Total Users</span>
+                      <Users size={14} className="text-indigo-400" />
+                    </div>
+                    <span className="text-xl font-bold text-white z-10">{profiles.length}</span>
+                    <span className="text-[9px] text-zinc-500 mt-0.5 font-medium">Registered profiles</span>
+                  </div>
+
+                  <div className="bg-zinc-950/60 border border-white/5 rounded-xl p-3.5 flex flex-col relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 w-16 h-16 bg-emerald-500/5 rounded-full blur-xl group-hover:bg-emerald-500/10 transition-all duration-300" />
+                    <div className="flex items-center justify-between mb-1 z-10">
+                      <span className="text-[9px] uppercase font-bold text-zinc-400 tracking-wider">Approved</span>
+                      <UserCheck size={14} className="text-emerald-400" />
+                    </div>
+                    <span className="text-xl font-bold text-emerald-400 z-10">
+                      {profiles.filter((p) => p.status === "approved").length}
+                    </span>
+                    <span className="text-[9px] text-zinc-500 mt-0.5 font-medium">Full active access</span>
+                  </div>
+
+                  <div className="bg-zinc-950/60 border border-white/5 rounded-xl p-3.5 flex flex-col relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 w-16 h-16 bg-amber-500/5 rounded-full blur-xl group-hover:bg-amber-500/10 transition-all duration-300" />
+                    <div className="flex items-center justify-between mb-1 z-10">
+                      <span className="text-[9px] uppercase font-bold text-zinc-400 tracking-wider">Pending Approval</span>
+                      <Clock size={14} className="text-amber-400 animate-pulse" />
+                    </div>
+                    <span className={`text-xl font-bold z-10 ${profiles.filter((p) => p.status === "pending").length > 0 ? "text-amber-400 animate-pulse" : "text-white"}`}>
+                      {profiles.filter((p) => p.status === "pending").length}
+                    </span>
+                    <span className="text-[9px] text-zinc-500 mt-0.5 font-medium">Awaiting approval</span>
+                  </div>
+
+                  <div className="bg-zinc-950/60 border border-white/5 rounded-xl p-3.5 flex flex-col relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 w-16 h-16 bg-red-500/5 rounded-full blur-xl group-hover:bg-red-500/10 transition-all duration-300" />
+                    <div className="flex items-center justify-between mb-1 z-10">
+                      <span className="text-[9px] uppercase font-bold text-zinc-400 tracking-wider">Blocked</span>
+                      <UserX size={14} className="text-red-400" />
+                    </div>
+                    <span className="text-xl font-bold text-red-400 z-10">
+                      {profiles.filter((p) => p.status === "blocked").length}
+                    </span>
+                    <span className="text-[9px] text-zinc-500 mt-0.5 font-medium">Access suspended</span>
+                  </div>
                 </div>
 
                 {/* SEARCH & FILTERS ROW */}
