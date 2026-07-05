@@ -262,6 +262,9 @@ const getThreeMaterial = (
   material.defines = material.defines || {};
   material.defines.USE_UV = '';
 
+  material.userData.uUvScale = { value: config.uvScale !== undefined ? config.uvScale : 1.0 };
+  material.userData.uProjectionType = { value: config.projectionType === 'planar' ? 1 : config.projectionType === 'box' ? 2 : config.projectionType === 'cylindrical' ? 3 : 0 };
+
   if (config.projectedImageUrl) {
      let decalTex = textureCache[config.projectedImageUrl];
      if (!decalTex) {
@@ -291,6 +294,10 @@ const getThreeMaterial = (
      material.userData.uDecalRepeat = { value: repeat };
 
      material.onBeforeCompile = (shader) => {
+     shader.uniforms.uUvScale = material.userData.uUvScale;
+     shader.uniforms.uProjectionType = material.userData.uProjectionType;
+
+     if (config.projectedImageUrl) {
         shader.uniforms.decalMap = material.userData.decalMap;
         shader.uniforms.uHasDecal = material.userData.uHasDecal;
         shader.uniforms.uDecalOffsetX = material.userData.uDecalOffsetX;
@@ -313,13 +320,65 @@ const getThreeMaterial = (
             uniform bool uDecalRepeat;
            `
         );
+     }
 
+     // Vertex shader updates to pass vLocalPosition
+     shader.vertexShader = shader.vertexShader.replace(
+       '#include <common>',
+       `#include <common>
+        varying vec3 vLocalPosition;`
+     );
+     shader.vertexShader = shader.vertexShader.replace(
+       '#include <begin_vertex>',
+       `#include <begin_vertex>
+        vLocalPosition = position;`
+     );
+
+     // Fragment shader updates to receive vLocalPosition and custom uniforms
+     shader.fragmentShader = shader.fragmentShader.replace(
+       '#include <common>',
+       `#include <common>
+        varying vec3 vLocalPosition;
+        uniform float uUvScale;
+        uniform int uProjectionType;`
+     );
+
+     // Custom projection mapping in the fragment shader
+     shader.fragmentShader = shader.fragmentShader.replace(/varying vec2 vUv;/g, 'varying vec2 vUv_original;');
+     shader.fragmentShader = shader.fragmentShader.replace(/vUv/g, 'customUv');
+     shader.fragmentShader = shader.fragmentShader.replace(/varying vec2 vUv_original;/g, 'varying vec2 vUv;');
+
+     shader.fragmentShader = shader.fragmentShader.replace(
+       'void main() {',
+       `void main() {
+        vec2 customUv = vUv;
+        if (uProjectionType == 1) {
+           customUv = vLocalPosition.xy * uUvScale;
+        } else if (uProjectionType == 2) {
+           vec3 absNormal = abs(vNormal);
+           if (absNormal.x > absNormal.y && absNormal.x > absNormal.z) {
+              customUv = vLocalPosition.yz * uUvScale;
+           } else if (absNormal.y > absNormal.x && absNormal.y > absNormal.z) {
+              customUv = vLocalPosition.xz * uUvScale;
+           } else {
+              customUv = vLocalPosition.xy * uUvScale;
+           }
+        } else if (uProjectionType == 3) {
+           float theta = atan(vLocalPosition.z, vLocalPosition.x);
+           customUv = vec2(theta / (2.0 * 3.14159265) + 0.5, vLocalPosition.y) * uUvScale;
+        } else {
+           customUv = vUv * uUvScale;
+        }
+       `
+     );
+
+     if (config.projectedImageUrl) {
         shader.fragmentShader = shader.fragmentShader.replace(
            '#include <map_fragment>',
            `#include <map_fragment>
             #ifdef USE_UV
             if (uHasDecal) {
-               vec2 decalUv = vUv;
+               vec2 decalUv = customUv;
                decalUv -= vec2(0.5);
                float c = cos(uDecalRotation);
                float s = sin(uDecalRotation);
@@ -341,7 +400,8 @@ const getThreeMaterial = (
             #endif
            `
         );
-      };
+     }
+  };
   }
 
   materialCache[cacheKey] = material;
@@ -510,6 +570,7 @@ const AnnotationManager = ({ scene }: { scene: THREE.Group }) => {
   const customParts = useStore(s => s.customParts);
   const partAnnotations = useStore(s => s.partAnnotations);
   const showAnnotations = useStore(s => s.showAnnotations);
+  const partVisibility = useStore(s => s.partVisibility);
   const selectedPart = useStore(s => s.selectedPart);
   const recordingStatus = useStore(s => s.recordingStatus);
   const isSnapshotting = useStore(s => s.isSnapshotting);
@@ -553,6 +614,7 @@ const AnnotationManager = ({ scene }: { scene: THREE.Group }) => {
     }
 
     customParts.forEach(id => {
+       if (partVisibility[id] === false) return;
        const data = partAnnotations[id];
        if (!data || (!data.title && !data.description)) return;
        
@@ -653,6 +715,7 @@ const AnnotationManager = ({ scene }: { scene: THREE.Group }) => {
   return (
     <group ref={groupRef}>
        {customParts.map(id => {
+          if (partVisibility[id] === false) return null;
           const data = partAnnotations[id];
           if (!data || (!data.title && !data.description)) return null;
           
@@ -980,14 +1043,13 @@ const ShoePartMesh = ({ id, geometry, position, scale, explodeOffset, interactiv
     setMesh(node);
   }, []);
 
-  if (isVisible === false) return null;
-
   const meshElement = (
     <mesh
       ref={setMeshRef}
       name={id}
       geometry={partGeometry}
       material={material}
+      visible={isVisible}
       onPointerDown={onMeshPointerDown}
       onPointerMove={onMeshPointerMove}
       onPointerUp={onMeshPointerUp}
@@ -1013,21 +1075,21 @@ const ShoePartMesh = ({ id, geometry, position, scale, explodeOffset, interactiv
       castShadow
       receiveShadow
     >
-      {isSelected && (
+      {isSelected && isVisible && (
         <Edges 
           scale={1.0} 
           threshold={15} 
           color="#ff6600" 
         />
       )}
-      {isSelected && <Dimensions geometry={partGeometry} />}
+      {isSelected && isVisible && <Dimensions geometry={partGeometry} />}
     </mesh>
   );
 
   return (
     <group>
       {meshElement}
-      {isSelected && showTransformGizmo && isExploded && mesh && (
+      {isSelected && showTransformGizmo && isExploded && mesh && isVisible && (
         <TransformControls
           object={mesh}
           mode={transformMode}
@@ -1076,6 +1138,15 @@ export const useModelLoader = (url: string, isObj: boolean, isUsdz: boolean, res
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<any>(null);
+  const setIsModelLoading = useStore(s => s.setIsModelLoading);
+  const setModelLoadingProgress = useStore(s => s.setModelLoadingProgress);
+
+  useEffect(() => {
+    setIsModelLoading(loading);
+    return () => {
+      setIsModelLoading(false);
+    };
+  }, [loading, setIsModelLoading]);
 
   useEffect(() => {
     if (!url) {
@@ -1148,6 +1219,12 @@ export const useModelLoader = (url: string, isObj: boolean, isUsdz: boolean, res
       if (!active) return;
 
       const manager = new THREE.LoadingManager();
+      manager.onProgress = (itemUrl, itemsLoaded, itemsTotal) => {
+        if (itemsTotal > 0) {
+          const percentage = Math.round((itemsLoaded / itemsTotal) * 100);
+          setModelLoadingProgress(percentage);
+        }
+      };
       manager.setURLModifier((requestUrl: string) => {
         if (!resources) return requestUrl;
         const decodedUrl = decodeURIComponent(requestUrl);
@@ -1473,6 +1550,9 @@ const RecursiveMeshPart = React.memo(({ object, interactive, videoTexture }: any
                 
                 // Update refs used for animations/explosions
                 originalPosition.current.copy(object.position);
+
+                // Update initialPositions with the compensated position so it survives remounts/resets
+                initialPositions.set(object.uuid, object.position.clone());
             }
 
             object.userData.__pivotCentered = true;
@@ -1631,14 +1711,13 @@ const RecursiveMeshPart = React.memo(({ object, interactive, videoTexture }: any
         setMesh(node);
     }, []);
 
-    if (!isVisible) return null;
-
     const meshElement = (
       <mesh
           ref={setMeshRef}
           name={id}
           geometry={object.geometry}
           material={material}
+          visible={isVisible}
           castShadow
           receiveShadow
           onPointerDown={onMeshPointerDown}
@@ -1664,21 +1743,21 @@ const RecursiveMeshPart = React.memo(({ object, interactive, videoTexture }: any
               document.body.style.cursor = 'auto';
           } : undefined}
       >
-          {isSelected && (
+          {isSelected && isVisible && (
             <Edges 
               scale={1.0} 
               threshold={15} 
               color="#ff6600" 
             />
           )}
-          {isSelected && <Dimensions geometry={object.geometry} />}
+          {isSelected && isVisible && <Dimensions geometry={object.geometry} />}
       </mesh>
     );
 
     return (
         <group>
           {meshElement}
-          {isSelected && showTransformGizmo && isExploded && mesh && (
+          {isSelected && showTransformGizmo && isExploded && mesh && isVisible && (
             <TransformControls
               object={mesh}
               mode={transformMode}

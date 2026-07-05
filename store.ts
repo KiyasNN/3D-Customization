@@ -83,11 +83,14 @@ export const useStore = create<AppState>((set, get) => ({
   isSingleMode: false,
   isExploded: false,
   isDragging: false,
+  isModelLoading: false,
+  modelLoadingProgress: 0,
   cameraRequest: null,
   fitRequest: 0,
+  fitWithDefaultDirection: false,
   currentView: 'default',
   showMeasurements: false,
-  showAnnotations: true, // Default to visible
+  showAnnotations: false, // Default to hidden
   labelSize: 1.0, // Default label size scale multiplier
   showFloor: false, // Default floor off
   showHelp: false,
@@ -125,6 +128,17 @@ export const useStore = create<AppState>((set, get) => ({
 
   setIsMobile: (isMobile) => set({ isMobile }),
   setIsDragging: (isDragging) => set({ isDragging }),
+  setIsModelLoading: (loading) => set((state) => {
+    if (state.isModelLoading === loading) return {};
+    return { 
+      isModelLoading: loading, 
+      modelLoadingProgress: loading ? state.modelLoadingProgress : 0 
+    };
+  }),
+  setModelLoadingProgress: (progress) => set((state) => {
+    if (state.modelLoadingProgress === progress) return {};
+    return { modelLoadingProgress: progress };
+  }),
 
   selectPart: (partId) => set((state) => {
     // Prevent selection if recording
@@ -300,6 +314,14 @@ export const useStore = create<AppState>((set, get) => ({
     partsToUpdate.forEach(id => {
       newVisibility[id] = false;
     });
+    return {
+      partVisibility: newVisibility
+    };
+  }),
+
+  togglePartVisibility: (partId) => set((state) => {
+    const newVisibility = { ...state.partVisibility };
+    newVisibility[partId] = newVisibility[partId] === false ? true : false;
     return {
       partVisibility: newVisibility
     };
@@ -927,5 +949,9 @@ export const useStore = create<AppState>((set, get) => ({
 
   // New action to frame specific bounds
   setCustomCamera: (position: [number, number, number], target: [number, number, number]) => set({ cameraRequest: { position, target }, currentView: 'free' }),
-  triggerFitView: () => set((state) => ({ fitRequest: state.fitRequest + 1 })),
+  triggerFitView: (forceDefaultDirection = false) => set((state) => ({ 
+    fitRequest: state.fitRequest + 1,
+    fitWithDefaultDirection: forceDefaultDirection,
+    currentView: forceDefaultDirection ? 'default' : state.currentView
+  })),
 }));

@@ -13,6 +13,8 @@ import { Interface } from './components/Interface';
 import { ShoeModel } from './components/ShoeModel';
 import { Mannequin } from './components/Mannequin'; // Import Mannequin
 import { useStore } from './store';
+import { LoadingOverlay } from './components/LoadingOverlay';
+import { CanvasDragDropHandler } from './components/CanvasDragDropHandler';
 
 // Fix for Three.js r165+ deprecation warning in three-stdlib
 if (THREE.LoaderUtils && typeof TextDecoder !== 'undefined') {
@@ -93,6 +95,7 @@ const SceneManager = () => {
 const CameraRig = ({ sceneRef }: { sceneRef: React.RefObject<THREE.Group> }) => {
   const cameraRequest = useStore(s => s.cameraRequest);
   const fitRequest = useStore(s => s.fitRequest);
+  const fitWithDefaultDirection = useStore(s => s.fitWithDefaultDirection);
   const { camera, controls } = useThree();
   
   const targetPos = useRef<THREE.Vector3 | null>(null);
@@ -134,10 +137,16 @@ const CameraRig = ({ sceneRef }: { sceneRef: React.RefObject<THREE.Group> }) => 
       // Put a safe guard on distance
       distance = Math.max(1.5, Math.min(distance, 15.0));
       
-      // Maintain the camera's current viewing angle
+      // Maintain the camera's current viewing angle or use default
       const direction = new THREE.Vector3();
-      camera.getWorldDirection(direction);
-      direction.negate().normalize();
+      if (fitWithDefaultDirection) {
+        // Default direction pointing towards the center [0, 0.5, 0] from [4, 2, 4]
+        // Which is: [4, 1.5, 4] normalized
+        direction.set(4, 1.5, 4).normalize();
+      } else {
+        camera.getWorldDirection(direction);
+        direction.negate().normalize();
+      }
       
       // Fallback direction if camera is somehow at center
       if (direction.length() < 0.01) {
@@ -150,7 +159,7 @@ const CameraRig = ({ sceneRef }: { sceneRef: React.RefObject<THREE.Group> }) => 
       targetTarget.current = center;
       isAnimating.current = true;
     }
-  }, [fitRequest, camera, sceneRef]);
+  }, [fitRequest, fitWithDefaultDirection, camera, sceneRef]);
 
   useFrame(() => {
     if (isAnimating.current && targetPos.current && targetTarget.current) {
@@ -670,6 +679,7 @@ export default function App() {
   const setIsDragging = useStore(s => s.setIsDragging);
   const isExploded = useStore(s => s.isExploded);
   const turntableSettings = useStore(s => s.turntableSettings);
+  const currentModel = useStore(s => s.currentModel);
   const sceneRef = useRef<THREE.Group>(null);
   
   // Calculate control states
@@ -728,6 +738,9 @@ export default function App() {
           )}
           
           <Suspense fallback={null}>
+             {/* Drag and Drop Material Texture Handler */}
+             <CanvasDragDropHandler />
+
              {/* Snapshot Listener */}
              <ScreenshotHandler />
              
@@ -791,6 +804,9 @@ export default function App() {
       <div className="absolute inset-0 z-10 pointer-events-none">
         <Interface />
       </div>
+
+      <LoadingOverlay />
+
     </div>
   );
 }

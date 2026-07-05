@@ -182,6 +182,7 @@ export interface AppState {
   baseShoeType: 'left' | 'right'; // New: Defines orientation of source model
   cameraRequest: { position: [number, number, number], target: [number, number, number] } | null;
   fitRequest: number;
+  fitWithDefaultDirection: boolean;
   currentView: 'default' | 'left' | 'right' | 'back' | 'free';
   showMeasurements: boolean;
   showAnnotations: boolean; // New: Toggle annotation visibility
@@ -203,6 +204,8 @@ export interface AppState {
   transformGizmoSize: number; // Controls the size of the 3D transform cursor/gizmo
   transformMode: 'translate' | 'rotate' | 'scale';
   isDragging: boolean;
+  isModelLoading: boolean; // New: is currently loading custom 3D model
+  modelLoadingProgress: number; // New: progress percentage of model loading
   
   // Part Groups
   partGroups: Record<string, string[]>; // Map of groupName -> list of partIds in that group
@@ -213,6 +216,8 @@ export interface AppState {
   // Actions
   setIsMobile: (isMobile: boolean) => void;
   setIsDragging: (isDragging: boolean) => void;
+  setIsModelLoading: (loading: boolean) => void;
+  setModelLoadingProgress: (progress: number) => void;
   setTransformMode: (mode: 'translate' | 'rotate' | 'scale') => void;
   selectPart: (partId: string | null) => void;
   hoverPart: (partId: string | null) => void;
@@ -229,6 +234,7 @@ export interface AppState {
   
   // New Features
   hidePart: () => void; 
+  togglePartVisibility: (partId: string) => void;
   singlePart: () => void;
   showAllParts: () => void; 
   toggleExploded: () => void; // New
@@ -299,7 +305,7 @@ export interface AppState {
   
   // Camera
   setCameraView: (view: 'default' | 'left' | 'right' | 'back') => void;
-  triggerFitView: () => void;
+  triggerFitView: (forceDefaultDirection?: boolean) => void;
 
   // AI
   generateFullDesign: (prompt: string) => Promise<void>; // New Main Action

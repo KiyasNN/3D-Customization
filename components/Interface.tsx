@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useStore, DEMO_ASSET } from "../store";
 import { GuidedTour } from "./GuidedTour";
+import { AssetBrowser } from "./AssetBrowser";
 import { Search } from "lucide-react";
 import { SHOE_PARTS, INITIAL_MATERIALS, MATERIAL_PRESETS } from "../constants";
 import { generatePDF } from "../services/pdfService";
@@ -267,9 +268,10 @@ const TopToolbar = ({
           </span>
           <div className="flex gap-2">
             <TopButton
-              icon={<RotateCcw />}
-              label="Default"
-              onClick={() => setCameraView("default")}
+              icon={<Maximize2 />}
+              label="Fit View"
+              onClick={() => triggerFitView(true)}
+              color="blue"
             />
             <TopButton
               icon={<ArrowRightFromLine />}
@@ -280,12 +282,6 @@ const TopToolbar = ({
               icon={<ArrowLeftFromLine />}
               label="Right"
               onClick={() => setCameraView("right")}
-            />
-            <TopButton
-              icon={<Maximize2 />}
-              label="Fit View"
-              onClick={triggerFitView}
-              color="blue"
             />
             <TopButton
               icon={<Repeat />}
@@ -330,6 +326,14 @@ const TopToolbar = ({
               label="Floor"
               onClick={toggleFloor}
               active={showFloor}
+              color="blue"
+            />
+
+            <TopButton
+              icon={<Tag size={16} />}
+              label="Labels"
+              onClick={toggleAnnotations}
+              active={showAnnotations}
               color="blue"
             />
 
@@ -1102,6 +1106,7 @@ export const Interface: React.FC = () => {
   const [activeTab, setActiveTab] = useState<
     "dashboard" | "models" | "materials" | "colors" | "mix" | "light"
   >("dashboard");
+
   const [showWalkModal, setShowWalkModal] = useState(false);
   const [showLeftPanel, setShowLeftPanel] = useState(!isMobile);
   const setShowLeftPanelRef = useRef(setShowLeftPanel);
@@ -2560,7 +2565,10 @@ export const Interface: React.FC = () => {
         </span>
 
         {/* LEFT PANEL */}
-        <LeftPanel showLeftPanel={showLeftPanel} setShowLeftPanel={setShowLeftPanel} />
+        <LeftPanel
+          showLeftPanel={showLeftPanel}
+          setShowLeftPanel={setShowLeftPanel}
+        />
 
         <div className="flex-1" />
 
@@ -2637,6 +2645,8 @@ const LeftPanel = ({ showLeftPanel, setShowLeftPanel }: any) => {
   const selectedPart = useStore((s) => s.selectedPart);
   const selectedParts = useStore((s) => s.selectedParts || []);
   const selectPart = useStore((s) => s.selectPart);
+  const setMaterial = useStore((s) => s.setMaterial);
+  const [draggedOverPartId, setDraggedOverPartId] = useState<string | null>(null);
   const toggleSelectPartMulti = useStore((s) => s.toggleSelectPartMulti);
   const clearSelectedParts = useStore((s) => s.clearSelectedParts);
   const setSelectedParts = useStore((s) => s.setSelectedParts);
@@ -2653,6 +2663,8 @@ const LeftPanel = ({ showLeftPanel, setShowLeftPanel }: any) => {
   const singlePart = useStore((s) => s.singlePart);
   const hidePart = useStore((s) => s.hidePart);
   const showAllParts = useStore((s) => s.showAllParts);
+  const partVisibility = useStore((s) => s.partVisibility);
+  const togglePartVisibility = useStore((s) => s.togglePartVisibility);
   const setShowLeftPanelRef = useRef(setShowLeftPanel);
   useEffect(() => {
     setShowLeftPanelRef.current = setShowLeftPanel;
@@ -2717,7 +2729,7 @@ const LeftPanel = ({ showLeftPanel, setShowLeftPanel }: any) => {
       } else if (e.key.toLowerCase() === "f") {
         toggleFloor();
       } else if (e.key.toLowerCase() === "v") {
-        triggerFitView();
+        triggerFitView(true);
       } else if (e.key.toLowerCase() === "l") {
         setShowLeftPanelRef.current((prev: boolean) => !prev);
       }
@@ -2913,18 +2925,36 @@ const LeftPanel = ({ showLeftPanel, setShowLeftPanel }: any) => {
                     {parts.map((part) => {
                       const isPartSelected = selectedPart === part.id;
                       const isPartMultiSelected = selectedParts.includes(part.id);
+                      const isDraggedOver = draggedOverPartId === part.id;
 
                       return (
                         <div
                           key={part.id}
                           onClick={(e) => handlePartClick(part.id, e)}
+                          onDragOver={(e) => {
+                            e.preventDefault();
+                            setDraggedOverPartId(part.id);
+                          }}
+                          onDragLeave={() => {
+                            setDraggedOverPartId(null);
+                          }}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            setDraggedOverPartId(null);
+                            const materialId = e.dataTransfer.getData("text/plain");
+                            if (materialId) {
+                              setMaterial(part.id, materialId);
+                            }
+                          }}
                           className={`w-full flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] font-medium cursor-pointer select-none transition-all border ${
-                            isPartSelected
+                            isDraggedOver
+                              ? "bg-blue-600/30 text-white border-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)] scale-[1.02]"
+                              : isPartSelected
                               ? "bg-blue-600 text-white shadow-lg shadow-blue-900/20 border-transparent"
                               : isPartMultiSelected
                               ? "bg-blue-600/30 text-blue-200 border-blue-500/25 border"
                               : "text-zinc-400 hover:text-white hover:bg-white/5 border-transparent"
-                          }`}
+                          } ${partVisibility[part.id] === false ? "opacity-50" : ""}`}
                         >
                           <Layers
                             size={10}
@@ -2934,6 +2964,22 @@ const LeftPanel = ({ showLeftPanel, setShowLeftPanel }: any) => {
                             {part.name}
                           </span>
                           {isPartSelected && <CheckCircle size={10} className="text-white/80 shrink-0 ml-1" />}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              togglePartVisibility(part.id);
+                            }}
+                            className={`p-1 hover:bg-white/10 rounded transition-colors cursor-pointer shrink-0 ml-1 ${
+                              partVisibility[part.id] === false 
+                                ? "text-zinc-500 hover:text-zinc-300" 
+                                : isPartSelected 
+                                ? "text-white/80 hover:text-white" 
+                                : "text-zinc-400 hover:text-white"
+                            }`}
+                          >
+                            {partVisibility[part.id] === false ? <EyeOff size={11} /> : <Eye size={11} />}
+                          </button>
                         </div>
                       );
                     })}
@@ -2949,18 +2995,36 @@ const LeftPanel = ({ showLeftPanel, setShowLeftPanel }: any) => {
               {ungroupedParts.map((part) => {
                 const isPartSelected = selectedPart === part.id;
                 const isPartMultiSelected = selectedParts.includes(part.id);
+                const isDraggedOver = draggedOverPartId === part.id;
 
                 return (
                   <div
                     key={part.id}
                     onClick={(e) => handlePartClick(part.id, e)}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setDraggedOverPartId(part.id);
+                    }}
+                    onDragLeave={() => {
+                      setDraggedOverPartId(null);
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setDraggedOverPartId(null);
+                      const materialId = e.dataTransfer.getData("text/plain");
+                      if (materialId) {
+                        setMaterial(part.id, materialId);
+                      }
+                    }}
                     className={`w-full flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-medium cursor-pointer select-none transition-all border ${
-                      isPartSelected
+                      isDraggedOver
+                        ? "bg-blue-600/30 text-white border-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)] scale-[1.02]"
+                        : isPartSelected
                         ? "bg-blue-600 text-white shadow-lg shadow-blue-900/20 border-transparent"
                         : isPartMultiSelected
                         ? "bg-blue-600/30 text-blue-200 border-blue-500/25 border"
                         : "text-zinc-400 hover:text-white hover:bg-white/10 border-transparent"
-                    }`}
+                    } ${partVisibility[part.id] === false ? "opacity-50" : ""}`}
                   >
                     <Layers
                       size={10}
@@ -2970,6 +3034,22 @@ const LeftPanel = ({ showLeftPanel, setShowLeftPanel }: any) => {
                       {part.name}
                     </span>
                     {isPartSelected && <CheckCircle size={10} className="text-white/80 shrink-0 ml-1" />}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        togglePartVisibility(part.id);
+                      }}
+                      className={`p-1 hover:bg-white/10 rounded transition-colors cursor-pointer shrink-0 ml-1 ${
+                        partVisibility[part.id] === false 
+                          ? "text-zinc-500 hover:text-zinc-300" 
+                          : isPartSelected 
+                          ? "text-white/80 hover:text-white" 
+                          : "text-zinc-400 hover:text-white"
+                      }`}
+                    >
+                      {partVisibility[part.id] === false ? <EyeOff size={11} /> : <Eye size={11} />}
+                    </button>
                   </div>
                 );
               })}
@@ -3123,7 +3203,7 @@ const RightPanel = ({ activeTab, showLeftPanel, onStartCamera, onStopCamera, onE
     updateModelCalibration,
   } = useStore();
 
-  const [showLibrary, setShowLibrary] = useState(false);
+  const [showLibrary, setShowLibrary] = useState(true);
   const [prompt, setPrompt] = useState("");
   const [customHex, setCustomHex] = useState("#ffffff");
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(
@@ -3565,38 +3645,7 @@ const RightPanel = ({ activeTab, showLeftPanel, onStartCamera, onStopCamera, onE
               </div>
 
               {showLibrary ? (
-                <div className="grid grid-cols-2 gap-2 mb-3 max-h-[320px] overflow-y-auto custom-scrollbar pr-1 animate-in slide-in-from-left duration-300">
-                  {MATERIAL_PRESETS.map((preset) => (
-                    <div
-                      key={preset.id}
-                      onClick={() => handlePresetClick(preset)}
-                      className="group p-2 rounded-lg bg-zinc-800 border border-white/5 hover:border-blue-500/50 hover:bg-zinc-700 cursor-pointer transition-all"
-                    >
-                      <div className="aspect-video rounded mb-2 overflow-hidden relative">
-                        <div
-                          className="absolute inset-0"
-                          style={{
-                            backgroundColor: preset.color,
-                            backgroundImage: preset.textureUrl
-                              ? `url(${preset.textureUrl})`
-                              : "none",
-                            backgroundSize: "cover",
-                          }}
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-[10px] font-medium text-zinc-300 group-hover:text-white truncate">
-                          {preset.name}
-                        </span>
-                        <Plus
-                          size={12}
-                          className="text-zinc-500 group-hover:text-blue-400"
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <AssetBrowser isEmbedded={true} />
               ) : (
                 <div className="grid grid-cols-1 gap-2 mb-3 max-h-[320px] overflow-y-auto custom-scrollbar pr-1">
                   {materials
@@ -3639,7 +3688,7 @@ const RightPanel = ({ activeTab, showLeftPanel, onStartCamera, onStopCamera, onE
                                   e.stopPropagation();
                                   onEditMaterialCrop(mat);
                                 }}
-                                className="p-2 bg-yellow-500 hover:bg-yellow-400 text-zinc-950 rounded-full transition-all shadow-md backdrop-blur-sm opacity-80 hover:opacity-100 flex items-center justify-center"
+                                className="p-2 bg-yellow-500 hover:bg-yellow-400 text-zinc-950 rounded-full transition-all shadow-md backdrop-blur-sm opacity-80 hover:opacity-100 flex items-center justify-center cursor-pointer"
                                 title="Edit Crop / Perspective Warp"
                               >
                                 <Sliders size={14} />
@@ -3647,11 +3696,11 @@ const RightPanel = ({ activeTab, showLeftPanel, onStartCamera, onStopCamera, onE
                             )}
                             <button
                               onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                removeMaterial(mat.id);
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  removeMaterial(mat.id);
                               }}
-                              className="p-2 bg-red-600 hover:bg-red-500 rounded-full text-white transition-all shadow-md backdrop-blur-sm opacity-80 hover:opacity-100"
+                              className="p-2 bg-red-600 hover:bg-red-500 rounded-full text-white transition-all shadow-md backdrop-blur-sm opacity-80 hover:opacity-100 cursor-pointer"
                             >
                               <Trash2 size={14} />
                             </button>
@@ -4062,7 +4111,7 @@ const RightPanel = ({ activeTab, showLeftPanel, onStartCamera, onStopCamera, onE
         </div>
       </div>
 
-      {currentModel && currentModel.id !== "demo-shoe" && (
+      {currentModel && currentModel.id !== "demo-shoe" && activeTab === "models" && (
         <CalibrationPanel
           currentModel={currentModel}
           modelCalibrations={modelCalibrations}
@@ -4119,7 +4168,7 @@ const AISection = () => {
     <div className="space-y-4">
       <div className="bg-gradient-to-br from-indigo-500/20 to-purple-500/20 rounded-lg p-4 border border-white/10 sticky top-0 z-10 backdrop-blur-md">
         <div className="flex items-center gap-2 mb-3">
-          <Box size={16} className="text-purple-400" />
+          <Bot size={16} className="text-purple-400" />
           <span className="text-sm font-bold text-white">
             AI Texture Gen
           </span>
