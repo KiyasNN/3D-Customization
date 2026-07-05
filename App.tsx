@@ -770,7 +770,7 @@ export default function App() {
         <div className="flex flex-col items-center gap-4">
           <div className="w-10 h-10 border-2 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" />
           <div className="flex flex-col items-center gap-1">
-            <span className="text-sm font-bold text-white tracking-widest uppercase">NK 3D Studio</span>
+            <span className="text-sm font-bold text-white tracking-widest uppercase">3D Studio</span>
             <span className="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider animate-pulse">Biasanya gak lama kok hehehe...</span>
           </div>
         </div>
@@ -987,7 +987,7 @@ export default function App() {
         <div className="flex flex-col items-center gap-4">
           <div className="w-10 h-10 border-2 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" />
           <div className="flex flex-col items-center gap-1">
-            <span className="text-sm font-bold text-white tracking-widest uppercase">NK 3D Studio</span>
+            <span className="text-sm font-bold text-white tracking-widest uppercase">3D Studio</span>
             <span className="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider animate-pulse">Biasanya gak lama kok hehehe...</span>
           </div>
         </div>

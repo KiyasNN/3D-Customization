@@ -107,11 +107,6 @@ export const signInWithGoogle = async (emulatedEmail?: string) => {
   if (!isFallbackMode && auth) {
     const provider = new GoogleAuthProvider();
 
-    if (isInIframe()) {
-      await signInWithRedirect(auth, provider);
-      return null;
-    }
-
     try {
       const cred = await signInWithPopup(auth, provider);
       return { email: cred.user.email, uid: cred.user.uid };
