@@ -208,19 +208,25 @@ export const getUserProfile = async (uid: string, email: string): Promise<UserPr
   const defaultStatus = isAdmin ? "approved" : "pending";
 
   let profile: UserProfile | null = null;
+  let readTimedOut = false; // distinguish "timed out" from "confirmed doesn't exist"
 
   if (!isFallbackMode && db) {
     try {
       const docRef = doc(db, "user_profiles", uid);
+      const TIMEOUT = Symbol("timeout");
       const docSnap = await Promise.race([
         getDoc(docRef),
-        new Promise<null>((resolve) => setTimeout(() => resolve(null), 1200))
+        new Promise<typeof TIMEOUT>((resolve) => setTimeout(() => resolve(TIMEOUT), 1200))
       ]);
-      if (docSnap && docSnap.exists()) {
+      if (docSnap === TIMEOUT) {
+        readTimedOut = true;
+      } else if (docSnap && docSnap.exists()) {
         profile = docSnap.data() as UserProfile;
       }
+      // else: read genuinely resolved and the doc really doesn't exist - safe to create below
     } catch (e) {
       console.warn("Firestore getUserProfile failed, falling back to local cache:", e);
+      readTimedOut = true; // treat errors the same as "unknown", not "confirmed missing"
     }
   }
 
@@ -232,7 +238,11 @@ export const getUserProfile = async (uid: string, email: string): Promise<UserPr
     }
   }
 
-  if (!profile) {
+  // Only create (and persist) a brand-new default profile when we're CONFIDENT
+  // none exists yet. If the read merely timed out/errored, we don't know that -
+  // writing a fresh "pending" profile here could silently downgrade/clobber an
+  // already-approved user whose read was just slow.
+  if (!profile && !readTimedOut) {
     profile = {
       uid,
       email,
@@ -255,10 +265,25 @@ export const getUserProfile = async (uid: string, email: string): Promise<UserPr
     const local = getLocalProfiles();
     local.push(profile);
     saveLocalProfiles(local);
+
+  } else if (!profile && readTimedOut) {
+    // Genuinely unknown right now (slow/offline) - return a transient in-memory
+    // profile WITHOUT writing anything to Firestore, so we never overwrite a
+    // real profile we just failed to read in time.
+    profile = {
+      uid,
+      email,
+      status: defaultStatus,
+      requestedAt: Date.now()
+    };
   }
 
-  if (isAdmin && profile.status !== "approved") {
-    profile.status = "approved";
+  // At this point profile is always set: either read from Firestore, found in
+  // local cache, freshly created, or filled in as a transient timeout fallback.
+  const resolvedProfile = profile as UserProfile;
+
+  if (isAdmin && resolvedProfile.status !== "approved") {
+    resolvedProfile.status = "approved";
     if (!isFallbackMode && db) {
       try {
         const docRef = doc(db, "user_profiles", uid);
@@ -276,7 +301,7 @@ export const getUserProfile = async (uid: string, email: string): Promise<UserPr
     }
   }
 
-  return profile;
+  return resolvedProfile;
 };
 
 export const getAllUserProfiles = async (): Promise<UserProfile[]> => {
