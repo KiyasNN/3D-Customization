@@ -6,7 +6,9 @@ import {
   signOut as fbSignOut,
   onAuthStateChanged as fbOnAuthStateChanged,
   GoogleAuthProvider,
-  signInWithPopup
+  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult
 } from "firebase/auth";
 import { 
   getFirestore, 
@@ -93,11 +95,38 @@ export const createUserWithEmailAndPassword = async (email: string, pass: string
   }
 };
 
+const isInIframe = () => {
+  try {
+    return window.self !== window.top;
+  } catch (e) {
+    return true;
+  }
+};
+
 export const signInWithGoogle = async (emulatedEmail?: string) => {
   if (!isFallbackMode && auth) {
     const provider = new GoogleAuthProvider();
-    const cred = await signInWithPopup(auth, provider);
-    return { email: cred.user.email, uid: cred.user.uid };
+
+    if (isInIframe()) {
+      await signInWithRedirect(auth, provider);
+      return null;
+    }
+
+    try {
+      const cred = await signInWithPopup(auth, provider);
+      return { email: cred.user.email, uid: cred.user.uid };
+    } catch (err: any) {
+      const code = err?.code || "";
+      if (
+        code === "auth/popup-closed-by-user" ||
+        code === "auth/popup-blocked" ||
+        code === "auth/cancelled-popup-request"
+      ) {
+        await signInWithRedirect(auth, provider);
+        return null;
+      }
+      throw err;
+    }
   } else {
     // Sandbox Emulation: fallback to emulated Google sign-in
     const email = emulatedEmail || "kitoruyasiru@gmail.com";
@@ -106,6 +135,20 @@ export const signInWithGoogle = async (emulatedEmail?: string) => {
     notifySubscribers();
     return currentUser;
   }
+};
+
+export const handleGoogleRedirectResult = async () => {
+  if (!isFallbackMode && auth) {
+    try {
+      const result = await getRedirectResult(auth);
+      if (result?.user) {
+        return { email: result.user.email, uid: result.user.uid };
+      }
+    } catch (err) {
+      console.warn("Google redirect sign-in failed:", err);
+    }
+  }
+  return null;
 };
 
 export const signOut = async () => {

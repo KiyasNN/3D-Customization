@@ -15,7 +15,7 @@ import { Mannequin } from './components/Mannequin'; // Import Mannequin
 import { useStore } from './store';
 import { LoadingOverlay } from './components/LoadingOverlay';
 import { CanvasDragDropHandler } from './components/CanvasDragDropHandler';
-import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, getUserProfile, signOut, signInWithGoogle } from './services/firebase';
+import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, getUserProfile, signOut, signInWithGoogle, handleGoogleRedirectResult } from './services/firebase';
 import { LockKeyhole, Sparkles, Mail, Lock, ArrowRight, ShieldAlert, Clock, RefreshCw, LogOut } from 'lucide-react';
 
 // Fix for Three.js r165+ deprecation warning in three-stdlib
@@ -681,6 +681,12 @@ export default function App() {
   const [refreshingProfile, setRefreshingProfile] = useState(false);
 
   useEffect(() => {
+    handleGoogleRedirectResult().catch((err) => {
+      console.warn("Google redirect result error:", err);
+    });
+  }, []);
+
+  useEffect(() => {
     const unsubscribe = onAuthStateChanged(async (usr) => {
       setUser(usr);
       if (usr) {
@@ -765,7 +771,7 @@ export default function App() {
           <div className="w-10 h-10 border-2 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" />
           <div className="flex flex-col items-center gap-1">
             <span className="text-sm font-bold text-white tracking-widest uppercase">NK 3D Studio</span>
-            <span className="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider animate-pulse">Securing Workspace...</span>
+            <span className="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider animate-pulse">Biasanya gak lama kok hehehe...</span>
           </div>
         </div>
       </div>
@@ -982,7 +988,7 @@ export default function App() {
           <div className="w-10 h-10 border-2 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" />
           <div className="flex flex-col items-center gap-1">
             <span className="text-sm font-bold text-white tracking-widest uppercase">NK 3D Studio</span>
-            <span className="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider animate-pulse">Loading Profile...</span>
+            <span className="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider animate-pulse">Biasanya gak lama kok hehehe...</span>
           </div>
         </div>
       </div>
