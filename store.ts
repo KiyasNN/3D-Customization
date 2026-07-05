@@ -29,8 +29,41 @@ const getGroupParts = (state: any, partId: string): string[] => {
   return group || [partId];
 };
 
+const pushHistory = (state: any, overrides: Partial<any> = {}) => {
+  const nextPartMaterials = overrides.partMaterials !== undefined ? overrides.partMaterials : state.partMaterials;
+  const nextPartVisibility = overrides.partVisibility !== undefined ? overrides.partVisibility : state.partVisibility;
+  const nextPartConfigs = overrides.partConfigs !== undefined ? overrides.partConfigs : state.partConfigs;
+  const nextPartTextureScales = overrides.partTextureScales !== undefined ? overrides.partTextureScales : state.partTextureScales;
+  const nextIsSingleMode = overrides.isSingleMode !== undefined ? overrides.isSingleMode : state.isSingleMode;
+  const nextSelectedPart = overrides.selectedPart !== undefined ? overrides.selectedPart : state.selectedPart;
+  const nextSelectedParts = overrides.selectedParts !== undefined ? overrides.selectedParts : state.selectedParts;
+
+  const entry = {
+    partMaterials: { ...nextPartMaterials },
+    partVisibility: { ...nextPartVisibility },
+    partConfigs: JSON.parse(JSON.stringify(nextPartConfigs || {})),
+    partTextureScales: { ...nextPartTextureScales },
+    isSingleMode: !!nextIsSingleMode,
+    selectedPart: nextSelectedPart,
+    selectedParts: nextSelectedParts ? [...nextSelectedParts] : []
+  };
+
+  const history = state.history.slice(0, state.historyIndex + 1);
+  history.push(entry);
+
+  return {
+    history,
+    historyIndex: history.length - 1,
+    ...overrides
+  };
+};
+
 export const useStore = create<AppState>((set, get) => ({
   isMobile: false,
+  user: null,
+  setUser: (user) => set({ user }),
+  userProfile: null,
+  setUserProfile: (userProfile) => set({ userProfile }),
 
   selectedPart: null,
   selectedParts: [], // Init empty list of multi-selected parts
@@ -52,7 +85,15 @@ export const useStore = create<AppState>((set, get) => ({
   isSelectionMode: false,
   selectedVariantIds: [],
   
-  history: [{ ...INITIAL_STATE }],
+  history: [{
+    partMaterials: { ...INITIAL_STATE },
+    partVisibility: { ...INITIAL_VISIBILITY },
+    partConfigs: {},
+    partTextureScales: {},
+    isSingleMode: false,
+    selectedPart: null,
+    selectedParts: []
+  }],
   historyIndex: 0,
   isGenerating: false,
   isProcessingMaterial: false,
@@ -126,6 +167,34 @@ export const useStore = create<AppState>((set, get) => ({
   
   activeVideoStream: null,
 
+  isAdminPanelOpen: false,
+  saasConfig: {
+    appName: "SaaS 3D Customizer Studio",
+    themeColor: "indigo",
+    enabledFeatures: {
+      aiGen: true,
+      pbrGen: true,
+      measurements: true,
+      videoCapture: true,
+    },
+    pricingTiers: {
+      freeLimit: 3,
+      proPrice: 29
+    },
+    metrics: {
+      totalRevenue: 14280,
+      activeUsers: 840,
+      customizationsCreated: 2450,
+      conversions: 12.4
+    },
+    tenants: [
+      { id: "tenant-1", name: "Acme Kicks", tier: "Pro", status: "Active", joined: "2026-05-12" },
+      { id: "tenant-2", name: "Vertex Apparel", tier: "Enterprise", status: "Active", joined: "2026-06-01" },
+      { id: "tenant-3", name: "SoleCraft Design", tier: "Free", status: "Active", joined: "2026-06-15" },
+      { id: "tenant-4", name: "Retro Athletics", tier: "Pro", status: "Suspended", joined: "2026-06-20" }
+    ]
+  },
+
   setIsMobile: (isMobile) => set({ isMobile }),
   setIsDragging: (isDragging) => set({ isDragging }),
   setIsModelLoading: (loading) => set((state) => {
@@ -163,22 +232,18 @@ export const useStore = create<AppState>((set, get) => ({
     partsToUpdate.forEach(id => {
       newMaterials[id] = materialId;
     });
-    const newHistory = state.history.slice(0, state.historyIndex + 1);
-    newHistory.push(newMaterials);
-    return {
-      partMaterials: newMaterials,
-      history: newHistory,
-      historyIndex: newHistory.length - 1
-    };
+    return pushHistory(state, { partMaterials: newMaterials });
   }),
 
   setTextureScale: (partId, scale) => set((state) => {
     // Keep legacy sync but also update new config
     const currentConfig = state.partConfigs[partId] || { scale: 2, normalScale: 1, roughness: 0.5, displacementScale: 0 };
-    return {
-      partTextureScales: { ...state.partTextureScales, [partId]: scale },
-      partConfigs: { ...state.partConfigs, [partId]: { ...currentConfig, scale } }
-    };
+    const newConfigs = { ...state.partConfigs, [partId]: { ...currentConfig, scale } };
+    const newTextureScales = { ...state.partTextureScales, [partId]: scale };
+    return pushHistory(state, {
+      partConfigs: newConfigs,
+      partTextureScales: newTextureScales
+    });
   }),
 
   updatePartConfig: (partId, config) => set((state) => {
@@ -194,10 +259,10 @@ export const useStore = create<AppState>((set, get) => ({
       }
     });
 
-    return {
+    return pushHistory(state, {
       partConfigs: newPartConfigs,
       ...(config.scale ? { partTextureScales: newTextureScales } : {})
-    };
+    });
   }),
 
   setAnnotation: (partId, annotation) => set((state) => ({
@@ -232,21 +297,14 @@ export const useStore = create<AppState>((set, get) => ({
        }
     });
 
-    // Update history if we changed assignments
-    let newHistory = state.history;
-    let newHistoryIndex = state.historyIndex;
-
     if (materialsChanged) {
-       newHistory = state.history.slice(0, state.historyIndex + 1);
-       newHistory.push(newPartMaterials);
-       newHistoryIndex = newHistory.length - 1;
+       return {
+         materials: newMaterials,
+         ...pushHistory(state, { partMaterials: newPartMaterials })
+       };
     }
-
     return {
-      materials: newMaterials,
-      partMaterials: materialsChanged ? newPartMaterials : state.partMaterials,
-      history: materialsChanged ? newHistory : state.history,
-      historyIndex: materialsChanged ? newHistoryIndex : state.historyIndex
+      materials: newMaterials
     };
   }),
 
@@ -266,20 +324,14 @@ export const useStore = create<AppState>((set, get) => ({
        }
     });
 
-    let newHistory = state.history;
-    let newHistoryIndex = state.historyIndex;
-
     if (materialsChanged) {
-       newHistory = state.history.slice(0, state.historyIndex + 1);
-       newHistory.push(newPartMaterials);
-       newHistoryIndex = newHistory.length - 1;
+       return {
+         materials: newMaterials,
+         ...pushHistory(state, { partMaterials: newPartMaterials })
+       };
     }
-
     return {
-      materials: newMaterials,
-      partMaterials: materialsChanged ? newPartMaterials : state.partMaterials,
-      history: materialsChanged ? newHistory : state.history,
-      historyIndex: materialsChanged ? newHistoryIndex : state.historyIndex
+      materials: newMaterials
     };
   }),
 
@@ -288,9 +340,16 @@ export const useStore = create<AppState>((set, get) => ({
   undo: () => set((state) => {
     if (state.historyIndex > 0) {
       const newIndex = state.historyIndex - 1;
+      const entry = state.history[newIndex];
       return {
         historyIndex: newIndex,
-        partMaterials: state.history[newIndex]
+        partMaterials: entry.partMaterials,
+        partVisibility: entry.partVisibility,
+        partConfigs: entry.partConfigs,
+        partTextureScales: entry.partTextureScales,
+        isSingleMode: entry.isSingleMode,
+        selectedPart: entry.selectedPart,
+        selectedParts: entry.selectedParts
       };
     }
     return {};
@@ -299,9 +358,16 @@ export const useStore = create<AppState>((set, get) => ({
   redo: () => set((state) => {
     if (state.historyIndex < state.history.length - 1) {
       const newIndex = state.historyIndex + 1;
+      const entry = state.history[newIndex];
       return {
         historyIndex: newIndex,
-        partMaterials: state.history[newIndex]
+        partMaterials: entry.partMaterials,
+        partVisibility: entry.partVisibility,
+        partConfigs: entry.partConfigs,
+        partTextureScales: entry.partTextureScales,
+        isSingleMode: entry.isSingleMode,
+        selectedPart: entry.selectedPart,
+        selectedParts: entry.selectedParts
       };
     }
     return {};
@@ -314,17 +380,13 @@ export const useStore = create<AppState>((set, get) => ({
     partsToUpdate.forEach(id => {
       newVisibility[id] = false;
     });
-    return {
-      partVisibility: newVisibility
-    };
+    return pushHistory(state, { partVisibility: newVisibility });
   }),
 
   togglePartVisibility: (partId) => set((state) => {
     const newVisibility = { ...state.partVisibility };
     newVisibility[partId] = newVisibility[partId] === false ? true : false;
-    return {
-      partVisibility: newVisibility
-    };
+    return pushHistory(state, { partVisibility: newVisibility });
   }),
 
   singlePart: () => set((state) => {
@@ -337,14 +399,14 @@ export const useStore = create<AppState>((set, get) => ({
       partsList.forEach(id => {
         newVisibility[id] = true;
       });
-      return { partVisibility: newVisibility, isSingleMode: false };
+      return pushHistory(state, { partVisibility: newVisibility, isSingleMode: false });
     } else {
       // Isolate selected
       const newVisibility: Record<string, boolean> = {};
       partsList.forEach(id => {
         newVisibility[id] = id === state.selectedPart;
       });
-      return { partVisibility: newVisibility, isSingleMode: true };
+      return pushHistory(state, { partVisibility: newVisibility, isSingleMode: true });
     }
   }),
 
@@ -354,7 +416,7 @@ export const useStore = create<AppState>((set, get) => ({
     partsList.forEach(id => {
       newVisibility[id] = true;
     });
-    return { partVisibility: newVisibility, isSingleMode: false };
+    return pushHistory(state, { partVisibility: newVisibility, isSingleMode: false });
   }),
 
   resetAllExplode: () => set((state) => {
@@ -383,7 +445,7 @@ export const useStore = create<AppState>((set, get) => ({
         meshRotation: undefined
       };
     });
-    return { partConfigs: newConfigs };
+    return pushHistory(state, { partConfigs: newConfigs });
   }),
 
   toggleExploded: () => set((state) => ({ isExploded: !state.isExploded })),
@@ -397,7 +459,7 @@ export const useStore = create<AppState>((set, get) => ({
       const defaultMat = (INITIAL_STATE as any)[id] || 'mat-leather-white';
       newMaterials[id] = defaultMat;
     });
-    return { partMaterials: newMaterials };
+    return pushHistory(state, { partMaterials: newMaterials });
   }),
 
   resetAllParts: () => set((state) => {
@@ -414,17 +476,18 @@ export const useStore = create<AppState>((set, get) => ({
         newMaterials = { ...INITIAL_STATE };
      }
 
-     const newHistory = state.history.slice(0, state.historyIndex + 1);
-     newHistory.push(newMaterials);
-
-     return { 
-       partMaterials: newMaterials,
+     return {
        modelResetCounter: resetCounter,
-       history: newHistory,
-       historyIndex: newHistory.length - 1,
        partAnnotations: {}, // Clear annotations on reset
-       selectedPart: null,
-       selectedParts: []
+       ...pushHistory(state, {
+         partMaterials: newMaterials,
+         partVisibility: { ...INITIAL_VISIBILITY },
+         partConfigs: {},
+         partTextureScales: {},
+         isSingleMode: false,
+         selectedPart: null,
+         selectedParts: []
+       })
      };
   }),
 
@@ -470,11 +533,14 @@ export const useStore = create<AppState>((set, get) => ({
     const variant = state.savedVariants.find(v => v.id === variantId);
     if (variant) {
       return {
-        partMaterials: { ...variant.materials },
-        partTextureScales: { ...variant.textureScales },
-        // Deep clone on load to prevent mutating the saved variant later
-        partConfigs: JSON.parse(JSON.stringify(variant.partConfigs)),
-        partAnnotations: JSON.parse(JSON.stringify(variant.partAnnotations))
+        partAnnotations: JSON.parse(JSON.stringify(variant.partAnnotations || {})),
+        ...pushHistory(state, {
+          partMaterials: { ...variant.materials },
+          partTextureScales: { ...variant.textureScales },
+          partConfigs: JSON.parse(JSON.stringify(variant.partConfigs || {})),
+          selectedPart: null,
+          selectedParts: []
+        })
       };
     }
     return {};
@@ -612,7 +678,23 @@ export const useStore = create<AppState>((set, get) => ({
 
     const newVisibility = { ...state.partVisibility };
     parts.forEach(p => newVisibility[p] = true);
-    return { customParts: parts, partVisibility: newVisibility };
+
+    const initialHistoryEntry = {
+      partMaterials: { ...state.partMaterials },
+      partVisibility: newVisibility,
+      partConfigs: { ...state.partConfigs },
+      partTextureScales: { ...state.partTextureScales },
+      isSingleMode: false,
+      selectedPart: null,
+      selectedParts: []
+    };
+
+    return { 
+      customParts: parts, 
+      partVisibility: newVisibility,
+      history: [initialHistoryEntry],
+      historyIndex: 0
+    };
   }),
 
   uploadMaterial: (file: File) => {
@@ -766,14 +848,9 @@ export const useStore = create<AppState>((set, get) => ({
         }
      });
 
-     const newHistory = state.history.slice(0, state.historyIndex + 1);
-     newHistory.push(newPartMaterials);
-
      return {
         materials: newMaterials,
-        partMaterials: newPartMaterials,
-        history: newHistory,
-        historyIndex: newHistory.length - 1
+        ...pushHistory(state, { partMaterials: newPartMaterials })
      };
   }),
 
@@ -954,4 +1031,72 @@ export const useStore = create<AppState>((set, get) => ({
     fitWithDefaultDirection: forceDefaultDirection,
     currentView: forceDefaultDirection ? 'default' : state.currentView
   })),
+
+  // SaaS Actions
+  setAdminPanelOpen: (isOpen) => set({ isAdminPanelOpen: isOpen }),
+  updateSaasConfig: (config) => set((state) => {
+    const updated = { ...state.saasConfig, ...config };
+    if (config.enabledFeatures) {
+      updated.enabledFeatures = { ...state.saasConfig.enabledFeatures, ...config.enabledFeatures };
+    }
+    if (config.pricingTiers) {
+      updated.pricingTiers = { ...state.saasConfig.pricingTiers, ...config.pricingTiers };
+    }
+    if (config.metrics) {
+      updated.metrics = { ...state.saasConfig.metrics, ...config.metrics };
+    }
+    return { saasConfig: updated };
+  }),
+  toggleSaasFeature: (feature) => set((state) => {
+    const currentFeatures = state.saasConfig.enabledFeatures;
+    const updatedFeatures = {
+      ...currentFeatures,
+      [feature]: !currentFeatures[feature]
+    };
+    return {
+      saasConfig: {
+        ...state.saasConfig,
+        enabledFeatures: updatedFeatures
+      }
+    };
+  }),
+  addSaasTenant: (tenant) => set((state) => {
+    const newTenant = {
+      id: `tenant-${Date.now()}`,
+      name: tenant.name,
+      tier: tenant.tier,
+      status: 'Active' as const,
+      joined: new Date().toISOString().split('T')[0]
+    };
+    const isPro = tenant.tier === 'Pro';
+    const isEnt = tenant.tier === 'Enterprise';
+    const addedRevenue = isPro ? state.saasConfig.pricingTiers.proPrice : isEnt ? 299 : 0;
+    return {
+      saasConfig: {
+        ...state.saasConfig,
+        tenants: [...state.saasConfig.tenants, newTenant],
+        metrics: {
+          ...state.saasConfig.metrics,
+          activeUsers: state.saasConfig.metrics.activeUsers + 1,
+          totalRevenue: state.saasConfig.metrics.totalRevenue + addedRevenue
+        }
+      }
+    };
+  }),
+  deleteSaasTenant: (id) => set((state) => {
+    const tenantToDelete = state.saasConfig.tenants.find(t => t.id === id);
+    const updatedTenants = state.saasConfig.tenants.filter(t => t.id !== id);
+    const revenueLoss = tenantToDelete ? (tenantToDelete.tier === 'Pro' ? state.saasConfig.pricingTiers.proPrice : tenantToDelete.tier === 'Enterprise' ? 299 : 0) : 0;
+    return {
+      saasConfig: {
+        ...state.saasConfig,
+        tenants: updatedTenants,
+        metrics: {
+          ...state.saasConfig.metrics,
+          activeUsers: Math.max(0, state.saasConfig.metrics.activeUsers - 1),
+          totalRevenue: Math.max(0, state.saasConfig.metrics.totalRevenue - revenueLoss)
+        }
+      }
+    };
+  }),
 }));

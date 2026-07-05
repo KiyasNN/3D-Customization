@@ -15,6 +15,8 @@ import { Mannequin } from './components/Mannequin'; // Import Mannequin
 import { useStore } from './store';
 import { LoadingOverlay } from './components/LoadingOverlay';
 import { CanvasDragDropHandler } from './components/CanvasDragDropHandler';
+import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, getUserProfile, signOut, signInWithGoogle } from './services/firebase';
+import { LockKeyhole, Sparkles, Mail, Lock, ArrowRight, ShieldAlert, Clock, RefreshCw, LogOut } from 'lucide-react';
 
 // Fix for Three.js r165+ deprecation warning in three-stdlib
 if (THREE.LoaderUtils && typeof TextDecoder !== 'undefined') {
@@ -665,6 +667,50 @@ const RendererConfig = () => {
 };
 
 export default function App() {
+  const user = useStore(s => s.user);
+  const setUser = useStore(s => s.setUser);
+  const userProfile = useStore(s => s.userProfile);
+  const setUserProfile = useStore(s => s.setUserProfile);
+  
+  const [checkingAuth, setCheckingAuth] = useState(true);
+  const [authMode, setAuthMode] = useState<"login" | "signup">("login");
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authLoading, setAuthLoading] = useState(false);
+  const [authError, setAuthError] = useState("");
+  const [refreshingProfile, setRefreshingProfile] = useState(false);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(async (usr) => {
+      setUser(usr);
+      if (usr) {
+        try {
+          const profile = await getUserProfile(usr.uid, usr.email || "");
+          setUserProfile(profile);
+        } catch (e) {
+          console.error("Error loading profile:", e);
+        }
+      } else {
+        setUserProfile(null);
+      }
+      setCheckingAuth(false);
+    });
+    return () => unsubscribe();
+  }, [setUser, setUserProfile]);
+
+  const handleRefreshProfile = async () => {
+    if (!user) return;
+    setRefreshingProfile(true);
+    try {
+      const profile = await getUserProfile(user.uid, user.email || "");
+      setUserProfile(profile);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setRefreshingProfile(false);
+    }
+  };
+
   const currentView = useStore(s => s.currentView);
   const isWalking = useStore(s => s.isWalking);
   const isTurntableActive = useStore(s => s.isTurntableActive);
@@ -711,6 +757,305 @@ export default function App() {
       window.removeEventListener('mouseup', handleGlobalMouseUp);
     };
   }, [setIsMobile, setIsDragging]);
+
+  if (checkingAuth) {
+    return (
+      <div className="w-full h-screen bg-[#09090b] flex flex-col items-center justify-center font-sans">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-10 h-10 border-2 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" />
+          <div className="flex flex-col items-center gap-1">
+            <span className="text-sm font-bold text-white tracking-widest uppercase">NK 3D Studio</span>
+            <span className="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider animate-pulse">Securing Workspace...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="w-full h-screen bg-[#09090b] flex items-center justify-center font-sans relative overflow-hidden select-none">
+        {/* Abstract Background Accents */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_40%,rgba(79,70,229,0.15),transparent_60%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)]" />
+        
+        <div className="relative w-full max-w-md mx-4 z-10 pointer-events-auto">
+          <div className="bg-zinc-900/80 backdrop-blur-xl border border-white/10 rounded-3xl p-8 shadow-2xl flex flex-col gap-6">
+            
+            {/* Logo Header */}
+            <div className="flex flex-col items-center text-center gap-2">
+              <div className="w-12 h-12 rounded-2xl bg-indigo-600/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 shadow-inner">
+                <LockKeyhole size={24} className="animate-pulse" />
+              </div>
+              <h2 className="text-2xl font-black text-white tracking-tight mt-2 flex items-center gap-2">
+                3D Customizer
+              </h2>
+              <p className="text-xs text-zinc-400 leading-relaxed max-w-[280px]">
+                Please authorize your session to access the 3D Customization Workspace.
+              </p>
+            </div>
+
+            {/* Error Message */}
+            {authError && (
+              <div className="p-3.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-semibold leading-relaxed">
+                {authError}
+              </div>
+            )}
+
+            {/* Auth Form */}
+            <form 
+              onSubmit={async (e) => {
+                e.preventDefault();
+                setAuthError("");
+                setAuthLoading(true);
+                try {
+                  if (authMode === "login") {
+                    await signInWithEmailAndPassword(authEmail, authPassword);
+                  } else {
+                    await createUserWithEmailAndPassword(authEmail, authPassword);
+                  }
+                } catch (err: any) {
+                  console.error(err);
+                  setAuthError(err.message || "Failed to authenticate. Please check your credentials.");
+                } finally {
+                  setAuthLoading(false);
+                }
+              }}
+              className="flex flex-col gap-4"
+            >
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">Email Address</label>
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-zinc-500 font-sans">
+                    <Mail size={14} />
+                  </span>
+                  <input
+                    type="email"
+                    value={authEmail}
+                    onChange={(e) => setAuthEmail(e.target.value)}
+                    placeholder="name@company.com"
+                    className="w-full bg-zinc-950/50 border border-white/10 focus:border-indigo-500 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all font-medium font-sans"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">Password</label>
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-zinc-500 font-sans">
+                    <Lock size={14} />
+                  </span>
+                  <input
+                    type="password"
+                    value={authPassword}
+                    onChange={(e) => setAuthPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full bg-zinc-950/50 border border-white/10 focus:border-indigo-500 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all font-medium font-sans"
+                    required
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={authLoading}
+                className="w-full mt-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-4 rounded-xl text-xs uppercase tracking-widest transition-all shadow-lg active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 font-sans cursor-pointer"
+              >
+                {authLoading ? (
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <span>{authMode === "login" ? "Enter Workspace" : "Register & Enter"}</span>
+                    <ArrowRight size={14} />
+                  </>
+                )}
+              </button>
+            </form>
+
+            {/* Divider */}
+            <div className="flex items-center gap-3 my-1">
+              <div className="h-[1px] flex-1 bg-white/5" />
+              <span className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider">or continue with</span>
+              <div className="h-[1px] flex-1 bg-white/5" />
+            </div>
+
+            {/* Google Sign-In Actions */}
+            <div className="flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={async () => {
+                  setAuthError("");
+                  setAuthLoading(true);
+                  try {
+                    await signInWithGoogle();
+                  } catch (err: any) {
+                    console.error(err);
+                    const errMsg = err?.code || err?.message || "";
+                    if (errMsg.includes("popup-closed-by-user")) {
+                      setAuthError("The Google sign-in window was closed. Please try again and keep the window open to select your account.");
+                    } else if (errMsg.includes("popup-blocked")) {
+                      setAuthError("The sign-in popup was blocked by your browser. Please allow popups for this site and try again.");
+                    } else {
+                      setAuthError(err.message || "Failed to authenticate with Google. Popups might be blocked by your browser.");
+                    }
+                  } finally {
+                    setAuthLoading(false);
+                  }
+                }}
+                disabled={authLoading}
+                className="w-full bg-white hover:bg-zinc-100 text-zinc-950 font-bold py-2.5 px-4 rounded-xl text-xs uppercase tracking-wider transition-all shadow-md active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer font-sans"
+              >
+                <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
+                  <path
+                    fill="#EA4335"
+                    d="M12 5.04c1.67 0 3.17.58 4.35 1.71l3.25-3.25C17.63 1.63 14.97 1 12 1 7.33 1 3.32 3.68 1.39 7.61l3.85 3C6.15 7.6 8.83 5.04 12 5.04z"
+                  />
+                  <path
+                    fill="#4285F4"
+                    d="M23.49 12.27c0-.81-.07-1.59-.2-2.34H12v4.44h6.44c-.28 1.47-1.11 2.71-2.36 3.55l3.66 2.84c2.14-1.97 3.39-4.87 3.39-8.49z"
+                  />
+                  <path
+                    fill="#FBBC05"
+                    d="M5.24 14.39C4.99 13.65 4.85 12.85 4.85 12s.14-1.65.39-2.39l-3.85-3C.51 8.16 0 10.02 0 12s.51 3.84 1.39 5.39l3.85-3z"
+                  />
+                  <path
+                    fill="#34A853"
+                    d="M12 23c3.24 0 5.97-1.07 7.96-2.92l-3.66-2.84c-1.01.68-2.3 1.08-4.3 1.08-3.17 0-5.85-2.56-6.81-5.57l-3.85 3C3.32 20.32 7.33 23 12 23z"
+                  />
+                </svg>
+                <span>Continue with Google</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={async () => {
+                  setAuthError("");
+                  setAuthLoading(true);
+                  try {
+                    await signInWithGoogle("kitoruyasiru@gmail.com");
+                  } catch (err: any) {
+                    console.error(err);
+                    setAuthError(err.message || "Failed to authenticate.");
+                  } finally {
+                    setAuthLoading(false);
+                  }
+                }}
+                disabled={authLoading}
+                className="w-full bg-zinc-950/40 hover:bg-zinc-950 text-indigo-400 hover:text-indigo-300 border border-white/5 font-bold py-2 px-4 rounded-xl text-[10px] uppercase tracking-wider transition-all disabled:opacity-50 flex items-center justify-center gap-1 cursor-pointer font-sans"
+              >
+                <span>🚀 Dev Mode: Login as Admin</span>
+              </button>
+            </div>
+
+            {/* Form Toggle */}
+            <div className="text-center pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setAuthMode(authMode === "login" ? "signup" : "login");
+                  setAuthError("");
+                }}
+                className="text-xs text-zinc-400 hover:text-white hover:underline transition-colors font-medium font-sans cursor-pointer"
+              >
+                {authMode === "login" 
+                  ? "Don't have an account yet? Create one" 
+                  : "Already registered? Sign back in"}
+              </button>
+            </div>
+
+            {/* Note about admin */}
+            <div className="text-[10px] text-zinc-500 text-center leading-relaxed border-t border-white/5 pt-4 mt-2 font-sans">
+              To configure SaaS billing & controls, log in using: <strong className="text-indigo-400 font-bold">kitoruyasiru@gmail.com</strong>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (user && !userProfile) {
+    return (
+      <div className="w-full h-screen bg-[#09090b] flex flex-col items-center justify-center font-sans">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-10 h-10 border-2 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" />
+          <div className="flex flex-col items-center gap-1">
+            <span className="text-sm font-bold text-white tracking-widest uppercase">NK 3D Studio</span>
+            <span className="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider animate-pulse">Loading Profile...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (user && userProfile && userProfile.status !== 'approved') {
+    const isBlocked = userProfile.status === 'blocked';
+    return (
+      <div className="w-full h-screen bg-[#09090b] flex items-center justify-center font-sans relative overflow-hidden select-none">
+        {/* Background Accents */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_40%,rgba(79,70,229,0.1),transparent_60%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.01)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.01)_1px,transparent_1px)] bg-[size:4rem_4rem]" />
+        
+        <div className="relative w-full max-w-md mx-4 z-10 pointer-events-auto">
+          <div className="bg-zinc-900/95 border border-white/10 rounded-3xl p-8 shadow-2xl flex flex-col gap-6 text-center items-center">
+            
+            {/* Icon */}
+            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-inner ${
+              isBlocked 
+                ? "bg-red-500/10 border border-red-500/20 text-red-400" 
+                : "bg-amber-500/10 border border-amber-500/20 text-amber-400 animate-pulse"
+            }`}>
+              {isBlocked ? <ShieldAlert size={28} /> : <Clock size={28} />}
+            </div>
+
+            {/* Content */}
+            <div className="flex flex-col gap-2">
+              <h2 className="text-xl font-bold text-white tracking-tight">
+                {isBlocked ? "Access Suspended" : "Access Request Pending"}
+              </h2>
+              <p className="text-xs text-zinc-400 leading-relaxed px-2">
+                {isBlocked 
+                  ? "Your workspace access has been blocked or suspended by an administrator." 
+                  : "Your account is registered! To secure this customizer, an administrator must approve your access request before you can design shoe models."}
+              </p>
+              {!isBlocked && (
+                <div className="mt-2 text-[10px] bg-indigo-500/10 text-indigo-300 py-1.5 px-3 rounded-lg border border-indigo-500/20 font-semibold self-center">
+                  Registration Email: {user.email}
+                </div>
+              )}
+            </div>
+
+            {/* Action Buttons */}
+            <div className="w-full flex flex-col gap-3 pt-2">
+              <button
+                onClick={handleRefreshProfile}
+                disabled={refreshingProfile}
+                className="w-full bg-zinc-800 hover:bg-zinc-700 active:scale-95 text-white font-bold py-3 px-4 rounded-xl text-xs uppercase tracking-wider transition-all border border-white/10 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                <RefreshCw size={14} className={refreshingProfile ? "animate-spin" : ""} />
+                <span>{refreshingProfile ? "Checking..." : "Refresh Access Status"}</span>
+              </button>
+
+              <button
+                onClick={() => signOut()}
+                className="w-full bg-zinc-950 hover:bg-zinc-900 active:scale-95 text-zinc-400 hover:text-red-400 font-bold py-3 px-4 rounded-xl text-xs uppercase tracking-wider transition-all border border-white/5 flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <LogOut size={14} />
+                <span>Sign Out of Account</span>
+              </button>
+            </div>
+
+            {/* Note about admin */}
+            <div className="text-[10px] text-zinc-500 leading-relaxed border-t border-white/5 pt-4 w-full">
+              Need immediate entry? Log in with admin credentials to configure authorization parameters.
+            </div>
+
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full h-screen bg-zinc-900 overflow-hidden relative font-sans select-none">

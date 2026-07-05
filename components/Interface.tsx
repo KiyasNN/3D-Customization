@@ -2,6 +2,8 @@ import React, { useState, useRef, useEffect } from "react";
 import { useStore, DEMO_ASSET } from "../store";
 import { GuidedTour } from "./GuidedTour";
 import { AssetBrowser } from "./AssetBrowser";
+import { AdminPanel } from "./AdminPanel";
+import { onAuthStateChanged, signOut, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "../services/firebase";
 import { Search } from "lucide-react";
 import { SHOE_PARTS, INITIAL_MATERIALS, MATERIAL_PRESETS } from "../constants";
 import { generatePDF } from "../services/pdfService";
@@ -44,6 +46,7 @@ import {
   Lightbulb,
   LightbulbOff,
   Eraser,
+  Lock,
   Sliders,
   Clock,
   Settings2,
@@ -73,6 +76,10 @@ import {
   FolderPlus,
   Folder,
   FolderOpen,
+  User,
+  LogIn,
+  LogOut,
+  ShieldCheck,
 } from "lucide-react";
 
 // Reusable Slider Component
@@ -185,6 +192,67 @@ const TopButton = ({
   );
 };
 
+export const getThemeColorClass = (color: string) => {
+  switch (color) {
+    case "blue":
+      return {
+        bg: "bg-blue-600",
+        hoverBg: "hover:bg-blue-500",
+        text: "text-blue-400",
+        accent: "accent-blue-500",
+        border: "border-blue-500/30",
+        glow: "shadow-blue-500/10",
+        from: "from-blue-600",
+        to: "to-cyan-500",
+      };
+    case "purple":
+      return {
+        bg: "bg-purple-600",
+        hoverBg: "hover:bg-purple-500",
+        text: "text-purple-400",
+        accent: "accent-purple-500",
+        border: "border-purple-500/30",
+        glow: "shadow-purple-500/10",
+        from: "from-purple-600",
+        to: "to-fuchsia-500",
+      };
+    case "emerald":
+      return {
+        bg: "bg-emerald-600",
+        hoverBg: "hover:bg-emerald-500",
+        text: "text-emerald-400",
+        accent: "accent-emerald-500",
+        border: "border-emerald-500/30",
+        glow: "shadow-emerald-500/10",
+        from: "from-emerald-600",
+        to: "to-teal-500",
+      };
+    case "rose":
+      return {
+        bg: "bg-rose-600",
+        hoverBg: "hover:bg-rose-500",
+        text: "text-rose-400",
+        accent: "accent-rose-500",
+        border: "border-rose-500/30",
+        glow: "shadow-rose-500/10",
+        from: "from-rose-600",
+        to: "to-pink-500",
+      };
+    case "indigo":
+    default:
+      return {
+        bg: "bg-indigo-600",
+        hoverBg: "hover:bg-indigo-500",
+        text: "text-indigo-400",
+        accent: "accent-indigo-500",
+        border: "border-indigo-500/30",
+        glow: "shadow-indigo-500/10",
+        from: "from-indigo-600",
+        to: "to-violet-500",
+      };
+  }
+};
+
 
 
 // Preset Colors with Names
@@ -245,6 +313,8 @@ const TopToolbar = ({
   const isRecordingSettingsOpen = useStore((s) => s.isRecordingSettingsOpen);
   const savedVariants = useStore((s) => s.savedVariants);
   const materials = useStore((s) => s.materials);
+  const saasConfig = useStore((s) => s.saasConfig);
+  const setAdminPanelOpen = useStore((s) => s.setAdminPanelOpen);
 
   const handleClear = () => {
     if (selectedPart) {
@@ -382,19 +452,37 @@ const TopToolbar = ({
             />
             <TopButton
               icon={
-                recordingStatus === "recording" ? (
+                !saasConfig.enabledFeatures.videoCapture ? (
+                  <Lock size={14} className="text-amber-400 animate-pulse" />
+                ) : recordingStatus === "recording" ? (
                   <Loader2 className="animate-spin text-red-500" />
                 ) : (
                   <Clapperboard />
                 )
               }
-              label={recordingStatus === "recording" ? "Rec..." : "MP4"}
-              onClick={onRecordingClick}
+              label={
+                !saasConfig.enabledFeatures.videoCapture
+                  ? "MP4 (Pro)"
+                  : recordingStatus === "recording"
+                    ? "Rec..."
+                    : "MP4"
+              }
+              onClick={() => {
+                if (!saasConfig.enabledFeatures.videoCapture) {
+                  alert(
+                    "Feature Locked: MP4 Video export is locked by your SaaS administrator. Toggles can be modified in the Admin Control Panel.",
+                  );
+                  setAdminPanelOpen(true);
+                } else {
+                  onRecordingClick();
+                }
+              }}
               disabled={recordingStatus === "recording"}
               active={
-                recordingStatus === "recording" || isRecordingSettingsOpen
+                saasConfig.enabledFeatures.videoCapture &&
+                (recordingStatus === "recording" || isRecordingSettingsOpen)
               }
-              color="red"
+              color={!saasConfig.enabledFeatures.videoCapture ? "orange" : "red"}
             />
           </div>
         </div>
@@ -816,6 +904,8 @@ const PartProperties = () => {
     labelSize,
     setLabelSize,
     selectedParts = [],
+    saasConfig,
+    setAdminPanelOpen,
   } = useStore();
 
   // Logic to determine defaults if annotation doesn't exist yet
@@ -938,16 +1028,25 @@ const PartProperties = () => {
             </span>
           </button>
           <button
-            onClick={toggleMeasurements}
+            onClick={() => {
+              if (!saasConfig.enabledFeatures.measurements) {
+                alert("Upgrade Required: Sizing Measurements is a SaaS Premium feature. Enable it in the SaaS Admin Control Panel!");
+                setAdminPanelOpen(true);
+              } else {
+                toggleMeasurements();
+              }
+            }}
             className={`w-full py-1.5 mt-1 border rounded text-center transition-colors flex items-center justify-center gap-2 group ${
-              showMeasurements 
-                ? "bg-blue-500/20 border-blue-500/30 hover:bg-blue-500/30 text-blue-400" 
-                : "bg-zinc-900/50 border-white/5 hover:bg-zinc-800 text-zinc-400 hover:text-white"
+              !saasConfig.enabledFeatures.measurements
+                ? "bg-amber-500/10 border-amber-500/20 text-amber-400 hover:bg-amber-500/20"
+                : showMeasurements 
+                  ? "bg-blue-500/20 border-blue-500/30 hover:bg-blue-500/30 text-blue-400" 
+                  : "bg-zinc-900/50 border-white/5 hover:bg-zinc-800 text-zinc-400 hover:text-white"
             }`}
           >
-            {showMeasurements ? <EyeOff size={12} /> : <Ruler size={12} />}
+            {!saasConfig.enabledFeatures.measurements ? <Lock size={12} className="text-amber-400 animate-pulse" /> : showMeasurements ? <EyeOff size={12} /> : <Ruler size={12} />}
             <span className="text-[10px]">
-              {showMeasurements ? "Hide Measurements" : "Show Measurements"}
+              {!saasConfig.enabledFeatures.measurements ? "Measurements (Premium)" : showMeasurements ? "Hide Measurements" : "Show Measurements"}
             </span>
           </button>
         </div>
@@ -1101,7 +1200,26 @@ export const Interface: React.FC = () => {
     selectedPart,
     partMaterials,
     materials,
+    saasConfig,
+    setAdminPanelOpen,
+    user,
+    setUser,
   } = useStore();
+
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<"login" | "signup">("login");
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authLoading, setAuthLoading] = useState(false);
+  const [authError, setAuthError] = useState("");
+
+  // Listen for Firebase Auth changes
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged((usr) => {
+      setUser(usr);
+    });
+    return () => unsubscribe();
+  }, [setUser]);
 
   const [activeTab, setActiveTab] = useState<
     "dashboard" | "models" | "materials" | "colors" | "mix" | "light"
@@ -2550,6 +2668,177 @@ export const Interface: React.FC = () => {
         </div>
       )}
 
+      {/* FIREBASE AUTH MODAL */}
+      {authModalOpen && (
+        <div className="absolute inset-0 bg-black/70 backdrop-blur-md z-[100] flex items-center justify-center pointer-events-auto p-4 animate-fade-in">
+          <div className="bg-zinc-900 border border-white/10 rounded-3xl max-w-md w-full shadow-2xl flex flex-col overflow-hidden transform scale-100 transition-all">
+            <div className="p-6 border-b border-white/10 flex justify-between items-center bg-white/5">
+              <div className="flex items-center gap-2">
+                <ShieldCheck size={20} className="text-indigo-400" />
+                <h3 className="text-white font-bold text-lg">
+                  {authMode === "login" ? "Admin Authentication" : "Create Admin Account"}
+                </h3>
+              </div>
+              <button
+                onClick={() => setAuthModalOpen(false)}
+                className="text-zinc-400 hover:text-white bg-white/5 hover:bg-white/10 p-1.5 rounded-full transition-colors"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                setAuthError("");
+                setAuthLoading(true);
+                try {
+                  if (authMode === "login") {
+                    await signInWithEmailAndPassword(authEmail, authPassword);
+                  } else {
+                    await createUserWithEmailAndPassword(authEmail, authPassword);
+                  }
+                  setAuthModalOpen(false);
+                  setAuthEmail("");
+                  setAuthPassword("");
+                } catch (err: any) {
+                  console.error(err);
+                  setAuthError(err.message || "Authentication failed. Please verify your credentials.");
+                } finally {
+                  setAuthLoading(false);
+                }
+              }}
+              className="p-6 space-y-4"
+            >
+              {authError && (
+                <div className="p-3.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-semibold leading-relaxed">
+                  {authError}
+                </div>
+              )}
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Email Address</label>
+                <input
+                  type="email"
+                  value={authEmail}
+                  onChange={(e) => setAuthEmail(e.target.value)}
+                  placeholder="e.g. kitoruyasiru@gmail.com"
+                  className="w-full bg-zinc-950 border border-white/10 focus:border-indigo-500 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all"
+                  required
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Password</label>
+                <input
+                  type="password"
+                  value={authPassword}
+                  onChange={(e) => setAuthPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full bg-zinc-950 border border-white/10 focus:border-indigo-500 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all"
+                  required
+                />
+              </div>
+
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  disabled={authLoading}
+                  className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-4 rounded-xl text-xs uppercase tracking-wider transition-all shadow-lg active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {authLoading ? (
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : authMode === "login" ? (
+                    "Authorize Session"
+                  ) : (
+                    "Register Admin Profile"
+                  )}
+                </button>
+              </div>
+
+              <div className="text-center pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode(authMode === "login" ? "signup" : "login");
+                    setAuthError("");
+                  }}
+                  className="text-xs text-zinc-400 hover:text-white hover:underline transition-colors"
+                >
+                  {authMode === "login"
+                    ? "Need a new account? Register admin profile"
+                    : "Already have an account? Sign In"}
+                </button>
+              </div>
+              
+              <div className="text-[10px] text-zinc-500 text-center leading-relaxed border-t border-white/5 pt-4">
+                Note: In order to access SaaS settings, log in using the designated admin email: <strong className="text-indigo-400">kitoruyasiru@gmail.com</strong>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* BRANDING & ADMIN BUTTON OVERLAY */}
+      <div className="fixed top-4 left-4 z-[95] flex items-center gap-3 pointer-events-auto select-none">
+        <div className="flex items-center gap-2 bg-zinc-950/80 backdrop-blur-md px-4 py-2.5 rounded-xl border border-white/10 shadow-2xl transition-all">
+          <div className={`w-2.5 h-2.5 rounded-full ${getThemeColorClass(saasConfig.themeColor).bg} animate-pulse`} />
+          <span className="text-xs font-bold text-white tracking-tight">
+            {saasConfig.appName}
+          </span>
+          <span className="text-[9px] font-semibold text-zinc-500 bg-white/5 px-1.5 py-0.5 rounded border border-white/5 uppercase tracking-wider">
+            SaaS Tenant
+          </span>
+        </div>
+        
+        {!user ? (
+          <button
+            onClick={() => {
+              setAuthMode("login");
+              setAuthError("");
+              setAuthModalOpen(true);
+            }}
+            className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-zinc-900/90 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-white/10 shadow-lg transition-all hover:scale-105 active:scale-95"
+            title="Log In"
+          >
+            <LogIn size={13} className="text-indigo-400" />
+            <span className="text-[10px] font-bold uppercase tracking-wider">Admin Login</span>
+          </button>
+        ) : (
+          <div className="flex items-center gap-2">
+            {user.email === "kitoruyasiru@gmail.com" && (
+              <button
+                onClick={() => setAdminPanelOpen(true)}
+                className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white border border-indigo-500/30 shadow-lg transition-all hover:scale-105 active:scale-95 animate-[pulse_3s_infinite]"
+                title="Open Admin Control Panel"
+              >
+                <Sliders size={13} className="text-white" />
+                <span className="text-[10px] font-bold uppercase tracking-wider">Admin Panel</span>
+              </button>
+            )}
+            
+            <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-950/80 border border-white/10 text-zinc-300">
+              <User size={12} className={user.email === "kitoruyasiru@gmail.com" ? "text-indigo-400 animate-pulse" : "text-zinc-400"} />
+              <span className="text-[10px] font-semibold max-w-[120px] truncate">
+                {user.email}
+              </span>
+              <button
+                onClick={async () => {
+                  await signOut();
+                  setAdminPanelOpen(false); // Close admin panel if open
+                }}
+                className="ml-1 text-zinc-500 hover:text-red-400 transition-colors"
+                title="Sign Out"
+              >
+                <LogOut size={12} />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <AdminPanel />
+
       {/* TOP TOOLBAR */}
       <TopToolbar
         onWalkClick={handleWalkClick}
@@ -3201,6 +3490,8 @@ const RightPanel = ({ activeTab, showLeftPanel, onStartCamera, onStopCamera, onE
     resetEnvironmentSettings,
     modelCalibrations,
     updateModelCalibration,
+    saasConfig,
+    setAdminPanelOpen,
   } = useStore();
 
   const [showLibrary, setShowLibrary] = useState(true);
@@ -3636,11 +3927,23 @@ const RightPanel = ({ activeTab, showLeftPanel, onStartCamera, onStopCamera, onE
                 >
                   <Library size={14} /> Material Library
                 </button>
-                <button
-                  onClick={() => pbrInputRef.current?.click()}
-                  className="flex-1 py-2 rounded-lg border border-indigo-500/30 bg-indigo-500/10 text-indigo-300 hover:bg-indigo-500/20 hover:text-indigo-200 flex items-center justify-center gap-2 text-xs font-bold transition-all"
+                 <button
+                  onClick={() => {
+                    if (!saasConfig.enabledFeatures.pbrGen) {
+                      alert("Feature Locked: Smart PBR maps generation is disabled in your SaaS plan. Toggle it in the SaaS Admin Panel!");
+                      setAdminPanelOpen(true);
+                    } else {
+                      pbrInputRef.current?.click();
+                    }
+                  }}
+                  className={`flex-1 py-2 rounded-lg border flex items-center justify-center gap-2 text-xs font-bold transition-all ${
+                    !saasConfig.enabledFeatures.pbrGen
+                      ? "border-amber-500/30 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20"
+                      : "border-indigo-500/30 bg-indigo-500/10 text-indigo-300 hover:bg-indigo-500/20 hover:text-indigo-200"
+                  }`}
                 >
-                  <Wand2 size={14} /> Smart PBR
+                  {!saasConfig.enabledFeatures.pbrGen ? <Lock size={12} className="text-amber-400 animate-pulse" /> : <Wand2 size={14} />}
+                  Smart PBR
                 </button>
               </div>
 
@@ -4124,6 +4427,8 @@ const RightPanel = ({ activeTab, showLeftPanel, onStartCamera, onStopCamera, onE
 };
 
 const AISection = () => {
+  const saasConfig = useStore((s) => s.saasConfig);
+  const setAdminPanelOpen = useStore((s) => s.setAdminPanelOpen);
   const {
     isGenerating,
     materials,
@@ -4135,6 +4440,28 @@ const AISection = () => {
   } = useStore();
   const [prompt, setPrompt] = useState("");
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
+
+  if (!saasConfig.enabledFeatures.aiGen) {
+    return (
+      <div className="p-6 text-center bg-zinc-950/40 border border-white/5 rounded-2xl space-y-4 animate-in fade-in duration-200">
+        <div className="mx-auto w-12 h-12 bg-amber-500/10 border border-amber-500/20 text-amber-500 rounded-full flex items-center justify-center">
+          <Lock size={18} className="animate-pulse" />
+        </div>
+        <div className="space-y-1.5">
+          <h3 className="text-white text-xs font-bold tracking-tight">AI Texture Generator Locked</h3>
+          <p className="text-[10px] text-zinc-400 max-w-[210px] mx-auto leading-normal">
+            Your SaaS administrator has disabled the Gemini AI Material Generator. Toggles can be modified in the Admin Panel.
+          </p>
+        </div>
+        <button
+          onClick={() => setAdminPanelOpen(true)}
+          className="mx-auto flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-bold px-3 py-2 rounded-lg shadow-lg transition-colors cursor-pointer"
+        >
+          <Sliders size={12} /> Configure in SaaS Admin
+        </button>
+      </div>
+    );
+  }
 
   const handleGenerate = async () => {
     if (!prompt.trim()) return;

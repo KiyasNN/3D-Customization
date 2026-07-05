@@ -14,6 +14,7 @@ export interface Material {
   metalness: number;
   type: 'leather' | 'fabric' | 'rubber' | 'metallic' | 'ai-generated' | 'video';
   group?: string; // Stores the source prompt for AI materials
+  isPremium?: boolean; // Premium SaaS tier flag
   // Camera captured crop / warp metadata
   capturedTempImage?: string | null;
   cropWarpMode?: 'square' | 'perspective';
@@ -127,8 +128,57 @@ export type FloorType = 'studio' | 'street' | 'sand';
 
 export type RecordingStatus = 'idle' | 'recording' | 'review';
 
+export interface HistoryEntry {
+  partMaterials: Record<string, string>;
+  partVisibility: Record<string, boolean>;
+  partConfigs: Record<string, TextureConfig>;
+  partTextureScales: Record<string, number>;
+  isSingleMode: boolean;
+  selectedPart: string | null;
+  selectedParts: string[];
+}
+
+export interface SaaSConfig {
+  appName: string;
+  themeColor: string; // 'blue' | 'purple' | 'emerald' | 'indigo' | 'rose'
+  enabledFeatures: {
+    aiGen: boolean;
+    pbrGen: boolean;
+    measurements: boolean;
+    videoCapture: boolean;
+  };
+  pricingTiers: {
+    freeLimit: number;
+    proPrice: number;
+  };
+  metrics: {
+    totalRevenue: number;
+    activeUsers: number;
+    customizationsCreated: number;
+    conversions: number;
+  };
+  tenants: {
+    id: string;
+    name: string;
+    tier: 'Free' | 'Pro' | 'Enterprise';
+    status: 'Active' | 'Suspended';
+    joined: string;
+  }[];
+}
+
+export interface UserProfile {
+  uid: string;
+  email: string;
+  status: 'pending' | 'approved' | 'blocked';
+  requestedAt: number;
+}
+
 export interface AppState {
   isMobile: boolean; // New: responsive state
+  user: { email: string | null; uid: string } | null; // Firebase user state
+  setUser: (user: { email: string | null; uid: string } | null) => void;
+  userProfile: UserProfile | null; // User authorization/approval status
+  setUserProfile: (profile: UserProfile | null) => void;
 
   selectedPart: string | null;
   selectedParts: string[]; // New: list of multi-selected parts
@@ -152,7 +202,7 @@ export interface AppState {
   isSelectionMode: boolean;
   selectedVariantIds: string[];
 
-  history: Record<string, string>[];
+  history: HistoryEntry[];
   historyIndex: number;
   isGenerating: boolean;
   isProcessingMaterial: boolean; // New state for PBR generation
@@ -330,4 +380,13 @@ export interface AppState {
     positionY: number;
     positionZ: number;
   }>) => void;
+
+  // SaaS & Admin Panel State & Actions
+  isAdminPanelOpen: boolean;
+  saasConfig: SaaSConfig;
+  setAdminPanelOpen: (isOpen: boolean) => void;
+  updateSaasConfig: (config: Partial<SaaSConfig>) => void;
+  toggleSaasFeature: (feature: 'aiGen' | 'pbrGen' | 'measurements' | 'videoCapture') => void;
+  addSaasTenant: (tenant: { name: string; tier: 'Free' | 'Pro' | 'Enterprise' }) => void;
+  deleteSaasTenant: (id: string) => void;
 }
