@@ -212,8 +212,11 @@ export const getUserProfile = async (uid: string, email: string): Promise<UserPr
   if (!isFallbackMode && db) {
     try {
       const docRef = doc(db, "user_profiles", uid);
-      const docSnap = await getDoc(docRef);
-      if (docSnap.exists()) {
+      const docSnap = await Promise.race([
+        getDoc(docRef),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), 1200))
+      ]);
+      if (docSnap && docSnap.exists()) {
         profile = docSnap.data() as UserProfile;
       }
     } catch (e) {
@@ -240,7 +243,10 @@ export const getUserProfile = async (uid: string, email: string): Promise<UserPr
     if (!isFallbackMode && db) {
       try {
         const docRef = doc(db, "user_profiles", uid);
-        await setDoc(docRef, profile);
+        Promise.race([
+          setDoc(docRef, profile),
+          new Promise((resolve) => setTimeout(resolve, 1000))
+        ]).catch((e) => console.warn("Firestore setDoc background/timeout issue:", e));
       } catch (e) {
         console.warn("Firestore save of new profile failed:", e);
       }
@@ -256,7 +262,10 @@ export const getUserProfile = async (uid: string, email: string): Promise<UserPr
     if (!isFallbackMode && db) {
       try {
         const docRef = doc(db, "user_profiles", uid);
-        await setDoc(docRef, { status: "approved" }, { merge: true });
+        Promise.race([
+          setDoc(docRef, { status: "approved" }, { merge: true }),
+          new Promise((resolve) => setTimeout(resolve, 1000))
+        ]).catch(() => {});
       } catch (e) {}
     }
     const local = getLocalProfiles();
@@ -275,10 +284,15 @@ export const getAllUserProfiles = async (): Promise<UserProfile[]> => {
 
   if (!isFallbackMode && db) {
     try {
-      const querySnapshot = await getDocs(collection(db, "user_profiles"));
-      querySnapshot.forEach((doc) => {
-        firestoreProfiles.push(doc.data() as UserProfile);
-      });
+      const querySnapshot = await Promise.race([
+        getDocs(collection(db, "user_profiles")),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), 1500))
+      ]);
+      if (querySnapshot) {
+        querySnapshot.forEach((doc) => {
+          firestoreProfiles.push(doc.data() as UserProfile);
+        });
+      }
     } catch (e) {
       console.warn("Firestore getAllUserProfiles failed, using local cache:", e);
     }
