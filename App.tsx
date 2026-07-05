@@ -687,11 +687,15 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    console.log("DEBUG App useEffect: setting up auth listener");
     const unsubscribe = onAuthStateChanged(async (usr) => {
+      console.log("DEBUG onAuthStateChanged:", usr);
       setUser(usr);
       if (usr) {
         try {
+          console.log("DEBUG onAuthStateChanged: loading profile for", usr.uid);
           const profile = await getUserProfile(usr.uid, usr.email || "");
+          console.log("DEBUG onAuthStateChanged: profile loaded", profile);
           setUserProfile(profile);
         } catch (e) {
           console.error("Error loading profile:", e);
@@ -815,11 +819,10 @@ export default function App() {
                 setAuthError("");
                 setAuthLoading(true);
                 try {
-                  if (authMode === "login") {
-                    await signInWithEmailAndPassword(authEmail, authPassword);
-                  } else {
-                    await createUserWithEmailAndPassword(authEmail, authPassword);
-                  }
+                  const user = await signInWithEmailAndPassword(authEmail, authPassword);
+                  setUser(user);
+                  const profile = await getUserProfile(user.uid, user.email || "");
+                  setUserProfile(profile);
                 } catch (err: any) {
                   console.error(err);
                   setAuthError(err.message || "Failed to authenticate. Please check your credentials.");
@@ -830,16 +833,16 @@ export default function App() {
               className="flex flex-col gap-4"
             >
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">Email Address</label>
+                <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">Email or Username</label>
                 <div className="relative">
                   <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-zinc-500 font-sans">
                     <Mail size={14} />
                   </span>
                   <input
-                    type="email"
+                    type="text"
                     value={authEmail}
                     onChange={(e) => setAuthEmail(e.target.value)}
-                    placeholder="name@company.com"
+                    placeholder="name@company.com or username"
                     className="w-full bg-zinc-950/50 border border-white/10 focus:border-indigo-500 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all font-medium font-sans"
                     required
                   />
@@ -932,41 +935,6 @@ export default function App() {
                 </svg>
                 <span>Continue with Google</span>
               </button>
-
-              {/* AI Studio Environment Notice */}
-              {window.location.hostname.endsWith("run.app") && (
-                <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-[10px] leading-relaxed flex flex-col gap-1 text-left font-sans">
-                  <span className="font-bold text-amber-400 flex items-center gap-1">
-                    ⚠️ Info Google Sign-In (AI Studio):
-                  </span>
-                  <p>
-                    Google memblokir login dari domain sandbox dinamis (<code className="bg-amber-500/20 px-1 py-0.5 rounded text-[9px] text-amber-200">*.run.app</code>) dengan <strong>Error 403</strong> karena domain ini belum didaftarkan di Google Cloud Console & Firebase Anda.
-                  </p>
-                  <p className="text-zinc-400">
-                    Untuk bypass saat testing di AI Studio, gunakan tombol <strong>Dev Mode</strong> di bawah agar bisa login admin secara instan dengan satu klik!
-                  </p>
-                </div>
-              )}
-
-              <button
-                type="button"
-                onClick={async () => {
-                  setAuthError("");
-                  setAuthLoading(true);
-                  try {
-                    await signInWithGoogle("kitoruyasiru@gmail.com");
-                  } catch (err: any) {
-                    console.error(err);
-                    setAuthError(err.message || "Failed to authenticate.");
-                  } finally {
-                    setAuthLoading(false);
-                  }
-                }}
-                disabled={authLoading}
-                className="w-full bg-zinc-950/40 hover:bg-zinc-950 text-indigo-400 hover:text-indigo-300 border border-white/5 font-bold py-2 px-4 rounded-xl text-[10px] uppercase tracking-wider transition-all disabled:opacity-50 flex items-center justify-center gap-1 cursor-pointer font-sans"
-              >
-                <span>🚀 Dev Mode: Login as Admin</span>
-              </button>
             </div>
 
             {/* Form Toggle */}
@@ -983,11 +951,6 @@ export default function App() {
                   ? "Don't have an account yet? Create one" 
                   : "Already registered? Sign back in"}
               </button>
-            </div>
-
-            {/* Note about admin */}
-            <div className="text-[10px] text-zinc-500 text-center leading-relaxed border-t border-white/5 pt-4 mt-2 font-sans">
-              To configure SaaS billing & controls, log in using: <strong className="text-indigo-400 font-bold">kitoruyasiru@gmail.com</strong>
             </div>
 
           </div>

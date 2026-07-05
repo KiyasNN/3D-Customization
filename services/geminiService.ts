@@ -107,6 +107,7 @@ export const generateShoeConfig = async (prompt: string, parts: string[]): Promi
     // Directly access the text property as per guidelines (not a method).
     if (response.text) {
         try {
+          if (response.text === "undefined") return null;
           const data = JSON.parse(response.text);
           // Safety check: ensure data and data.design exist before accessing
           if (data && typeof data === 'object' && data.design) {

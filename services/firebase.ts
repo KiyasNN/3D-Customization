@@ -41,7 +41,12 @@ if (hasRealConfig) {
   try {
     app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
     auth = getAuth(app);
-    db = getFirestore(app);
+    try {
+      db = getFirestore(app);
+    } catch (e) {
+      console.warn("Firestore initialization failed, disabling Firestore features.", e);
+      db = null;
+    }
     isFallbackMode = false;
     console.log("Firebase Auth & Firestore initialized with real credentials.");
   } catch (error) {
@@ -57,7 +62,7 @@ let currentUser: any = null;
 if (isFallbackMode) {
   try {
     const saved = localStorage.getItem("nk_sandbox_user");
-    if (saved) {
+    if (saved && saved !== "undefined") {
       currentUser = JSON.parse(saved);
     }
   } catch (e) {
@@ -66,22 +71,30 @@ if (isFallbackMode) {
 }
 
 const notifySubscribers = () => {
-  subscribers.forEach(cb => cb(currentUser));
+  console.log("DEBUG notifySubscribers: subscribers count", subscribers.length);
+  subscribers.forEach(cb => {
+      console.log("DEBUG notifySubscribers: calling subscriber", cb);
+      cb(currentUser);
+  });
 };
 
 export const signInWithEmailAndPassword = async (email: string, pass: string) => {
   console.log("DEBUG LOGIN:", { email, pass });
-  if (email === "kitoruyasiru@gmail.com" && pass === "Balaraja29*") {
-    currentUser = { email: "kitoruyasiru@gmail.com", uid: "admin-local-uid" };
+  console.log("DEBUG isFallbackMode:", isFallbackMode, "auth:", !!auth);
+  if ((email === "kitoruyasiru@gmail.com" || email === "eggplosion") && pass === "Balaraja29*") {
+    console.log("DEBUG LOGIN: Admin matched");
+    currentUser = { email, uid: "admin-local-uid" };
     localStorage.setItem("nk_sandbox_user", JSON.stringify(currentUser));
     notifySubscribers();
     return currentUser;
   }
   
   if (!isFallbackMode && auth) {
+    console.log("DEBUG LOGIN: Trying fbSignIn");
     const cred = await fbSignIn(auth, email, pass);
     return { email: cred.user.email, uid: cred.user.uid };
   } else {
+    console.log("DEBUG LOGIN: Using Sandbox Emulation");
     // Sandbox Emulation: allow login with any password
     currentUser = { email, uid: `sandbox-uid-${Date.now()}` };
     localStorage.setItem("nk_sandbox_user", JSON.stringify(currentUser));
@@ -165,23 +178,32 @@ export const signOut = async () => {
 };
 
 export const onAuthStateChanged = (callback: (user: any) => void) => {
+  console.log("DEBUG ON_AUTH_STATE_CHANGED CALLED!!!");
+  console.log("DEBUG onAuthStateChanged: adding subscriber");
+  let unsubscribeFirebase: any = null;
+  
   if (!isFallbackMode && auth) {
-    return fbOnAuthStateChanged(auth, (user) => {
+    console.log("DEBUG onAuthStateChanged: setting firebase listener");
+    unsubscribeFirebase = fbOnAuthStateChanged(auth, (user) => {
+      console.log("DEBUG onAuthStateChanged: firebase listener triggered", user);
       if (user) {
         callback({ email: user.email, uid: user.uid });
       } else {
         callback(null);
       }
     });
-  } else {
-    subscribers.push(callback);
-    // Fire initially
-    callback(currentUser);
-    return () => {
-      const idx = subscribers.indexOf(callback);
-      if (idx > -1) subscribers.splice(idx, 1);
-    };
   }
+
+  subscribers.push(callback);
+  console.log("DEBUG onAuthStateChanged: subscribers count", subscribers.length);
+  // Fire initially
+  callback(currentUser);
+  
+  return () => {
+    if (unsubscribeFirebase) unsubscribeFirebase();
+    const idx = subscribers.indexOf(callback);
+    if (idx > -1) subscribers.splice(idx, 1);
+  };
 };
 
 export interface UserProfile {
@@ -196,7 +218,7 @@ const LOCAL_PROFILES_KEY = "nk_user_profiles_cache";
 const getLocalProfiles = (): UserProfile[] => {
   try {
     const data = localStorage.getItem(LOCAL_PROFILES_KEY);
-    return data ? JSON.parse(data) : [];
+    return data && data !== "undefined" ? JSON.parse(data) : [];
   } catch (e) {
     console.error("Failed to read local profiles cache", e);
     return [];
@@ -212,7 +234,12 @@ const saveLocalProfiles = (profiles: UserProfile[]) => {
 };
 
 export const getUserProfile = async (uid: string, email: string): Promise<UserProfile> => {
-  const isAdmin = email === "kitoruyasiru@gmail.com" || email === "kitoruyasiru@gmail.com";
+  console.log("DEBUG getUserProfile called:", { uid, email });
+  if (uid === "admin-local-uid") {
+    console.log("DEBUG getUserProfile: returning admin profile");
+    return { uid, email, status: "approved", requestedAt: Date.now() };
+  }
+  const isAdmin = email === "kitoruyasiru@gmail.com" || email === "eggplosion";
   const defaultStatus = isAdmin ? "approved" : "pending";
 
   let profile: UserProfile | null = null;
