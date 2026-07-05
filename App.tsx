@@ -933,6 +933,21 @@ export default function App() {
                 <span>Continue with Google</span>
               </button>
 
+              {/* AI Studio Environment Notice */}
+              {window.location.hostname.endsWith("run.app") && (
+                <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-[10px] leading-relaxed flex flex-col gap-1 text-left font-sans">
+                  <span className="font-bold text-amber-400 flex items-center gap-1">
+                    ⚠️ Info Google Sign-In (AI Studio):
+                  </span>
+                  <p>
+                    Google memblokir login dari domain sandbox dinamis (<code className="bg-amber-500/20 px-1 py-0.5 rounded text-[9px] text-amber-200">*.run.app</code>) dengan <strong>Error 403</strong> karena domain ini belum didaftarkan di Google Cloud Console & Firebase Anda.
+                  </p>
+                  <p className="text-zinc-400">
+                    Untuk bypass saat testing di AI Studio, gunakan tombol <strong>Dev Mode</strong> di bawah agar bisa login admin secara instan dengan satu klik!
+                  </p>
+                </div>
+              )}
+
               <button
                 type="button"
                 onClick={async () => {
