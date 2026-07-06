@@ -844,6 +844,9 @@ export default function App() {
                     onChange={(e) => setAuthEmail(e.target.value)}
                     placeholder="name@company.com or username"
                     className="w-full bg-zinc-950/50 border border-white/10 focus:border-indigo-500 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all font-medium font-sans"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
                     required
                   />
                 </div>

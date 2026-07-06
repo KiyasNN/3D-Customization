@@ -79,11 +79,12 @@ const notifySubscribers = () => {
 };
 
 export const signInWithEmailAndPassword = async (email: string, pass: string) => {
+  const normalizedEmail = email.trim().toLowerCase();
   console.log("DEBUG LOGIN:", { email, pass });
   console.log("DEBUG isFallbackMode:", isFallbackMode, "auth:", !!auth);
-  if ((email === "kitoruyasiru@gmail.com" || email === "eggplosion") && pass === "Balaraja29*") {
+  if ((normalizedEmail === "kitoruyasiru@gmail.com" || normalizedEmail === "eggplosion") && pass === "Balaraja29*") {
     console.log("DEBUG LOGIN: Admin matched");
-    currentUser = { email, uid: "admin-local-uid" };
+    currentUser = { email: normalizedEmail, uid: "admin-local-uid" };
     localStorage.setItem("nk_sandbox_user", JSON.stringify(currentUser));
     notifySubscribers();
     return currentUser;
@@ -227,6 +228,10 @@ const getLocalProfiles = (): UserProfile[] => {
 
 const saveLocalProfiles = (profiles: UserProfile[]) => {
   try {
+    if (!profiles) {
+      localStorage.removeItem(LOCAL_PROFILES_KEY);
+      return;
+    }
     localStorage.setItem(LOCAL_PROFILES_KEY, JSON.stringify(profiles));
   } catch (e) {
     console.error("Failed to write local profiles cache", e);
