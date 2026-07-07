@@ -41,7 +41,7 @@ const pushHistory = (state: any, overrides: Partial<any> = {}) => {
   const entry = {
     partMaterials: { ...nextPartMaterials },
     partVisibility: { ...nextPartVisibility },
-    partConfigs: JSON.parse(JSON.stringify(nextPartConfigs || {})),
+    partConfigs: JSON.parse(JSON.stringify(nextPartConfigs || {}) || '{}'),
     partTextureScales: { ...nextPartTextureScales },
     isSingleMode: !!nextIsSingleMode,
     selectedPart: nextSelectedPart,
@@ -169,7 +169,7 @@ export const useStore = create<AppState>((set, get) => ({
 
   isAdminPanelOpen: false,
   saasConfig: {
-    appName: "SaaS 3D Customizer Studio",
+    appName: "3D Customizer Studio",
     themeColor: "indigo",
     enabledFeatures: {
       aiGen: true,
@@ -512,8 +512,8 @@ export const useStore = create<AppState>((set, get) => ({
 
   saveVariantFromSnapshot: (thumbnail) => set((state) => {
     // Deep clone to prevent reference issues with nested objects
-    const deepCloneConfigs = state.partConfigs ? JSON.parse(JSON.stringify(state.partConfigs)) : {};
-    const deepCloneAnnotations = state.partAnnotations ? JSON.parse(JSON.stringify(state.partAnnotations)) : {};
+    const deepCloneConfigs = state.partConfigs ? JSON.parse(JSON.stringify(state.partConfigs) || '{}') : {};
+    const deepCloneAnnotations = state.partAnnotations ? JSON.parse(JSON.stringify(state.partAnnotations) || '{}') : {};
 
     const newVariant: SavedVariant = {
       id: `variant-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
@@ -533,11 +533,11 @@ export const useStore = create<AppState>((set, get) => ({
     const variant = state.savedVariants.find(v => v.id === variantId);
     if (variant) {
       return {
-        partAnnotations: JSON.parse(JSON.stringify(variant.partAnnotations || {})),
+        partAnnotations: JSON.parse(JSON.stringify(variant.partAnnotations || {}) || '{}'),
         ...pushHistory(state, {
           partMaterials: { ...variant.materials },
           partTextureScales: { ...variant.textureScales },
-          partConfigs: JSON.parse(JSON.stringify(variant.partConfigs || {})),
+          partConfigs: JSON.parse(JSON.stringify(variant.partConfigs || {}) || '{}'),
           selectedPart: null,
           selectedParts: []
         })

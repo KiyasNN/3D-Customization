@@ -19,6 +19,23 @@ import {
   getDocs 
 } from "firebase/firestore";
 
+export function safeJSONParse<T>(raw: any, fallback: T): T {
+  if (raw === undefined || raw === null) return fallback;
+  const str = String(raw).trim();
+  if (str === "" || str === "undefined" || str === "null") return fallback;
+  try {
+    return JSON.parse(str);
+  } catch {
+    return fallback;
+  }
+}
+
+const debugLog = (...args: any[]) => {
+  if (import.meta.env.DEV) {
+    console.log(...args);
+  }
+};
+
 const hasRealConfig = !!import.meta.env.VITE_FIREBASE_API_KEY && 
                       import.meta.env.VITE_FIREBASE_API_KEY !== "your_firebase_api_key" &&
                       !import.meta.env.VITE_FIREBASE_API_KEY.includes("dummy");
@@ -57,33 +74,71 @@ if (hasRealConfig) {
 // In-memory emulated subscribers for sandbox mode
 const subscribers: Array<(user: any) => void> = [];
 let currentUser: any = null;
+let isLoggingOut = false;
+let isStartupSigningOut = false;
 
-// Try to restore session from localStorage for persistence in sandbox mode
-if (isFallbackMode) {
-  try {
-    const saved = localStorage.getItem("nk_sandbox_user");
-    if (saved && saved !== "undefined") {
-      currentUser = JSON.parse(saved);
-    }
-  } catch (e) {
-    console.error("Local storage read failed", e);
+// Do not auto-login on startup. The first page should always be the login page first.
+try {
+  localStorage.removeItem("nk_sandbox_user");
+} catch (e) {}
+
+// Asynchronously ensure Firebase Auth is also signed out on startup if present
+if (typeof window !== "undefined") {
+  isStartupSigningOut = true;
+  if (!isFallbackMode && auth) {
+    fbSignOut(auth)
+      .catch(() => {})
+      .finally(() => {
+        isStartupSigningOut = false;
+        notifySubscribers();
+      });
+  } else {
+    isStartupSigningOut = false;
   }
 }
 
 const notifySubscribers = () => {
-  console.log("DEBUG notifySubscribers: subscribers count", subscribers.length);
-  subscribers.forEach(cb => {
-      console.log("DEBUG notifySubscribers: calling subscriber", cb);
-      cb(currentUser);
+  debugLog("DEBUG notifySubscribers: subscribers count", subscribers.length);
+  // Shallow copy to prevent issues if a callback alters the subscribers list during iteration
+  const list = [...subscribers];
+  list.forEach(cb => {
+      debugLog("DEBUG notifySubscribers: calling subscriber", cb);
+      try {
+        cb(currentUser);
+      } catch (err) {
+        console.error("Error in subscriber callback:", err);
+      }
   });
 };
 
 export const signInWithEmailAndPassword = async (email: string, pass: string) => {
+  isLoggingOut = false;
   const normalizedEmail = email.trim().toLowerCase();
-  console.log("DEBUG LOGIN:", { email, pass });
-  console.log("DEBUG isFallbackMode:", isFallbackMode, "auth:", !!auth);
-  if ((normalizedEmail === "kitoruyasiru@gmail.com" || normalizedEmail === "eggplosion") && pass === "Balaraja29*") {
-    console.log("DEBUG LOGIN: Admin matched");
+  debugLog("DEBUG LOGIN:", { email, pass });
+  debugLog("DEBUG isFallbackMode:", isFallbackMode, "auth:", !!auth);
+  
+  // 1. Eggplosion is ALWAYS the local dev account, using the hardcoded password "Balaraja29*"
+  // and does not touch Firebase even if Firebase is active.
+  if (normalizedEmail === "eggplosion" && pass === "Balaraja29*") {
+    debugLog("DEBUG LOGIN: Local dev 'eggplosion' matched");
+    currentUser = { email: normalizedEmail, uid: "admin-local-uid" };
+    localStorage.setItem("nk_sandbox_user", JSON.stringify(currentUser));
+    
+    if (!isFallbackMode && auth) {
+      // Sign out of Firebase asynchronously to not block local dev login
+      fbSignOut(auth).catch((e) => {
+        debugLog("DEBUG LOGIN: failed to sign out of Firebase during eggplosion login", e);
+      });
+    }
+    
+    notifySubscribers();
+    return currentUser;
+  }
+  
+  // 2. kitoruyasiru@gmail.com with hardcoded "Balaraja29*" is ONLY used in sandbox fallback mode.
+  // If real Firebase is active, kitoruyasiru@gmail.com must go through Firebase.
+  if (isFallbackMode && normalizedEmail === "kitoruyasiru@gmail.com" && pass === "Balaraja29*") {
+    debugLog("DEBUG LOGIN: Sandbox admin 'kitoruyasiru@gmail.com' matched");
     currentUser = { email: normalizedEmail, uid: "admin-local-uid" };
     localStorage.setItem("nk_sandbox_user", JSON.stringify(currentUser));
     notifySubscribers();
@@ -91,11 +146,11 @@ export const signInWithEmailAndPassword = async (email: string, pass: string) =>
   }
   
   if (!isFallbackMode && auth) {
-    console.log("DEBUG LOGIN: Trying fbSignIn");
+    debugLog("DEBUG LOGIN: Trying fbSignIn");
     const cred = await fbSignIn(auth, email, pass);
     return { email: cred.user.email, uid: cred.user.uid };
   } else {
-    console.log("DEBUG LOGIN: Using Sandbox Emulation");
+    debugLog("DEBUG LOGIN: Using Sandbox Emulation");
     // Sandbox Emulation: allow login with any password
     currentUser = { email, uid: `sandbox-uid-${Date.now()}` };
     localStorage.setItem("nk_sandbox_user", JSON.stringify(currentUser));
@@ -105,6 +160,7 @@ export const signInWithEmailAndPassword = async (email: string, pass: string) =>
 };
 
 export const createUserWithEmailAndPassword = async (email: string, pass: string) => {
+  isLoggingOut = false;
   if (!isFallbackMode && auth) {
     const cred = await fbCreateUser(auth, email, pass);
     return { email: cred.user.email, uid: cred.user.uid };
@@ -126,6 +182,7 @@ const isInIframe = () => {
 };
 
 export const signInWithGoogle = async (emulatedEmail?: string) => {
+  isLoggingOut = false;
   if (!isFallbackMode && auth) {
     const provider = new GoogleAuthProvider();
 
@@ -159,6 +216,7 @@ export const handleGoogleRedirectResult = async () => {
     try {
       const result = await getRedirectResult(auth);
       if (result?.user) {
+        isLoggingOut = false;
         return { email: result.user.email, uid: result.user.uid };
       }
     } catch (err) {
@@ -169,34 +227,70 @@ export const handleGoogleRedirectResult = async () => {
 };
 
 export const signOut = async () => {
+  debugLog("DEBUG SIGN OUT CALLED");
+  isLoggingOut = true;
+  currentUser = null;
+  localStorage.removeItem("nk_sandbox_user");
+  
+  // Instant local state update
+  notifySubscribers();
+  
   if (!isFallbackMode && auth) {
-    await fbSignOut(auth);
+    fbSignOut(auth)
+      .catch((e) => {
+        console.warn("Firebase fbSignOut failed or was already signed out:", e);
+      })
+      .finally(() => {
+        isLoggingOut = false;
+        notifySubscribers();
+      });
   } else {
-    currentUser = null;
-    localStorage.removeItem("nk_sandbox_user");
-    notifySubscribers();
+    isLoggingOut = false;
   }
 };
 
 export const onAuthStateChanged = (callback: (user: any) => void) => {
-  console.log("DEBUG ON_AUTH_STATE_CHANGED CALLED!!!");
-  console.log("DEBUG onAuthStateChanged: adding subscriber");
+  debugLog("DEBUG ON_AUTH_STATE_CHANGED CALLED!!!");
+  debugLog("DEBUG onAuthStateChanged: adding subscriber");
   let unsubscribeFirebase: any = null;
   
   if (!isFallbackMode && auth) {
-    console.log("DEBUG onAuthStateChanged: setting firebase listener");
+    debugLog("DEBUG onAuthStateChanged: setting firebase listener");
     unsubscribeFirebase = fbOnAuthStateChanged(auth, (user) => {
-      console.log("DEBUG onAuthStateChanged: firebase listener triggered", user);
+      debugLog("DEBUG onAuthStateChanged: firebase listener triggered", user);
+      
+      if (isLoggingOut || isStartupSigningOut) {
+        debugLog("DEBUG onAuthStateChanged: currently logging out or in startup signout, forcing user to null.");
+        currentUser = null;
+        callback(null);
+        return;
+      }
+      
+      // CRITICAL: If currently logged in as local dev "eggplosion", 
+      // we must NOT let the Firebase Auth state change event
+      // overwrite our local dev session!
+      const localUser = safeJSONParse<any>(localStorage.getItem("nk_sandbox_user"), null);
+      if ((currentUser && currentUser.email === "eggplosion") || (localUser && localUser.email === "eggplosion")) {
+        debugLog("DEBUG onAuthStateChanged: keeping local dev 'eggplosion' session active.");
+        if (localUser && localUser.email === "eggplosion" && (!currentUser || currentUser.email !== "eggplosion")) {
+          currentUser = localUser;
+        }
+        callback(currentUser);
+        return;
+      }
+
       if (user) {
-        callback({ email: user.email, uid: user.uid });
+        currentUser = { email: user.email, uid: user.uid };
+        callback(currentUser);
       } else {
+        currentUser = null;
         callback(null);
       }
     });
   }
 
   subscribers.push(callback);
-  console.log("DEBUG onAuthStateChanged: subscribers count", subscribers.length);
+  debugLog("DEBUG onAuthStateChanged: subscribers count", subscribers.length);
   // Fire initially
   callback(currentUser);
   
@@ -217,13 +311,7 @@ export interface UserProfile {
 const LOCAL_PROFILES_KEY = "nk_user_profiles_cache";
 
 const getLocalProfiles = (): UserProfile[] => {
-  try {
-    const data = localStorage.getItem(LOCAL_PROFILES_KEY);
-    return data && data !== "undefined" ? JSON.parse(data) : [];
-  } catch (e) {
-    console.error("Failed to read local profiles cache", e);
-    return [];
-  }
+  return safeJSONParse<UserProfile[]>(localStorage.getItem(LOCAL_PROFILES_KEY), []);
 };
 
 const saveLocalProfiles = (profiles: UserProfile[]) => {
@@ -239,9 +327,9 @@ const saveLocalProfiles = (profiles: UserProfile[]) => {
 };
 
 export const getUserProfile = async (uid: string, email: string): Promise<UserProfile> => {
-  console.log("DEBUG getUserProfile called:", { uid, email });
+  debugLog("DEBUG getUserProfile called:", { uid, email });
   if (uid === "admin-local-uid") {
-    console.log("DEBUG getUserProfile: returning admin profile");
+    debugLog("DEBUG getUserProfile: returning admin profile");
     return { uid, email, status: "approved", requestedAt: Date.now() };
   }
   const isAdmin = email === "kitoruyasiru@gmail.com" || email === "eggplosion";

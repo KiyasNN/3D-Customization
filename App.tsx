@@ -23,6 +23,12 @@ if (THREE.LoaderUtils && typeof TextDecoder !== 'undefined') {
   THREE.LoaderUtils.decodeText = (array: any) => new TextDecoder().decode(array);
 }
 
+const debugLog = (...args: any[]) => {
+  if (import.meta.env.DEV) {
+    console.log(...args);
+  }
+};
+
 // Component to handle snapshot taking inside Canvas context
 const ScreenshotHandler = () => {
   const snapshotRequest = useStore(s => s.snapshotRequest);
@@ -687,15 +693,15 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    console.log("DEBUG App useEffect: setting up auth listener");
+    debugLog("DEBUG App useEffect: setting up auth listener");
     const unsubscribe = onAuthStateChanged(async (usr) => {
-      console.log("DEBUG onAuthStateChanged:", usr);
+      debugLog("DEBUG onAuthStateChanged:", usr);
       setUser(usr);
       if (usr) {
         try {
-          console.log("DEBUG onAuthStateChanged: loading profile for", usr.uid);
+          debugLog("DEBUG onAuthStateChanged: loading profile for", usr.uid);
           const profile = await getUserProfile(usr.uid, usr.email || "");
-          console.log("DEBUG onAuthStateChanged: profile loaded", profile);
+          debugLog("DEBUG onAuthStateChanged: profile loaded", profile);
           setUserProfile(profile);
         } catch (e) {
           console.error("Error loading profile:", e);
@@ -819,7 +825,12 @@ export default function App() {
                 setAuthError("");
                 setAuthLoading(true);
                 try {
-                  const user = await signInWithEmailAndPassword(authEmail, authPassword);
+                  let user;
+                  if (authMode === "login") {
+                    user = await signInWithEmailAndPassword(authEmail, authPassword);
+                  } else {
+                    user = await createUserWithEmailAndPassword(authEmail, authPassword);
+                  }
                   setUser(user);
                   const profile = await getUserProfile(user.uid, user.email || "");
                   setUserProfile(profile);

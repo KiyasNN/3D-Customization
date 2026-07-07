@@ -1165,7 +1165,12 @@ export const useModelLoader = (url: string, isObj: boolean, isUsdz: boolean, res
           const response = await fetch(url);
           const text = await response.text();
           try {
-            if (text === "undefined") throw new Error("Invalid JSON: undefined");
+            const trimmedText = text.trim();
+            if (trimmedText === "undefined" || trimmedText === "null" || trimmedText === "") {
+               console.warn("Invalid GLTF JSON text received:", text);
+               setLoading(false);
+               return;
+            }
             const gltfJson = JSON.parse(text);
             let modified = false;
 

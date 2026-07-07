@@ -470,7 +470,7 @@ const TopToolbar = ({
               onClick={() => {
                 if (!saasConfig.enabledFeatures.videoCapture) {
                   alert(
-                    "Feature Locked: MP4 Video export is locked by your SaaS administrator. Toggles can be modified in the Admin Control Panel.",
+                    "Feature Locked: MP4 Video export is locked by your system administrator. Toggles can be modified in the Control Panel.",
                   );
                   setAdminPanelOpen(true);
                 } else {
@@ -1030,7 +1030,7 @@ const PartProperties = () => {
           <button
             onClick={() => {
               if (!saasConfig.enabledFeatures.measurements) {
-                alert("Upgrade Required: Sizing Measurements is a SaaS Premium feature. Enable it in the SaaS Admin Control Panel!");
+                alert("Upgrade Required: Sizing Measurements is a Premium feature. Enable it in the Control Panel!");
                 setAdminPanelOpen(true);
               } else {
                 toggleMeasurements();
@@ -1212,14 +1212,6 @@ export const Interface: React.FC = () => {
   const [authPassword, setAuthPassword] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState("");
-
-  // Listen for Firebase Auth changes
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged((usr) => {
-      setUser(usr);
-    });
-    return () => unsubscribe();
-  }, [setUser]);
 
   const [activeTab, setActiveTab] = useState<
     "dashboard" | "models" | "materials" | "colors" | "mix" | "light"
@@ -2772,7 +2764,7 @@ export const Interface: React.FC = () => {
               </div>
               
               <div className="text-[10px] text-zinc-500 text-center leading-relaxed border-t border-white/5 pt-4">
-                Note: In order to access SaaS settings, log in using the designated admin email: <strong className="text-indigo-400">kitoruyasiru@gmail.com</strong>
+                Note: In order to access settings, log in using the designated admin email: <strong className="text-indigo-400">kitoruyasiru@gmail.com</strong>
               </div>
             </form>
           </div>
@@ -2787,7 +2779,7 @@ export const Interface: React.FC = () => {
             {saasConfig.appName}
           </span>
           <span className="text-[9px] font-semibold text-zinc-500 bg-white/5 px-1.5 py-0.5 rounded border border-white/5 uppercase tracking-wider">
-            SaaS Tenant
+            Active Tenant
           </span>
         </div>
         
@@ -2806,7 +2798,7 @@ export const Interface: React.FC = () => {
           </button>
         ) : (
           <div className="flex items-center gap-2">
-            {user.email === "kitoruyasiru@gmail.com" && (
+            {(user.email === "kitoruyasiru@gmail.com" || user.email === "eggplosion") && (
               <button
                 onClick={() => setAdminPanelOpen(true)}
                 className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white border border-indigo-500/30 shadow-lg transition-all hover:scale-105 active:scale-95 animate-[pulse_3s_infinite]"
@@ -2818,7 +2810,7 @@ export const Interface: React.FC = () => {
             )}
             
             <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-950/80 border border-white/10 text-zinc-300">
-              <User size={12} className={user.email === "kitoruyasiru@gmail.com" ? "text-indigo-400 animate-pulse" : "text-zinc-400"} />
+              <User size={12} className={(user.email === "kitoruyasiru@gmail.com" || user.email === "eggplosion") ? "text-indigo-400 animate-pulse" : "text-zinc-400"} />
               <span className="text-[10px] font-semibold max-w-[120px] truncate">
                 {user.email}
               </span>
@@ -3930,7 +3922,7 @@ const RightPanel = ({ activeTab, showLeftPanel, onStartCamera, onStopCamera, onE
                  <button
                   onClick={() => {
                     if (!saasConfig.enabledFeatures.pbrGen) {
-                      alert("Feature Locked: Smart PBR maps generation is disabled in your SaaS plan. Toggle it in the SaaS Admin Panel!");
+                      alert("Feature Locked: Smart PBR maps generation is disabled. Toggle it in the Control Panel!");
                       setAdminPanelOpen(true);
                     } else {
                       pbrInputRef.current?.click();
@@ -4450,14 +4442,14 @@ const AISection = () => {
         <div className="space-y-1.5">
           <h3 className="text-white text-xs font-bold tracking-tight">AI Texture Generator Locked</h3>
           <p className="text-[10px] text-zinc-400 max-w-[210px] mx-auto leading-normal">
-            Your SaaS administrator has disabled the Gemini AI Material Generator. Toggles can be modified in the Admin Panel.
+            The Gemini AI Material Generator has been disabled. Toggles can be modified in the Control Panel.
           </p>
         </div>
         <button
           onClick={() => setAdminPanelOpen(true)}
           className="mx-auto flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-bold px-3 py-2 rounded-lg shadow-lg transition-colors cursor-pointer"
         >
-          <Sliders size={12} /> Configure in SaaS Admin
+          <Sliders size={12} /> Configure in Control Panel
         </button>
       </div>
     );

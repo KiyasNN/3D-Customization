@@ -102,8 +102,8 @@ export const AdminPanel = () => {
 
   if (!isAdminPanelOpen) return null;
 
-  // Security check: Only kitoruyasiru@gmail.com can access the admin panel
-  if (!user || user.email !== "kitoruyasiru@gmail.com") {
+  // Security check: Only kitoruyasiru@gmail.com and eggplosion can access the admin panel
+  if (!user || (user.email !== "kitoruyasiru@gmail.com" && user.email !== "eggplosion")) {
     // Force close state asynchronously to avoid setting state during render phase
     setTimeout(() => setAdminPanelOpen(false), 0);
     return null;
@@ -150,7 +150,7 @@ export const AdminPanel = () => {
 
   return (
     <div className="fixed inset-0 z-[120] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 overflow-hidden pointer-events-auto select-none">
-      <div className="bg-zinc-900 border border-white/10 rounded-2xl w-full max-w-5xl h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+      <div className="bg-zinc-900 border border-white/10 rounded-2xl w-full max-w-7xl h-[92vh] flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
         
         {/* HEADER */}
         <div className="p-5 border-b border-white/10 bg-zinc-950 flex justify-between items-center">
@@ -160,13 +160,13 @@ export const AdminPanel = () => {
             </div>
             <div>
               <h2 className="text-white text-base font-bold tracking-tight flex items-center gap-2">
-                SaaS Admin Control Panel
+                Control Panel
                 <span className="text-[10px] font-semibold text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-full border border-indigo-500/20">
                   DEVELOPER / ADMIN MODE
                 </span>
               </h2>
               <p className="text-[11px] text-zinc-400 font-medium">
-                Manage SaaS branding, toggle feature flags, configure premium material lockouts, and inspect client tenants.
+                Manage platform branding, toggle feature flags, configure premium material lockouts, and inspect client tenants.
               </p>
             </div>
           </div>
@@ -193,7 +193,7 @@ export const AdminPanel = () => {
                 }`}
               >
                 <BarChart2 size={15} />
-                SaaS Dashboard
+                Dashboard
               </button>
               <button
                 onClick={() => setActiveAdminTab("branding")}
@@ -372,7 +372,7 @@ export const AdminPanel = () => {
                       
                       <div className="w-20 h-20 rounded-full border-[8px] border-indigo-600/20 relative flex items-center justify-center flex-shrink-0">
                         <div className="absolute inset-0 rounded-full border-[8px] border-transparent border-t-emerald-500 border-r-indigo-500 rotate-45" />
-                        <span className="text-[9px] font-bold text-white">SaaS KPI</span>
+                        <span className="text-[9px] font-bold text-white">Platform KPI</span>
                       </div>
                     </div>
                   </div>
@@ -410,13 +410,13 @@ export const AdminPanel = () => {
                   {/* APP NAME BRANDING */}
                   <div className="bg-zinc-950 border border-white/10 rounded-xl p-5 space-y-4">
                     <div>
-                      <h3 className="text-white text-xs font-bold tracking-tight">White-label SaaS Branding</h3>
+                      <h3 className="text-white text-xs font-bold tracking-tight">White-label Branding</h3>
                       <p className="text-[10px] text-zinc-400">Rebrand the customizer title and typography globally.</p>
                     </div>
 
                     <div className="space-y-3">
                       <div className="flex flex-col gap-1.5">
-                        <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Platform SaaS Name</label>
+                        <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Platform Name</label>
                         <input
                           type="text"
                           value={saasConfig.appName}
@@ -480,7 +480,7 @@ export const AdminPanel = () => {
                   {/* FEATURE TOGGLES */}
                   <div className="bg-zinc-950 border border-white/10 rounded-xl p-5 space-y-4">
                     <div>
-                      <h3 className="text-white text-xs font-bold tracking-tight">SaaS Feature Entitlements</h3>
+                      <h3 className="text-white text-xs font-bold tracking-tight">Feature Entitlements</h3>
                       <p className="text-[10px] text-zinc-400">Dynamically toggle which customizer features are unlocked in the app.</p>
                     </div>
 
@@ -569,7 +569,7 @@ export const AdminPanel = () => {
                     <div className="flex justify-between items-center">
                       <div>
                         <h3 className="text-white text-xs font-bold tracking-tight">Active Tenant Accounts</h3>
-                        <p className="text-[10px] text-zinc-400">View active SaaS customer companies configured on this instance.</p>
+                        <p className="text-[10px] text-zinc-400">View active customer companies configured on this instance.</p>
                       </div>
                       <span className="text-[10px] font-bold text-zinc-400 bg-white/5 px-2 py-0.5 rounded border border-white/5">
                         {filteredTenants.length} tenants
@@ -1033,7 +1033,7 @@ export const AdminPanel = () => {
                             const matchesFilter = profilesFilter === "all" || p.status === profilesFilter;
                             return matchesSearch && matchesFilter;
                           }).map((profile) => {
-                            const isSelf = profile.email === "kitoruyasiru@gmail.com";
+                            const isSelf = (profile.email === "kitoruyasiru@gmail.com" || profile.email === "eggplosion" || (user && profile.email === user.email));
                             const isPending = profile.status === "pending";
                             const isApproved = profile.status === "approved";
                             const isBlocked = profile.status === "blocked";
@@ -1047,7 +1047,7 @@ export const AdminPanel = () => {
                                       {profile.email || "Anonymous Emulated Sandbox Account"}
                                     </span>
                                     <span className="text-[9px] font-mono text-zinc-500">
-                                      UID: {profile.uid} {isSelf && "• Primary Admin Key"}
+                                      UID: {profile.uid} {isSelf && "• Admin Session Protected"}
                                     </span>
                                   </div>
                                 </td>
