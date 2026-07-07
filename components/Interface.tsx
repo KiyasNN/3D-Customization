@@ -2771,18 +2771,21 @@ export const Interface: React.FC = () => {
         </div>
       )}
 
-      {/* BRANDING & ADMIN BUTTON OVERLAY */}
+      {/* BRANDING OVERLAY (TOP-LEFT) */}
       <div className="fixed top-4 left-4 z-[95] flex items-center gap-3 pointer-events-auto select-none">
         <div className="flex items-center gap-2 bg-zinc-950/80 backdrop-blur-md px-4 py-2.5 rounded-xl border border-white/10 shadow-2xl transition-all">
           <div className={`w-2.5 h-2.5 rounded-full ${getThemeColorClass(saasConfig.themeColor).bg} animate-pulse`} />
           <span className="text-xs font-bold text-white tracking-tight">
             {saasConfig.appName}
           </span>
-          <span className="text-[9px] font-semibold text-zinc-500 bg-white/5 px-1.5 py-0.5 rounded border border-white/5 uppercase tracking-wider">
+          <span className="text-[9px] font-semibold text-zinc-500 bg-white/5 px-1.5 py-0.5 rounded border border-white/5 uppercase tracking-wider hidden md:inline-block">
             Active Tenant
           </span>
         </div>
-        
+      </div>
+
+      {/* USER & ADMIN CONTROLS OVERLAY (TOP-RIGHT) */}
+      <div className="fixed top-4 right-4 z-[95] flex items-center gap-2 pointer-events-auto select-none">
         {!user ? (
           <button
             onClick={() => {
@@ -2918,11 +2921,15 @@ const LeftPanel = ({ showLeftPanel, setShowLeftPanel }: any) => {
   const recordingStatus = useStore((s) => s.recordingStatus);
   const customParts = useStore((s) => s.customParts);
   const currentModel = useStore((s) => s.currentModel);
+  const user = useStore((s) => s.user);
+  const isAdmin = !!(user && (user.email === "kitoruyasiru@gmail.com" || user.email === "eggplosion"));
+  const effectiveModel = currentModel && !(currentModel.id === "demo-shoe" && !isAdmin) ? currentModel : null;
+
   const displayParts = React.useMemo(() => {
-    if (!currentModel) return [];
-    if (currentModel.id === "demo-shoe") return SHOE_PARTS;
+    if (!effectiveModel) return [];
+    if (effectiveModel.id === "demo-shoe") return SHOE_PARTS;
     return customParts.map((id) => ({ id, name: id }));
-  }, [currentModel, customParts]);
+  }, [effectiveModel, customParts]);
   const selectedPart = useStore((s) => s.selectedPart);
   const selectedParts = useStore((s) => s.selectedParts || []);
   const selectPart = useStore((s) => s.selectPart);
@@ -3498,11 +3505,15 @@ const RightPanel = ({ activeTab, showLeftPanel, onStartCamera, onStopCamera, onE
   const pbrInputRef = useRef<HTMLInputElement>(null);
   const environmentInputRef = useRef<HTMLInputElement>(null);
 
+  const user = useStore((s) => s.user);
+  const isAdmin = !!(user && (user.email === "kitoruyasiru@gmail.com" || user.email === "eggplosion"));
+  const effectiveModel = currentModel && !(currentModel.id === "demo-shoe" && !isAdmin) ? currentModel : null;
+
   const displayParts = React.useMemo(() => {
-    if (!currentModel) return [];
-    if (currentModel.id === "demo-shoe") return SHOE_PARTS;
+    if (!effectiveModel) return [];
+    if (effectiveModel.id === "demo-shoe") return SHOE_PARTS;
     return useStore.getState().customParts.map((id) => ({ id, name: id }));
-  }, [currentModel]);
+  }, [effectiveModel]);
 
   const handleAssetUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -3835,22 +3846,24 @@ const RightPanel = ({ activeTab, showLeftPanel, onStartCamera, onStopCamera, onE
             <div className="flex flex-col gap-2 max-h-[400px] overflow-y-auto custom-scrollbar pr-1">
               <div className="flex flex-col gap-1.5 border border-white/5 bg-black/20 rounded-lg p-2">
                 {/* Permanent Demo Shoe Asset */}
-                <div
-                  className={`group flex items-center justify-between gap-2 px-3 py-2 rounded-md border cursor-pointer transition-all hover:bg-white/5 ${(!currentModel || currentModel.id === DEMO_ASSET.id) ? "border-blue-500 bg-blue-500/10 text-white" : "border-white/5 bg-zinc-900/40 text-zinc-300"}`}
-                  onClick={() => setCurrentModel(DEMO_ASSET)}
-                >
-                  <div className="flex items-center gap-2 min-w-0 flex-1">
-                    <Box size={14} className={(!currentModel || currentModel.id === DEMO_ASSET.id) ? "text-blue-400" : "text-zinc-500"} />
-                    <div className="flex flex-col text-left min-w-0">
-                      <span className="text-[11px] font-medium truncate">
-                        {DEMO_ASSET.name}
-                      </span>
-                      <span className="text-[9px] text-zinc-500 uppercase">
-                        {DEMO_ASSET.extension}
-                      </span>
+                {isAdmin && (
+                  <div
+                    className={`group flex items-center justify-between gap-2 px-3 py-2 rounded-md border cursor-pointer transition-all hover:bg-white/5 ${(!currentModel || currentModel.id === DEMO_ASSET.id) ? "border-blue-500 bg-blue-500/10 text-white" : "border-white/5 bg-zinc-900/40 text-zinc-300"}`}
+                    onClick={() => setCurrentModel(DEMO_ASSET)}
+                  >
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                      <Box size={14} className={(!currentModel || currentModel.id === DEMO_ASSET.id) ? "text-blue-400" : "text-zinc-500"} />
+                      <div className="flex flex-col text-left min-w-0">
+                        <span className="text-[11px] font-medium truncate">
+                          {DEMO_ASSET.name}
+                        </span>
+                        <span className="text-[9px] text-zinc-500 uppercase">
+                          {DEMO_ASSET.extension}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
 
                 {uploadedAssets.map((asset) => (
                   <div

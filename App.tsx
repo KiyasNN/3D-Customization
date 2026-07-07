@@ -16,7 +16,7 @@ import { useStore } from './store';
 import { LoadingOverlay } from './components/LoadingOverlay';
 import { CanvasDragDropHandler } from './components/CanvasDragDropHandler';
 import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, getUserProfile, signOut, signInWithGoogle, handleGoogleRedirectResult, signInLocalDev } from './services/firebase';
-import { LockKeyhole, Sparkles, Mail, Lock, ArrowRight, ShieldAlert, Clock, RefreshCw, LogOut } from 'lucide-react';
+import { LockKeyhole, Sparkles, Mail, Lock, ArrowRight, ShieldAlert, Clock, RefreshCw, LogOut, Box } from 'lucide-react';
 
 // Fix for Three.js r165+ deprecation warning in three-stdlib
 if (THREE.LoaderUtils && typeof TextDecoder !== 'undefined') {
@@ -753,6 +753,10 @@ export default function App() {
   const shouldAutoRotate = isTurntableActive && !isRecording && !isWalking && !(isExploded && showTransformGizmo);
   const computedTurntableSpeed = turntableSettings.direction === 'clockwise' ? turntableSpeed : -turntableSpeed;
   const controlsEnabled = !isRecording; 
+
+  const isDemo = currentModel?.id === 'demo-shoe';
+  const isAdmin = !!(user && (user.email === 'kitoruyasiru@gmail.com' || user.email === 'eggplosion'));
+  const showModel = currentModel && !(isDemo && !isAdmin);
   
   const mouseButtons = useMemo(() => ({
     LEFT: THREE.MOUSE.ROTATE,
@@ -1108,16 +1112,16 @@ export default function App() {
              {/* Dynamic Lighting */}
              <SceneLighting />
             
-             {/* 3D Content - Centered at Y=0 */}
-             <group ref={sceneRef} position={[0, 0, 0]}>
-                {isWalking ? (
-                  <group scale={12} position={[0, 0, 0]}>
-                     <Mannequin />
-                  </group>
-                ) : (
-                  <ShoeModel />
-                )}
-             </group>
+              {/* 3D Content - Centered at Y=0 */}
+              <group ref={sceneRef} position={[0, 0, 0]}>
+                 {showModel && (isWalking ? (
+                   <group scale={12} position={[0, 0, 0]}>
+                      <Mannequin />
+                   </group>
+                 ) : (
+                   <ShoeModel />
+                 ))}
+              </group>
 
             {/* Dynamic Floor - At Y=-0.01 (Just below shoe) */}
             {showFloor && <Floor />}
@@ -1155,6 +1159,24 @@ export default function App() {
       </div>
 
       <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_50%_50%,rgba(50,50,60,0.05),rgba(5,5,8,0.4))]" />
+
+      {!showModel && (
+        <div className="absolute inset-0 z-[5] flex items-center justify-center bg-zinc-950/60 backdrop-blur-sm pointer-events-auto">
+          <div className="max-w-md w-full mx-4 bg-zinc-900/95 border border-white/10 rounded-2xl p-6 text-center shadow-2xl flex flex-col items-center gap-4">
+            <div className="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-400">
+              <Box size={24} />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <h3 className="text-sm font-semibold text-white tracking-wide">
+                Belum Ada Produk Dipilih
+              </h3>
+              <p className="text-xs text-zinc-400 leading-relaxed">
+                Silakan pilih atau unggah model 3D (format <code className="bg-white/5 px-1 py-0.5 rounded text-blue-400 font-mono">.glb</code>, <code className="bg-white/5 px-1 py-0.5 rounded text-blue-400 font-mono">.gltf</code>, <code className="bg-white/5 px-1 py-0.5 rounded text-blue-400 font-mono">.obj</code>) melalui tab <strong className="text-zinc-200">Models</strong> di panel bawah untuk memulai kustomisasi 3D Anda.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="absolute inset-0 z-10 pointer-events-none">
         <Interface />
