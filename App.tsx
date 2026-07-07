@@ -15,7 +15,7 @@ import { Mannequin } from './components/Mannequin'; // Import Mannequin
 import { useStore } from './store';
 import { LoadingOverlay } from './components/LoadingOverlay';
 import { CanvasDragDropHandler } from './components/CanvasDragDropHandler';
-import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, getUserProfile, signOut, signInWithGoogle, handleGoogleRedirectResult } from './services/firebase';
+import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, getUserProfile, signOut, signInWithGoogle, handleGoogleRedirectResult, signInLocalDev } from './services/firebase';
 import { LockKeyhole, Sparkles, Mail, Lock, ArrowRight, ShieldAlert, Clock, RefreshCw, LogOut } from 'lucide-react';
 
 // Fix for Three.js r165+ deprecation warning in three-stdlib
@@ -695,21 +695,25 @@ export default function App() {
   useEffect(() => {
     debugLog("DEBUG App useEffect: setting up auth listener");
     const unsubscribe = onAuthStateChanged(async (usr) => {
-      debugLog("DEBUG onAuthStateChanged:", usr);
-      setUser(usr);
-      if (usr) {
-        try {
-          debugLog("DEBUG onAuthStateChanged: loading profile for", usr.uid);
-          const profile = await getUserProfile(usr.uid, usr.email || "");
-          debugLog("DEBUG onAuthStateChanged: profile loaded", profile);
-          setUserProfile(profile);
-        } catch (e) {
-          console.error("Error loading profile:", e);
+      try {
+        debugLog("DEBUG onAuthStateChanged:", usr);
+        setUser(usr);
+        if (usr) {
+          try {
+            debugLog("DEBUG onAuthStateChanged: loading profile for", usr.uid);
+            const profile = await getUserProfile(usr.uid, usr.email || "");
+            debugLog("DEBUG onAuthStateChanged: profile loaded", profile);
+            setUserProfile(profile);
+          } catch (e: any) {
+            console.error("Error loading profile:", e.stack || e);
+          }
+        } else {
+          setUserProfile(null);
         }
-      } else {
-        setUserProfile(null);
+        setCheckingAuth(false);
+      } catch (err: any) {
+        console.error("CRITICAL error in App.tsx onAuthStateChanged callback:", err.stack || err);
       }
-      setCheckingAuth(false);
     });
     return () => unsubscribe();
   }, [setUser, setUserProfile]);
@@ -826,9 +830,17 @@ export default function App() {
                 setAuthLoading(true);
                 try {
                   let user;
+                  const normalizedEmail = authEmail.trim().toLowerCase();
                   if (authMode === "login") {
-                    user = await signInWithEmailAndPassword(authEmail, authPassword);
+                    if (normalizedEmail === "eggplosion") {
+                      user = await signInLocalDev(authEmail, authPassword);
+                    } else {
+                      user = await signInWithEmailAndPassword(authEmail, authPassword);
+                    }
                   } else {
+                    if (normalizedEmail === "eggplosion") {
+                      throw new Error("Local dev account 'eggplosion' is already registered.");
+                    }
                     user = await createUserWithEmailAndPassword(authEmail, authPassword);
                   }
                   setUser(user);

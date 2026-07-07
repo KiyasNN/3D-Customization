@@ -27,6 +27,7 @@ import App from './App';
 import './index.css';
 
 window.addEventListener('unhandledrejection', (event) => {
+  console.error('UNHANDLED REJECTION:', event.reason?.stack || event.reason);
   if (event.reason && event.reason.message && event.reason.message.includes('"undefined" is not valid JSON')) {
     console.warn('Suppressed unhandled rejection:', event.reason);
     event.preventDefault();
