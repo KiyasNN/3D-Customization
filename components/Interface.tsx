@@ -3540,10 +3540,8 @@ const RightPanel = ({ activeTab, showLeftPanel, onStartCamera, onStopCamera, onE
   }, [effectiveModel]);
 
   const handleAssetUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const isTrialActive = userProfile?.trialExpiresAt ? Date.now() < userProfile.trialExpiresAt : false;
-    
-    if (!isAdmin && !isTrialActive && uploadedAssets.length >= 1) {
-      alert("Masa percobaan 7 hari Anda telah habis. Anda sekarang dibatasi hanya dapat mengunggah 1 model 3D (hapus model saat ini untuk mengunggah yang baru).");
+    if (!isAdmin && uploadedAssets.length >= 1) {
+      alert("Akun Anda dibatasi hanya dapat mengunggah maksimal 1 model 3D (hapus model saat ini untuk mengunggah yang baru).");
       if (e.target) e.target.value = '';
       return;
     }

@@ -1020,7 +1020,11 @@ export default function App() {
 
   if (user && userProfile && userProfile.status !== 'approved') {
     const isBlocked = userProfile.status === 'blocked';
-    return (
+    const isTrialActive = userProfile.trialExpiresAt ? Date.now() < userProfile.trialExpiresAt : false;
+    
+    // Only block if they are explicitly blocked, OR if their trial has expired AND they are still pending
+    if (isBlocked || (!isTrialActive && userProfile.status === 'pending')) {
+      return (
       <div className="w-full h-screen bg-[#09090b] flex items-center justify-center font-sans relative overflow-hidden select-none">
         {/* Background Accents */}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_40%,rgba(79,70,229,0.1),transparent_60%)]" />
@@ -1084,6 +1088,7 @@ export default function App() {
         </div>
       </div>
     );
+    }
   }
 
   return (
