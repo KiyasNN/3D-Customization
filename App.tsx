@@ -15,7 +15,7 @@ import { Mannequin } from './components/Mannequin'; // Import Mannequin
 import { useStore } from './store';
 import { LoadingOverlay } from './components/LoadingOverlay';
 import { CanvasDragDropHandler } from './components/CanvasDragDropHandler';
-import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, getUserProfile, signOut, signInWithGoogle, handleGoogleRedirectResult, signInLocalDev } from './services/firebase';
+import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, getUserProfile, signOut, signInWithGoogle, handleGoogleRedirectResult, signInLocalDev, isFallbackMode } from './services/firebase';
 import { LockKeyhole, Sparkles, Mail, Lock, ArrowRight, ShieldAlert, Clock, RefreshCw, LogOut, Box } from 'lucide-react';
 
 // Fix for Three.js r165+ deprecation warning in three-stdlib
@@ -685,12 +685,30 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState("");
   const [refreshingProfile, setRefreshingProfile] = useState(false);
+  
+  // Sandbox Google Picker state
+  const [showSandboxGooglePicker, setShowSandboxGooglePicker] = useState(false);
+  const [customSandboxEmail, setCustomSandboxEmail] = useState("");
+  const [sandboxCustomEmailError, setSandboxCustomEmailError] = useState("");
 
   useEffect(() => {
-    handleGoogleRedirectResult().catch((err) => {
-      console.warn("Google redirect result error:", err);
-    });
-  }, []);
+    const handleRedirect = async () => {
+      try {
+        const userResult = await handleGoogleRedirectResult();
+        if (userResult) {
+          setUser(userResult);
+          const profile = await getUserProfile(userResult.uid, userResult.email || "");
+          setUserProfile(profile);
+        }
+      } catch (err: any) {
+        console.error("Google redirect sign-in failed:", err);
+        setAuthError(err.message || "Failed to complete Google sign-in redirect.");
+      } finally {
+        setCheckingAuth(false);
+      }
+    };
+    handleRedirect();
+  }, [setUser, setUserProfile]);
 
   useEffect(() => {
     debugLog("DEBUG App useEffect: setting up auth listener");
@@ -940,19 +958,17 @@ export default function App() {
                 type="button"
                 onClick={async () => {
                   setAuthError("");
+                  if (isFallbackMode) {
+                    setShowSandboxGooglePicker(true);
+                    return;
+                  }
+                  
                   setAuthLoading(true);
                   try {
                     await signInWithGoogle(authMode);
                   } catch (err: any) {
                     console.error(err);
-                    const errMsg = err?.code || err?.message || "";
-                    if (errMsg.includes("popup-closed-by-user")) {
-                      setAuthError("The Google sign-in window was closed. Please try again and keep the window open to select your account.");
-                    } else if (errMsg.includes("popup-blocked")) {
-                      setAuthError("The sign-in popup was blocked by your browser. Please allow popups for this site and try again.");
-                    } else {
-                      setAuthError(err.message || "Failed to authenticate with Google. Popups might be blocked by your browser.");
-                    }
+                    setAuthError(err.message || "Failed to authenticate with Google. Popups might be blocked by your browser.");
                   } finally {
                     setAuthLoading(false);
                   }
@@ -1000,6 +1016,186 @@ export default function App() {
 
           </div>
         </div>
+
+        {showSandboxGooglePicker && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center font-sans">
+            <div className="bg-zinc-900 border border-white/10 rounded-3xl p-6 shadow-2xl w-full max-w-sm mx-4 flex flex-col gap-5 text-left animate-in fade-in zoom-in duration-200">
+              <div className="flex flex-col gap-1 text-center border-b border-white/5 pb-4">
+                <div className="flex justify-center mb-1">
+                  <div className="flex gap-1 text-base font-bold font-sans">
+                    <span className="text-blue-500">G</span>
+                    <span className="text-red-500">o</span>
+                    <span className="text-yellow-500">o</span>
+                    <span className="text-blue-500">g</span>
+                    <span className="text-green-500">l</span>
+                    <span className="text-red-500">e</span>
+                  </div>
+                </div>
+                <h3 className="text-lg font-bold text-white tracking-tight">Sign in with Google</h3>
+                <p className="text-[10px] text-zinc-400 leading-relaxed">
+                  {authMode === "login" 
+                    ? "Choose an account to continue to 3D Customizer" 
+                    : "Create a new Google account to register"}
+                </p>
+                <div className="mt-2 bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 text-[9px] px-2.5 py-1.5 rounded-lg text-left leading-relaxed">
+                  <strong>Sandbox Fallback Mode Active:</strong> Firebase secrets are not configured in Vercel environment. Emulating account selection below.
+                </div>
+              </div>
+
+              {sandboxCustomEmailError && (
+                <div className="p-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-[10px] font-semibold leading-normal">
+                  {sandboxCustomEmailError}
+                </div>
+              )}
+
+              {/* Accounts List */}
+              <div className="flex flex-col gap-2 max-h-[220px] overflow-y-auto pr-1">
+                {/* Account Item 1 */}
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setSandboxCustomEmailError("");
+                    setAuthLoading(true);
+                    try {
+                      const user = await signInWithGoogle(authMode, "kitoruyasiru@gmail.com");
+                      setUser(user);
+                      const profile = await getUserProfile(user.uid, user.email || "");
+                      setUserProfile(profile);
+                      setShowSandboxGooglePicker(false);
+                    } catch (err: any) {
+                      setSandboxCustomEmailError(err.message || "Failed to emulate Google login");
+                    } finally {
+                      setAuthLoading(false);
+                    }
+                  }}
+                  className="w-full flex items-center gap-3 p-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 transition-all text-left group cursor-pointer"
+                >
+                  <div className="w-8 h-8 rounded-full bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400 text-xs font-bold font-sans">
+                    KY
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-white group-hover:text-blue-400 transition-colors">Kitoru Yasiru</p>
+                    <p className="text-[10px] text-zinc-500 truncate">kitoruyasiru@gmail.com</p>
+                  </div>
+                  <span className="text-[9px] font-bold uppercase tracking-wider text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded-md shrink-0">Admin</span>
+                </button>
+
+                {/* Account Item 2 */}
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setSandboxCustomEmailError("");
+                    setAuthLoading(true);
+                    try {
+                      const user = await signInWithGoogle(authMode, "trial-user@example.com");
+                      setUser(user);
+                      const profile = await getUserProfile(user.uid, user.email || "");
+                      setUserProfile(profile);
+                      setShowSandboxGooglePicker(false);
+                    } catch (err: any) {
+                      setSandboxCustomEmailError(err.message || "Failed to emulate Google login");
+                    } finally {
+                      setAuthLoading(false);
+                    }
+                  }}
+                  className="w-full flex items-center gap-3 p-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 transition-all text-left group cursor-pointer"
+                >
+                  <div className="w-8 h-8 rounded-full bg-green-600/20 border border-green-500/30 flex items-center justify-center text-green-400 text-xs font-bold font-sans">
+                    TU
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-white group-hover:text-green-400 transition-colors">Trial User</p>
+                    <p className="text-[10px] text-zinc-500 truncate">trial-user@example.com</p>
+                  </div>
+                  <span className="text-[9px] font-bold uppercase tracking-wider text-green-400 bg-green-500/10 px-1.5 py-0.5 rounded-md shrink-0">Trial</span>
+                </button>
+
+                {/* Account Item 3 */}
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setSandboxCustomEmailError("");
+                    setAuthLoading(true);
+                    try {
+                      const user = await signInWithGoogle(authMode, "pending-user@example.com");
+                      setUser(user);
+                      const profile = await getUserProfile(user.uid, user.email || "");
+                      setUserProfile(profile);
+                      setShowSandboxGooglePicker(false);
+                    } catch (err: any) {
+                      setSandboxCustomEmailError(err.message || "Failed to emulate Google login");
+                    } finally {
+                      setAuthLoading(false);
+                    }
+                  }}
+                  className="w-full flex items-center gap-3 p-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 transition-all text-left group cursor-pointer"
+                >
+                  <div className="w-8 h-8 rounded-full bg-yellow-600/20 border border-yellow-500/30 flex items-center justify-center text-yellow-400 text-xs font-bold font-sans">
+                    PU
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-white group-hover:text-yellow-400 transition-colors">Pending User</p>
+                    <p className="text-[10px] text-zinc-500 truncate">pending-user@example.com</p>
+                  </div>
+                  <span className="text-[9px] font-bold uppercase tracking-wider text-yellow-400 bg-yellow-500/10 px-1.5 py-0.5 rounded-md shrink-0">New</span>
+                </button>
+              </div>
+
+              {/* Custom Email Input */}
+              <div className="flex flex-col gap-2 border-t border-white/5 pt-4">
+                <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Or sign in with custom Google Account</label>
+                <div className="flex gap-2">
+                  <input
+                    type="email"
+                    placeholder="Enter email address..."
+                    value={customSandboxEmail}
+                    onChange={(e) => setCustomSandboxEmail(e.target.value)}
+                    className="flex-1 bg-zinc-950 border border-white/10 focus:border-indigo-500 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-indigo-500 font-sans"
+                  />
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (!customSandboxEmail || !customSandboxEmail.includes("@")) {
+                        setSandboxCustomEmailError("Please enter a valid email address.");
+                        return;
+                      }
+                      setSandboxCustomEmailError("");
+                      setAuthLoading(true);
+                      try {
+                        const user = await signInWithGoogle(authMode, customSandboxEmail);
+                        setUser(user);
+                        const profile = await getUserProfile(user.uid, user.email || "");
+                        setUserProfile(profile);
+                        setShowSandboxGooglePicker(false);
+                      } catch (err: any) {
+                        setSandboxCustomEmailError(err.message || "Failed to emulate Google login");
+                      } finally {
+                        setAuthLoading(false);
+                      }
+                    }}
+                    className="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-2 rounded-xl text-xs font-bold uppercase tracking-wider shrink-0 transition-all active:scale-95 cursor-pointer font-sans"
+                  >
+                    Use
+                  </button>
+                </div>
+              </div>
+
+              {/* Cancel Button */}
+              <div className="border-t border-white/5 pt-2 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowSandboxGooglePicker(false);
+                    setSandboxCustomEmailError("");
+                  }}
+                  className="px-4 py-2 text-xs font-bold text-zinc-400 hover:text-white transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }

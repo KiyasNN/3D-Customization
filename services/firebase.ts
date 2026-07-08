@@ -81,28 +81,6 @@ if (hasRealConfig) {
 const subscribers: Array<(user: any) => void> = [];
 let currentUser: any = null;
 let isLoggingOut = false;
-let isStartupSigningOut = false;
-
-// Do not auto-login on startup. The first page should always be the login page first.
-try {
-  localStorage.removeItem("nk_sandbox_user");
-  localStorage.removeItem("nk_local_dev_user");
-} catch (e) {}
-
-// Asynchronously ensure Firebase Auth is also signed out on startup if present
-if (typeof window !== "undefined") {
-  isStartupSigningOut = true;
-  if (!isFallbackMode && auth) {
-    fbSignOut(auth)
-      .catch(() => {})
-      .finally(() => {
-        isStartupSigningOut = false;
-        notifySubscribers();
-      });
-  } else {
-    isStartupSigningOut = false;
-  }
-}
 
 const notifySubscribers = () => {
   debugLog("DEBUG notifySubscribers: subscribers count", subscribers.length);
@@ -136,6 +114,37 @@ export const signInLocalDev = async (email: string, pass: string) => {
   throw new Error("Invalid username or password for local dev.");
 };
 
+const getFriendlyAuthErrorMessage = (err: any): string => {
+  const code = err?.code || "";
+  const message = err?.message || "";
+  
+  switch (code) {
+    case "auth/invalid-email":
+      return "Format email tidak valid.";
+    case "auth/user-disabled":
+      return "Akun ini telah dinonaktifkan.";
+    case "auth/user-not-found":
+    case "auth/wrong-password":
+    case "auth/invalid-credential":
+      return "Email atau password salah.";
+    case "auth/email-already-in-use":
+      return "Email ini sudah terdaftar. Silakan pilih 'Login' untuk masuk.";
+    case "auth/weak-password":
+      return "Password terlalu lemah. Harus terdiri dari minimal 6 karakter.";
+    case "auth/operation-not-allowed":
+      return "Metode autentikasi ini belum diaktifkan di konsol Firebase.";
+    case "auth/popup-closed-by-user":
+      return "Jendela sign-in Google ditutup sebelum menyelesaikan proses.";
+    case "auth/popup-blocked":
+      return "Popup diblokir oleh browser. Silakan izinkan popup untuk situs ini.";
+    default:
+      if (message.includes("Akun Anda belum terdaftar")) {
+        return message;
+      }
+      return message || "Terjadi kesalahan autentikasi.";
+  }
+};
+
 export const signInWithEmailAndPassword = async (email: string, pass: string) => {
   isLoggingOut = false;
   const normalizedEmail = email.trim().toLowerCase();
@@ -144,6 +153,10 @@ export const signInWithEmailAndPassword = async (email: string, pass: string) =>
   
   if (normalizedEmail === "eggplosion") {
     throw new Error("Please use local dev login for 'eggplosion'.");
+  }
+  
+  if (pass.length < 6) {
+    throw new Error("Password harus terdiri dari minimal 6 karakter.");
   }
   
   // 2. kitoruyasiru@gmail.com with hardcoded "Balaraja29*" is ONLY used in sandbox fallback mode.
@@ -158,15 +171,27 @@ export const signInWithEmailAndPassword = async (email: string, pass: string) =>
   
   if (!isFallbackMode && auth) {
     debugLog("DEBUG LOGIN: Trying fbSignIn");
-    const cred = await fbSignIn(auth, email, pass);
-    currentUser = { email: cred.user.email, uid: cred.user.uid };
-    localStorage.setItem("nk_sandbox_user", JSON.stringify(currentUser));
-    notifySubscribers();
-    return currentUser;
+    try {
+      const cred = await fbSignIn(auth, email, pass);
+      currentUser = { email: cred.user.email, uid: cred.user.uid };
+      localStorage.setItem("nk_sandbox_user", JSON.stringify(currentUser));
+      notifySubscribers();
+      return currentUser;
+    } catch (err: any) {
+      throw new Error(getFriendlyAuthErrorMessage(err));
+    }
   } else {
     debugLog("DEBUG LOGIN: Using Sandbox Emulation");
-    // Sandbox Emulation: allow login with any password
-    currentUser = { email, uid: `sandbox-uid-${Date.now()}` };
+    // Sandbox Emulation: allow login with any password but simulate registered check
+    const localProfiles = getLocalProfiles();
+    const isRegisteredAdmin = normalizedEmail === "kitoruyasiru@gmail.com" || normalizedEmail === "eggplosion";
+    const isRegisteredLocal = localProfiles.some(p => p.email.toLowerCase() === normalizedEmail);
+    
+    if (!isRegisteredAdmin && !isRegisteredLocal) {
+      throw new Error("Akun Anda belum terdaftar. Silakan pilih 'Sign up' untuk mendaftar terlebih dahulu.");
+    }
+    
+    currentUser = { email, uid: `sandbox-uid-${normalizedEmail.replace(/[^a-zA-Z0-9]/g, "-")}` };
     localStorage.setItem("nk_sandbox_user", JSON.stringify(currentUser));
     notifySubscribers();
     return currentUser;
@@ -179,15 +204,31 @@ export const createUserWithEmailAndPassword = async (email: string, pass: string
   if (normalizedEmail === "eggplosion") {
     throw new Error("Local dev account 'eggplosion' is already registered.");
   }
+  if (pass.length < 6) {
+    throw new Error("Password terlalu lemah. Harus terdiri dari minimal 6 karakter.");
+  }
+  if (!email.includes("@")) {
+    throw new Error("Format email tidak valid.");
+  }
+  
   if (!isFallbackMode && auth) {
-    const cred = await fbCreateUser(auth, email, pass);
-    currentUser = { email: cred.user.email, uid: cred.user.uid };
-    localStorage.setItem("nk_sandbox_user", JSON.stringify(currentUser));
-    notifySubscribers();
-    return currentUser;
+    try {
+      const cred = await fbCreateUser(auth, email, pass);
+      currentUser = { email: cred.user.email, uid: cred.user.uid };
+      localStorage.setItem("nk_sandbox_user", JSON.stringify(currentUser));
+      notifySubscribers();
+      return currentUser;
+    } catch (err: any) {
+      throw new Error(getFriendlyAuthErrorMessage(err));
+    }
   } else {
     // Sandbox Emulation
-    currentUser = { email, uid: `sandbox-uid-${Date.now()}` };
+    const localProfiles = getLocalProfiles();
+    if (localProfiles.some(p => p.email.toLowerCase() === normalizedEmail)) {
+      throw new Error("Email ini sudah terdaftar. Silakan pilih 'Login' untuk masuk.");
+    }
+    
+    currentUser = { email, uid: `sandbox-uid-${normalizedEmail.replace(/[^a-zA-Z0-9]/g, "-")}` };
     localStorage.setItem("nk_sandbox_user", JSON.stringify(currentUser));
     notifySubscribers();
     return currentUser;
@@ -233,15 +274,29 @@ export const signInWithGoogle = async (authMode: "login" | "signup" = "login", e
         code === "auth/popup-blocked" ||
         code === "auth/cancelled-popup-request"
       ) {
+        localStorage.setItem("nk_auth_mode", authMode);
         await signInWithRedirect(auth, provider);
         return null;
       }
-      throw err;
+      throw new Error(getFriendlyAuthErrorMessage(err));
     }
   } else {
     // Sandbox Emulation: fallback to emulated Google sign-in
     const email = emulatedEmail || "kitoruyasiru@gmail.com";
-    currentUser = { email, uid: `google-sandbox-uid-${Date.now()}` };
+    const normalizedEmail = email.trim().toLowerCase();
+    
+    // Simulate real Firebase "Account does not exist" check for Login mode
+    if (authMode === "login") {
+      const isRegisteredAdmin = normalizedEmail === "kitoruyasiru@gmail.com" || normalizedEmail === "eggplosion";
+      const localProfiles = getLocalProfiles();
+      const isRegisteredLocal = localProfiles.some(p => p.email.toLowerCase() === normalizedEmail);
+      
+      if (!isRegisteredAdmin && !isRegisteredLocal) {
+        throw new Error("Akun Anda belum terdaftar. Silakan pilih 'Sign up' untuk mendaftar terlebih dahulu.");
+      }
+    }
+    
+    currentUser = { email, uid: `google-sandbox-uid-${normalizedEmail.replace(/[^a-zA-Z0-9]/g, "-")}` };
     localStorage.setItem("nk_sandbox_user", JSON.stringify(currentUser));
     notifySubscribers();
     return currentUser;
@@ -253,14 +308,27 @@ export const handleGoogleRedirectResult = async () => {
     try {
       const result = await getRedirectResult(auth);
       if (result?.user) {
+        const savedAuthMode = localStorage.getItem("nk_auth_mode") || "login";
+        localStorage.removeItem("nk_auth_mode");
+        
+        const additionalInfo = getAdditionalUserInfo(result);
+        if (savedAuthMode === "login" && additionalInfo?.isNewUser) {
+          isLoggingOut = true;
+          await result.user.delete();
+          await fbSignOut(auth);
+          isLoggingOut = false;
+          throw new Error("Akun Anda belum terdaftar. Silakan pilih 'Sign up' untuk mendaftar terlebih dahulu.");
+        }
+
         isLoggingOut = false;
         currentUser = { email: result.user.email, uid: result.user.uid };
         localStorage.setItem("nk_sandbox_user", JSON.stringify(currentUser));
         notifySubscribers();
         return currentUser;
       }
-    } catch (err) {
+    } catch (err: any) {
       console.warn("Google redirect sign-in failed:", err);
+      throw new Error(getFriendlyAuthErrorMessage(err));
     }
   }
   return null;
@@ -313,8 +381,8 @@ export const onAuthStateChanged = (callback: (user: any) => void) => {
     unsubscribeFirebase = fbOnAuthStateChanged(auth, (user) => {
       debugLog("DEBUG onAuthStateChanged: firebase listener triggered", user);
       
-      if (isLoggingOut || isStartupSigningOut) {
-        debugLog("DEBUG onAuthStateChanged: currently logging out or in startup signout, forcing user to null.");
+      if (isLoggingOut) {
+        debugLog("DEBUG onAuthStateChanged: currently logging out, forcing user to null.");
         currentUser = null;
         safeInvokeCallback(null);
         return;
