@@ -942,7 +942,7 @@ export default function App() {
                   setAuthError("");
                   setAuthLoading(true);
                   try {
-                    await signInWithGoogle();
+                    await signInWithGoogle(authMode);
                   } catch (err: any) {
                     console.error(err);
                     const errMsg = err?.code || err?.message || "";

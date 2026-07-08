@@ -8,7 +8,8 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
   signInWithRedirect,
-  getRedirectResult
+  getRedirectResult,
+  getAdditionalUserInfo
 } from "firebase/auth";
 import { 
   getFirestore, 
@@ -201,7 +202,7 @@ const isInIframe = () => {
   }
 };
 
-export const signInWithGoogle = async (emulatedEmail?: string) => {
+export const signInWithGoogle = async (authMode: "login" | "signup" = "login", emulatedEmail?: string) => {
   isLoggingOut = false;
   if (!isFallbackMode && auth) {
     const provider = new GoogleAuthProvider();
@@ -211,6 +212,16 @@ export const signInWithGoogle = async (emulatedEmail?: string) => {
 
     try {
       const cred = await signInWithPopup(auth, provider);
+      const additionalInfo = getAdditionalUserInfo(cred);
+      
+      if (authMode === "login" && additionalInfo?.isNewUser) {
+        isLoggingOut = true;
+        await cred.user.delete();
+        await fbSignOut(auth);
+        isLoggingOut = false;
+        throw new Error("Akun Anda belum terdaftar. Silakan pilih 'Sign up' untuk mendaftar terlebih dahulu.");
+      }
+      
       currentUser = { email: cred.user.email, uid: cred.user.uid };
       localStorage.setItem("nk_sandbox_user", JSON.stringify(currentUser));
       notifySubscribers();
