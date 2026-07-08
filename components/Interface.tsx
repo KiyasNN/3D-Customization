@@ -80,6 +80,7 @@ import {
   LogIn,
   LogOut,
   ShieldCheck,
+  UserPlus,
 } from "lucide-react";
 
 // Reusable Slider Component
@@ -2742,9 +2743,9 @@ export const Interface: React.FC = () => {
                   {authLoading ? (
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   ) : authMode === "login" ? (
-                    "Authorize Session"
+                    "Sign In"
                   ) : (
-                    "Register Admin Profile"
+                    "Create Account"
                   )}
                 </button>
               </div>
@@ -2759,8 +2760,8 @@ export const Interface: React.FC = () => {
                   className="text-xs text-zinc-400 hover:text-white hover:underline transition-colors"
                 >
                   {authMode === "login"
-                    ? "Need a new account? Register admin profile"
-                    : "Already have an account? Sign In"}
+                    ? "Need an account? Sign up"
+                    : "Already have an account? Sign in"}
                 </button>
               </div>
               
@@ -2788,18 +2789,32 @@ export const Interface: React.FC = () => {
       {/* USER & ADMIN CONTROLS OVERLAY (TOP-RIGHT) */}
       <div className="fixed top-4 right-4 z-[95] flex items-center gap-2 pointer-events-auto select-none">
         {!user ? (
-          <button
-            onClick={() => {
-              setAuthMode("login");
-              setAuthError("");
-              setAuthModalOpen(true);
-            }}
-            className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-zinc-900/90 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-white/10 shadow-lg transition-all hover:scale-105 active:scale-95"
-            title="Log In"
-          >
-            <LogIn size={13} className="text-indigo-400" />
-            <span className="text-[10px] font-bold uppercase tracking-wider">Admin Login</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                setAuthMode("login");
+                setAuthError("");
+                setAuthModalOpen(true);
+              }}
+              className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-zinc-900/90 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-white/10 shadow-lg transition-all hover:scale-105 active:scale-95"
+              title="Sign In"
+            >
+              <LogIn size={13} className="text-indigo-400" />
+              <span className="text-[10px] font-bold uppercase tracking-wider">Sign In</span>
+            </button>
+            <button
+              onClick={() => {
+                setAuthMode("signup");
+                setAuthError("");
+                setAuthModalOpen(true);
+              }}
+              className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white border border-indigo-500/30 shadow-lg transition-all hover:scale-105 active:scale-95"
+              title="Sign Up"
+            >
+              <UserPlus size={13} className="text-white" />
+              <span className="text-[10px] font-bold uppercase tracking-wider">Sign Up</span>
+            </button>
+          </div>
         ) : (
           <div className="flex items-center gap-2">
             {(user.email === "kitoruyasiru@gmail.com" || user.email === "eggplosion") && (

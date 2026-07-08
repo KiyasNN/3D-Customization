@@ -912,6 +912,21 @@ export default function App() {
               </button>
             </form>
 
+            <div className="text-center mt-[-8px]">
+              <button
+                type="button"
+                onClick={() => {
+                  setAuthMode(authMode === "login" ? "signup" : "login");
+                  setAuthError("");
+                }}
+                className="text-xs text-zinc-400 hover:text-white hover:underline transition-colors font-medium cursor-pointer"
+              >
+                {authMode === "login"
+                  ? "Need an account? Sign up"
+                  : "Already have an account? Sign in"}
+              </button>
+            </div>
+
             {/* Divider */}
             <div className="flex items-center gap-3 my-1">
               <div className="h-[1px] flex-1 bg-white/5" />
