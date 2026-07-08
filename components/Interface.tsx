@@ -1203,6 +1203,7 @@ export const Interface: React.FC = () => {
     saasConfig,
     setAdminPanelOpen,
     user,
+    userProfile,
     setUser,
   } = useStore();
 
@@ -2814,9 +2815,16 @@ export const Interface: React.FC = () => {
             
             <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-950/80 border border-white/10 text-zinc-300">
               <User size={12} className={(user.email === "kitoruyasiru@gmail.com" || user.email === "eggplosion") ? "text-indigo-400 animate-pulse" : "text-zinc-400"} />
-              <span className="text-[10px] font-semibold max-w-[120px] truncate">
-                {user.email}
-              </span>
+              <div className="flex flex-col">
+                <span className="text-[10px] font-semibold max-w-[120px] truncate leading-tight">
+                  {user.email}
+                </span>
+                {!(user.email === "kitoruyasiru@gmail.com" || user.email === "eggplosion") && userProfile?.trialExpiresAt && (
+                  <span className={`text-[8px] uppercase tracking-wider font-bold ${Date.now() < userProfile.trialExpiresAt ? 'text-green-400' : 'text-red-400'}`}>
+                    {Date.now() < userProfile.trialExpiresAt ? `Trial (${Math.ceil((userProfile.trialExpiresAt - Date.now()) / (1000 * 60 * 60 * 24))} hari)` : 'Trial Habis'}
+                  </span>
+                )}
+              </div>
               <button
                 onClick={async () => {
                   await signOut();
@@ -3506,6 +3514,7 @@ const RightPanel = ({ activeTab, showLeftPanel, onStartCamera, onStopCamera, onE
   const environmentInputRef = useRef<HTMLInputElement>(null);
 
   const user = useStore((s) => s.user);
+  const userProfile = useStore((s) => s.userProfile);
   const isAdmin = !!(user && (user.email === "kitoruyasiru@gmail.com" || user.email === "eggplosion"));
   const effectiveModel = currentModel && !(currentModel.id === "demo-shoe" && !isAdmin) ? currentModel : null;
 
@@ -3516,6 +3525,14 @@ const RightPanel = ({ activeTab, showLeftPanel, onStartCamera, onStopCamera, onE
   }, [effectiveModel]);
 
   const handleAssetUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const isTrialActive = userProfile?.trialExpiresAt ? Date.now() < userProfile.trialExpiresAt : false;
+    
+    if (!isAdmin && !isTrialActive && uploadedAssets.length >= 1) {
+      alert("Masa percobaan 7 hari Anda telah habis. Anda sekarang dibatasi hanya dapat mengunggah 1 model 3D (hapus model saat ini untuk mengunggah yang baru).");
+      if (e.target) e.target.value = '';
+      return;
+    }
+    
     const files = e.target.files;
     if (!files || files.length === 0) return;
 

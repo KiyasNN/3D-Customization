@@ -171,6 +171,7 @@ export interface UserProfile {
   email: string;
   status: 'pending' | 'approved' | 'blocked';
   requestedAt: number;
+  trialExpiresAt?: number;
 }
 
 export interface AppState {

@@ -357,6 +357,7 @@ export interface UserProfile {
   email: string;
   status: 'pending' | 'approved' | 'blocked';
   requestedAt: number;
+  trialExpiresAt?: number;
 }
 
 const LOCAL_PROFILES_KEY = "nk_user_profiles_cache";
@@ -426,7 +427,8 @@ export const getUserProfile = async (uid: string, email: string): Promise<UserPr
       uid,
       email,
       status: defaultStatus,
-      requestedAt: Date.now()
+      requestedAt: Date.now(),
+      trialExpiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000
     };
 
     if (!isFallbackMode && db) {
@@ -453,7 +455,8 @@ export const getUserProfile = async (uid: string, email: string): Promise<UserPr
       uid,
       email,
       status: defaultStatus,
-      requestedAt: Date.now()
+      requestedAt: Date.now(),
+      trialExpiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000
     };
   }
 
