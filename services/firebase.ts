@@ -205,6 +205,9 @@ export const signInWithGoogle = async (emulatedEmail?: string) => {
   isLoggingOut = false;
   if (!isFallbackMode && auth) {
     const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({
+      prompt: 'select_account'
+    });
 
     try {
       const cred = await signInWithPopup(auth, provider);
