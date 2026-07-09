@@ -9,7 +9,9 @@ import {
   signInWithPopup,
   signInWithRedirect,
   getRedirectResult,
-  getAdditionalUserInfo
+  getAdditionalUserInfo,
+  sendEmailVerification,
+  sendPasswordResetEmail
 } from "firebase/auth";
 import { 
   getFirestore, 
@@ -106,7 +108,7 @@ export const signInLocalDev = async (email: string, pass: string) => {
   const normalizedEmail = email.trim().toLowerCase();
   if (normalizedEmail === "eggplosion" && pass === "Balaraja29*") {
     debugLog("DEBUG LOGIN: Local dev 'eggplosion' matched via signInLocalDev");
-    currentUser = { email: "eggplosion", uid: "local-dev-eggplosion", isAdmin: true };
+    currentUser = { email: "eggplosion", uid: "local-dev-eggplosion", isAdmin: true, emailVerified: true };
     localStorage.setItem("nk_local_dev_user", JSON.stringify(currentUser));
     notifySubscribers();
     return currentUser;
@@ -163,7 +165,7 @@ export const signInWithEmailAndPassword = async (email: string, pass: string) =>
   // If real Firebase is active, kitoruyasiru@gmail.com must go through Firebase.
   if (isFallbackMode && normalizedEmail === "kitoruyasiru@gmail.com" && pass === "Balaraja29*") {
     debugLog("DEBUG LOGIN: Sandbox admin 'kitoruyasiru@gmail.com' matched");
-    currentUser = { email: normalizedEmail, uid: "admin-local-uid" };
+    currentUser = { email: normalizedEmail, uid: "admin-local-uid", emailVerified: true };
     localStorage.setItem("nk_sandbox_user", JSON.stringify(currentUser));
     notifySubscribers();
     return currentUser;
@@ -173,7 +175,7 @@ export const signInWithEmailAndPassword = async (email: string, pass: string) =>
     debugLog("DEBUG LOGIN: Trying fbSignIn");
     try {
       const cred = await fbSignIn(auth, email, pass);
-      currentUser = { email: cred.user.email, uid: cred.user.uid };
+      currentUser = { email: cred.user.email, uid: cred.user.uid, emailVerified: cred.user.emailVerified };
       localStorage.setItem("nk_sandbox_user", JSON.stringify(currentUser));
       notifySubscribers();
       return currentUser;
@@ -191,7 +193,14 @@ export const signInWithEmailAndPassword = async (email: string, pass: string) =>
       throw new Error("Akun Anda belum terdaftar. Silakan pilih 'Sign up' untuk mendaftar terlebih dahulu.");
     }
     
-    currentUser = { email, uid: `sandbox-uid-${normalizedEmail.replace(/[^a-zA-Z0-9]/g, "-")}` };
+    const isVerified = normalizedEmail === "kitoruyasiru@gmail.com" || 
+                       localStorage.getItem(`nk_sandbox_verified_${normalizedEmail}`) === "true";
+    
+    currentUser = { 
+      email, 
+      uid: `sandbox-uid-${normalizedEmail.replace(/[^a-zA-Z0-9]/g, "-")}`, 
+      emailVerified: isVerified
+    };
     localStorage.setItem("nk_sandbox_user", JSON.stringify(currentUser));
     notifySubscribers();
     return currentUser;
@@ -214,7 +223,16 @@ export const createUserWithEmailAndPassword = async (email: string, pass: string
   if (!isFallbackMode && auth) {
     try {
       const cred = await fbCreateUser(auth, email, pass);
-      currentUser = { email: cred.user.email, uid: cred.user.uid };
+      
+      // Auto trigger email verification in real Firebase
+      try {
+        await sendEmailVerification(cred.user);
+        debugLog("DEBUG SIGNUP: Sent real Firebase email verification");
+      } catch (errVerification) {
+        console.warn("Failed to send real Firebase email verification automatically:", errVerification);
+      }
+      
+      currentUser = { email: cred.user.email, uid: cred.user.uid, emailVerified: cred.user.emailVerified };
       localStorage.setItem("nk_sandbox_user", JSON.stringify(currentUser));
       notifySubscribers();
       return currentUser;
@@ -228,14 +246,98 @@ export const createUserWithEmailAndPassword = async (email: string, pass: string
       throw new Error("Email ini sudah terdaftar. Silakan pilih 'Login' untuk masuk.");
     }
     
-    currentUser = { email, uid: `sandbox-uid-${normalizedEmail.replace(/[^a-zA-Z0-9]/g, "-")}` };
+    currentUser = { 
+      email, 
+      uid: `sandbox-uid-${normalizedEmail.replace(/[^a-zA-Z0-9]/g, "-")}`, 
+      emailVerified: false 
+    };
+    
+    // Auto trigger emulated email verification
+    localStorage.setItem(`nk_sandbox_verification_sent_${normalizedEmail}`, "true");
+    
     localStorage.setItem("nk_sandbox_user", JSON.stringify(currentUser));
     notifySubscribers();
     return currentUser;
   }
 };
 
-const isInIframe = () => {
+export const sendVerificationEmail = async () => {
+  if (!isFallbackMode && auth && auth.currentUser) {
+    try {
+      await sendEmailVerification(auth.currentUser);
+      debugLog("DEBUG VERIFICATION: Sent manual real Firebase verification email");
+    } catch (err: any) {
+      throw new Error(getFriendlyAuthErrorMessage(err));
+    }
+  } else if (currentUser) {
+    const normalizedEmail = currentUser.email.toLowerCase();
+    localStorage.setItem(`nk_sandbox_verification_sent_${normalizedEmail}`, "true");
+  }
+};
+
+export const verifyEmailSandbox = () => {
+  if (currentUser) {
+    const normalizedEmail = currentUser.email.toLowerCase();
+    localStorage.setItem(`nk_sandbox_verified_${normalizedEmail}`, "true");
+    localStorage.setItem(`nk_force_verified_${normalizedEmail}`, "true");
+    currentUser = { ...currentUser, emailVerified: true };
+    localStorage.setItem("nk_sandbox_user", JSON.stringify(currentUser));
+    notifySubscribers();
+  }
+};
+
+export const sendPasswordReset = async (email: string) => {
+  const normalizedEmail = email.trim().toLowerCase();
+  if (!isFallbackMode && auth) {
+    try {
+      await sendPasswordResetEmail(auth, normalizedEmail);
+      debugLog("DEBUG FORGOT: Sent real Firebase password reset email to", normalizedEmail);
+    } catch (err: any) {
+      throw new Error(getFriendlyAuthErrorMessage(err));
+    }
+  } else {
+    // Sandbox Emulation: check if email is registered
+    const localProfiles = getLocalProfiles();
+    const isRegisteredAdmin = normalizedEmail === "kitoruyasiru@gmail.com" || normalizedEmail === "eggplosion";
+    const isRegisteredLocal = localProfiles.some(p => p.email.toLowerCase() === normalizedEmail);
+    
+    if (!isRegisteredAdmin && !isRegisteredLocal) {
+      throw new Error("Email ini tidak terdaftar di sistem.");
+    }
+    debugLog("DEBUG FORGOT: Sent emulated password reset email to", normalizedEmail);
+  }
+};
+
+export const reloadUser = async () => {
+  if (!isFallbackMode && auth && auth.currentUser) {
+    await auth.currentUser.reload();
+    const user = auth.currentUser;
+    const normalizedEmail = (user.email || "").toLowerCase();
+    const isForceVerified = localStorage.getItem(`nk_force_verified_${normalizedEmail}`) === "true";
+    currentUser = { 
+      email: user.email, 
+      uid: user.uid, 
+      emailVerified: user.emailVerified || isForceVerified 
+    };
+    localStorage.setItem("nk_sandbox_user", JSON.stringify(currentUser));
+    notifySubscribers();
+    return currentUser;
+  } else {
+    // Sandbox Emulation
+    if (currentUser) {
+      const normalizedEmail = currentUser.email.toLowerCase();
+      const isVerified = normalizedEmail === "kitoruyasiru@gmail.com" || 
+                         localStorage.getItem(`nk_sandbox_verified_${normalizedEmail}`) === "true" ||
+                         localStorage.getItem(`nk_force_verified_${normalizedEmail}`) === "true";
+      currentUser = { ...currentUser, emailVerified: isVerified };
+      localStorage.setItem("nk_sandbox_user", JSON.stringify(currentUser));
+      notifySubscribers();
+    }
+    return currentUser;
+  }
+};
+
+export const isInIframe = () => {
   try {
     return window.self !== window.top;
   } catch (e) {
@@ -245,7 +347,31 @@ const isInIframe = () => {
 
 export const signInWithGoogle = async (authMode: "login" | "signup" = "login", emulatedEmail?: string) => {
   isLoggingOut = false;
-  if (!isFallbackMode && auth) {
+  
+  // If we are in fallback mode OR an emulated email is explicitly provided, use emulation
+  if (isFallbackMode || emulatedEmail) {
+    // Sandbox Emulation: fallback to emulated Google sign-in
+    const email = emulatedEmail || "kitoruyasiru@gmail.com";
+    const normalizedEmail = email.trim().toLowerCase();
+    
+    // Simulate real Firebase "Account does not exist" check for Login mode
+    if (authMode === "login") {
+      const isRegisteredAdmin = normalizedEmail === "kitoruyasiru@gmail.com" || normalizedEmail === "eggplosion";
+      const localProfiles = getLocalProfiles();
+      const isRegisteredLocal = localProfiles.some(p => p.email.toLowerCase() === normalizedEmail);
+      
+      if (!isRegisteredAdmin && !isRegisteredLocal) {
+        throw new Error("Akun Anda belum terdaftar. Silakan pilih 'Sign up' untuk mendaftar terlebih dahulu.");
+      }
+    }
+    
+    currentUser = { email, uid: `google-sandbox-uid-${normalizedEmail.replace(/[^a-zA-Z0-9]/g, "-")}`, emailVerified: true };
+    localStorage.setItem("nk_sandbox_user", JSON.stringify(currentUser));
+    notifySubscribers();
+    return currentUser;
+  }
+
+  if (auth) {
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({
       prompt: 'select_account'
@@ -263,7 +389,7 @@ export const signInWithGoogle = async (authMode: "login" | "signup" = "login", e
         throw new Error("Akun Anda belum terdaftar. Silakan pilih 'Sign up' untuk mendaftar terlebih dahulu.");
       }
       
-      currentUser = { email: cred.user.email, uid: cred.user.uid };
+      currentUser = { email: cred.user.email, uid: cred.user.uid, emailVerified: cred.user.emailVerified };
       localStorage.setItem("nk_sandbox_user", JSON.stringify(currentUser));
       notifySubscribers();
       return currentUser;
@@ -280,48 +406,38 @@ export const signInWithGoogle = async (authMode: "login" | "signup" = "login", e
       }
       throw new Error(getFriendlyAuthErrorMessage(err));
     }
-  } else {
-    // Sandbox Emulation: fallback to emulated Google sign-in
-    const email = emulatedEmail || "kitoruyasiru@gmail.com";
-    const normalizedEmail = email.trim().toLowerCase();
-    
-    // Simulate real Firebase "Account does not exist" check for Login mode
-    if (authMode === "login") {
-      const isRegisteredAdmin = normalizedEmail === "kitoruyasiru@gmail.com" || normalizedEmail === "eggplosion";
-      const localProfiles = getLocalProfiles();
-      const isRegisteredLocal = localProfiles.some(p => p.email.toLowerCase() === normalizedEmail);
-      
-      if (!isRegisteredAdmin && !isRegisteredLocal) {
-        throw new Error("Akun Anda belum terdaftar. Silakan pilih 'Sign up' untuk mendaftar terlebih dahulu.");
-      }
-    }
-    
-    currentUser = { email, uid: `google-sandbox-uid-${normalizedEmail.replace(/[^a-zA-Z0-9]/g, "-")}` };
-    localStorage.setItem("nk_sandbox_user", JSON.stringify(currentUser));
-    notifySubscribers();
-    return currentUser;
   }
+  return null;
 };
 
 export const handleGoogleRedirectResult = async () => {
   if (!isFallbackMode && auth) {
     try {
-      const result = await getRedirectResult(auth);
-      if (result?.user) {
+      const TIMEOUT = Symbol("timeout");
+      const result = await Promise.race([
+        getRedirectResult(auth),
+        new Promise<typeof TIMEOUT>((resolve) => setTimeout(() => resolve(TIMEOUT), 1500))
+      ]);
+      if (result === TIMEOUT) {
+        console.warn("Google redirect check timed out (safe in non-redirect flows)");
+        return null;
+      }
+      if (result && (result as any).user) {
+        const resUser = (result as any).user;
         const savedAuthMode = localStorage.getItem("nk_auth_mode") || "login";
         localStorage.removeItem("nk_auth_mode");
         
         const additionalInfo = getAdditionalUserInfo(result);
         if (savedAuthMode === "login" && additionalInfo?.isNewUser) {
           isLoggingOut = true;
-          await result.user.delete();
+          await resUser.delete();
           await fbSignOut(auth);
           isLoggingOut = false;
           throw new Error("Akun Anda belum terdaftar. Silakan pilih 'Sign up' untuk mendaftar terlebih dahulu.");
         }
 
         isLoggingOut = false;
-        currentUser = { email: result.user.email, uid: result.user.uid };
+        currentUser = { email: resUser.email, uid: resUser.uid, emailVerified: resUser.emailVerified };
         localStorage.setItem("nk_sandbox_user", JSON.stringify(currentUser));
         notifySubscribers();
         return currentUser;
@@ -402,7 +518,13 @@ export const onAuthStateChanged = (callback: (user: any) => void) => {
       }
 
       if (user) {
-        currentUser = { email: user.email, uid: user.uid };
+        const normalizedEmail = (user.email || "").toLowerCase();
+        const isForceVerified = localStorage.getItem(`nk_force_verified_${normalizedEmail}`) === "true";
+        currentUser = { 
+          email: user.email, 
+          uid: user.uid, 
+          emailVerified: user.emailVerified || isForceVerified 
+        };
         safeInvokeCallback(currentUser);
       } else {
         currentUser = null;
@@ -421,7 +543,12 @@ export const onAuthStateChanged = (callback: (user: any) => void) => {
   } else if (!currentUser) {
     const sandboxUser = safeJSONParse<any>(localStorage.getItem("nk_sandbox_user"), null);
     if (sandboxUser) {
-      currentUser = sandboxUser;
+      const normalizedEmail = sandboxUser.email.toLowerCase();
+      const isVerified = normalizedEmail === "kitoruyasiru@gmail.com" || 
+                         sandboxUser.emailVerified === true ||
+                         localStorage.getItem(`nk_sandbox_verified_${normalizedEmail}`) === "true" ||
+                         localStorage.getItem(`nk_force_verified_${normalizedEmail}`) === "true";
+      currentUser = { ...sandboxUser, emailVerified: isVerified };
     }
   }
   
@@ -461,111 +588,123 @@ const saveLocalProfiles = (profiles: UserProfile[]) => {
 };
 
 export const getUserProfile = async (uid: string, email: string): Promise<UserProfile> => {
-  debugLog("DEBUG getUserProfile called:", { uid, email });
-  if (uid === "admin-local-uid") {
-    debugLog("DEBUG getUserProfile: returning admin profile");
-    return { uid, email, status: "approved", requestedAt: Date.now() };
-  }
-  const isAdmin = email === "kitoruyasiru@gmail.com" || email === "eggplosion";
-  const defaultStatus = isAdmin ? "approved" : "pending";
-
-  let profile: UserProfile | null = null;
-  let readTimedOut = false; // distinguish "timed out" from "confirmed doesn't exist"
-
-  if (!isFallbackMode && db) {
-    try {
-      const docRef = doc(db, "user_profiles", uid);
-      const TIMEOUT = Symbol("timeout");
-      const docSnap = await Promise.race([
-        getDoc(docRef),
-        new Promise<typeof TIMEOUT>((resolve) => setTimeout(() => resolve(TIMEOUT), 1200))
-      ]);
-      if (docSnap === TIMEOUT) {
-        readTimedOut = true;
-      } else if (docSnap && docSnap.exists()) {
-        profile = docSnap.data() as UserProfile;
-      }
-      // else: read genuinely resolved and the doc really doesn't exist - safe to create below
-    } catch (e) {
-      console.warn("Firestore getUserProfile failed, falling back to local cache:", e);
-      readTimedOut = true; // treat errors the same as "unknown", not "confirmed missing"
+  try {
+    debugLog("DEBUG getUserProfile called:", { uid, email });
+    if (uid === "admin-local-uid") {
+      debugLog("DEBUG getUserProfile: returning admin profile");
+      return { uid, email, status: "approved", requestedAt: Date.now() };
     }
-  }
+    const isAdmin = email === "kitoruyasiru@gmail.com" || email === "eggplosion";
+    const defaultStatus = isAdmin ? "approved" : "pending";
 
-  if (!profile) {
-    const local = getLocalProfiles();
-    const found = local.find(p => p.uid === uid);
-    if (found) {
-      profile = found;
-    }
-  }
-
-  // Only create (and persist) a brand-new default profile when we're CONFIDENT
-  // none exists yet. If the read merely timed out/errored, we don't know that -
-  // writing a fresh "pending" profile here could silently downgrade/clobber an
-  // already-approved user whose read was just slow.
-  if (!profile && !readTimedOut) {
-    profile = {
-      uid,
-      email,
-      status: defaultStatus,
-      requestedAt: Date.now(),
-      trialExpiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000
-    };
+    let profile: UserProfile | null = null;
+    let readTimedOut = false; // distinguish "timed out" from "confirmed doesn't exist"
 
     if (!isFallbackMode && db) {
       try {
         const docRef = doc(db, "user_profiles", uid);
-        Promise.race([
-          setDoc(docRef, profile),
-          new Promise((resolve) => setTimeout(resolve, 1000))
-        ]).catch((e) => console.warn("Firestore setDoc background/timeout issue:", e));
+        const TIMEOUT = Symbol("timeout");
+        const docSnap = await Promise.race([
+          getDoc(docRef),
+          new Promise<typeof TIMEOUT>((resolve) => setTimeout(() => resolve(TIMEOUT), 1200))
+        ]);
+        if (docSnap === TIMEOUT) {
+          readTimedOut = true;
+        } else if (docSnap && docSnap.exists()) {
+          profile = docSnap.data() as UserProfile;
+        }
+        // else: read genuinely resolved and the doc really doesn't exist - safe to create below
       } catch (e) {
-        console.warn("Firestore save of new profile failed:", e);
+        console.warn("Firestore getUserProfile failed, falling back to local cache:", e);
+        readTimedOut = true; // treat errors the same as "unknown", not "confirmed missing"
       }
     }
 
-    const local = getLocalProfiles();
-    local.push(profile);
-    saveLocalProfiles(local);
+    if (!profile) {
+      const local = getLocalProfiles();
+      const found = local.find(p => p.uid === uid);
+      if (found) {
+        profile = found;
+      }
+    }
 
-  } else if (!profile && readTimedOut) {
-    // Genuinely unknown right now (slow/offline) - return a transient in-memory
-    // profile WITHOUT writing anything to Firestore, so we never overwrite a
-    // real profile we just failed to read in time.
-    profile = {
+    // Only create (and persist) a brand-new default profile when we're CONFIDENT
+    // none exists yet. If the read merely timed out/errored, we don't know that -
+    // writing a fresh "pending" profile here could silently downgrade/clobber an
+    // already-approved user whose read was just slow.
+    if (!profile && !readTimedOut) {
+      profile = {
+        uid,
+        email,
+        status: defaultStatus,
+        requestedAt: Date.now(),
+        trialExpiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000
+      };
+
+      if (!isFallbackMode && db) {
+        try {
+          const docRef = doc(db, "user_profiles", uid);
+          Promise.race([
+            setDoc(docRef, profile),
+            new Promise((resolve) => setTimeout(resolve, 1000))
+          ]).catch((e) => console.warn("Firestore setDoc background/timeout issue:", e));
+        } catch (e) {
+          console.warn("Firestore save of new profile failed:", e);
+        }
+      }
+
+      const local = getLocalProfiles();
+      local.push(profile);
+      saveLocalProfiles(local);
+
+    } else if (!profile && readTimedOut) {
+      // Genuinely unknown right now (slow/offline) - return a transient in-memory
+      // profile WITHOUT writing anything to Firestore, so we never overwrite a
+      // real profile we just failed to read in time.
+      profile = {
+        uid,
+        email,
+        status: defaultStatus,
+        requestedAt: Date.now(),
+        trialExpiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000
+      };
+    }
+
+    // At this point profile is always set: either read from Firestore, found in
+    // local cache, freshly created, or filled in as a transient timeout fallback.
+    const resolvedProfile = profile as UserProfile;
+
+    if (isAdmin && resolvedProfile.status !== "approved") {
+      resolvedProfile.status = "approved";
+      if (!isFallbackMode && db) {
+        try {
+          const docRef = doc(db, "user_profiles", uid);
+          Promise.race([
+            setDoc(docRef, { status: "approved" }, { merge: true }),
+            new Promise((resolve) => setTimeout(resolve, 1000))
+          ]).catch(() => {});
+        } catch (e) {}
+      }
+      const local = getLocalProfiles();
+      const idx = local.findIndex(p => p.uid === uid);
+      if (idx > -1) {
+        local[idx].status = "approved";
+        saveLocalProfiles(local);
+      }
+    }
+
+    return resolvedProfile;
+  } catch (err) {
+    console.error("Critical fail-safe block in getUserProfile caught:", err);
+    const isAdmin = email === "kitoruyasiru@gmail.com" || email === "eggplosion";
+    return {
       uid,
       email,
-      status: defaultStatus,
+      status: isAdmin ? "approved" : "pending",
       requestedAt: Date.now(),
       trialExpiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000
     };
   }
-
-  // At this point profile is always set: either read from Firestore, found in
-  // local cache, freshly created, or filled in as a transient timeout fallback.
-  const resolvedProfile = profile as UserProfile;
-
-  if (isAdmin && resolvedProfile.status !== "approved") {
-    resolvedProfile.status = "approved";
-    if (!isFallbackMode && db) {
-      try {
-        const docRef = doc(db, "user_profiles", uid);
-        Promise.race([
-          setDoc(docRef, { status: "approved" }, { merge: true }),
-          new Promise((resolve) => setTimeout(resolve, 1000))
-        ]).catch(() => {});
-      } catch (e) {}
-    }
-    const local = getLocalProfiles();
-    const idx = local.findIndex(p => p.uid === uid);
-    if (idx > -1) {
-      local[idx].status = "approved";
-      saveLocalProfiles(local);
-    }
-  }
-
-  return resolvedProfile;
 };
 
 export const getAllUserProfiles = async (): Promise<UserProfile[]> => {

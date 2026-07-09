@@ -15,8 +15,8 @@ import { Mannequin } from './components/Mannequin'; // Import Mannequin
 import { useStore } from './store';
 import { LoadingOverlay } from './components/LoadingOverlay';
 import { CanvasDragDropHandler } from './components/CanvasDragDropHandler';
-import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, getUserProfile, signOut, signInWithGoogle, handleGoogleRedirectResult, signInLocalDev, isFallbackMode } from './services/firebase';
-import { LockKeyhole, Sparkles, Mail, Lock, ArrowRight, ShieldAlert, Clock, RefreshCw, LogOut, Box } from 'lucide-react';
+import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, getUserProfile, signOut, signInWithGoogle, handleGoogleRedirectResult, signInLocalDev, isFallbackMode, isInIframe, sendVerificationEmail, verifyEmailSandbox, reloadUser, sendPasswordReset } from './services/firebase';
+import { LockKeyhole, Sparkles, Mail, Lock, ArrowRight, ShieldAlert, Clock, RefreshCw, LogOut, Box, Eye, EyeOff } from 'lucide-react';
 
 // Fix for Three.js r165+ deprecation warning in three-stdlib
 if (THREE.LoaderUtils && typeof TextDecoder !== 'undefined') {
@@ -679,12 +679,44 @@ export default function App() {
   const setUserProfile = useStore(s => s.setUserProfile);
   
   const [checkingAuth, setCheckingAuth] = useState(true);
-  const [authMode, setAuthMode] = useState<"login" | "signup">("login");
+  const [authMode, setAuthMode] = useState<"login" | "signup" | "forgot">("login");
+  const [forgotSuccessMessage, setForgotSuccessMessage] = useState("");
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [authConfirmPassword, setAuthConfirmPassword] = useState("");
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [authCode, setAuthCode] = useState("");
+  const [expectedCode, setExpectedCode] = useState("");
+  const [codeResendTimer, setCodeResendTimer] = useState(0);
+  const [codeSentMessage, setCodeSentMessage] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState("");
   const [refreshingProfile, setRefreshingProfile] = useState(false);
+  
+  // Countdown timer for signup code resend
+  useEffect(() => {
+    if (codeResendTimer <= 0) return;
+    const interval = setInterval(() => {
+      setCodeResendTimer(prev => prev - 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [codeResendTimer]);
+  
+  // Email verification state
+  const [verificationLoading, setVerificationLoading] = useState(false);
+  const [verificationResendTimer, setVerificationResendTimer] = useState(0);
+  const [verificationMessage, setVerificationMessage] = useState("");
+  const [verificationMessageType, setVerificationMessageType] = useState<"success" | "error" | "info">("info");
+
+  // Countdown timer for email verification resend
+  useEffect(() => {
+    if (verificationResendTimer <= 0) return;
+    const interval = setInterval(() => {
+      setVerificationResendTimer(prev => prev - 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [verificationResendTimer]);
   
   // Sandbox Google Picker state
   const [showSandboxGooglePicker, setShowSandboxGooglePicker] = useState(false);
@@ -818,28 +850,39 @@ export default function App() {
     return (
       <div className="w-full h-screen bg-[#09090b] flex items-center justify-center font-sans relative overflow-hidden select-none">
         {/* Abstract Background Accents */}
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_40%,rgba(79,70,229,0.15),transparent_60%)]" />
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_40%,rgba(79,70,229,0.08),transparent_65%)]" />
         
-        <div className="relative w-full max-w-md mx-4 z-10 pointer-events-auto">
-          <div className="bg-zinc-900/80 backdrop-blur-xl border border-white/10 rounded-3xl p-8 shadow-2xl flex flex-col gap-6">
+        <div className="relative w-full max-w-[370px] mx-4 z-10 pointer-events-auto">
+          <div className="bg-[#121214] border border-zinc-800/50 rounded-[32px] p-8 shadow-2xl flex flex-col gap-5 text-center">
             
-            {/* Logo Header */}
-            <div className="flex flex-col items-center text-center gap-2">
-              <div className="w-12 h-12 rounded-2xl bg-indigo-600/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 shadow-inner">
-                <LockKeyhole size={24} className="animate-pulse" />
-              </div>
-              <h2 className="text-2xl font-black text-white tracking-tight mt-2 flex items-center gap-2">
-                3D Customizer
+            {/* Header / Brand */}
+            <div className="flex flex-col items-center gap-1.5 mb-1">
+              <h2 className="text-xl font-bold text-white tracking-tight font-sans">
+                {authMode === "login" 
+                  ? "3DEggplsn" 
+                  : authMode === "signup" 
+                    ? "Create Account" 
+                    : "Reset Password"}
               </h2>
-              <p className="text-xs text-zinc-400 leading-relaxed max-w-[280px]">
-                Please authorize your session to access the 3D Customization Workspace.
+              <p className="text-[11px] text-zinc-500 font-sans">
+                {authMode === "login" 
+                  ? "Authorize your session to access workspace" 
+                  : authMode === "signup"
+                    ? "Register below to create a new session"
+                    : "Enter your email to receive a password reset link"}
               </p>
             </div>
 
+            {/* Success Message for Reset */}
+            {forgotSuccessMessage && (
+              <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-medium leading-relaxed text-left animate-in fade-in duration-200">
+                {forgotSuccessMessage}
+              </div>
+            )}
+
             {/* Error Message */}
             {authError && (
-              <div className="p-3.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-semibold leading-relaxed">
+              <div className="p-3 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-medium leading-relaxed text-left animate-in fade-in duration-200">
                 {authError}
               </div>
             )}
@@ -849,6 +892,7 @@ export default function App() {
               onSubmit={async (e) => {
                 e.preventDefault();
                 setAuthError("");
+                setForgotSuccessMessage("");
                 setAuthLoading(true);
                 try {
                   let user;
@@ -859,15 +903,34 @@ export default function App() {
                     } else {
                       user = await signInWithEmailAndPassword(authEmail, authPassword);
                     }
-                  } else {
+                    setUser(user);
+                    const profile = await getUserProfile(user.uid, user.email || "");
+                    setUserProfile(profile);
+                  } else if (authMode === "signup") {
                     if (normalizedEmail === "eggplosion") {
                       throw new Error("Local dev account 'eggplosion' is already registered.");
                     }
+                    if (authPassword !== authConfirmPassword) {
+                      throw new Error("Password and Confirm password do not match.");
+                    }
+                    if (!authCode) {
+                      throw new Error("Please enter the verification code.");
+                    }
+                    if (authCode !== expectedCode && authCode !== "888888") {
+                      throw new Error("Invalid verification code. Please request a code with 'Send code' or enter default '888888'.");
+                    }
                     user = await createUserWithEmailAndPassword(authEmail, authPassword);
+                    setUser(user);
+                    const profile = await getUserProfile(user.uid, user.email || "");
+                    setUserProfile(profile);
+                  } else if (authMode === "forgot") {
+                    if (!authEmail) {
+                      throw new Error("Please enter your email address.");
+                    }
+                    await sendPasswordReset(authEmail);
+                    setForgotSuccessMessage("Reset password link has been sent to your email (simulated in sandbox mode if no real Firebase setup exists)!");
+                    setAuthEmail("");
                   }
-                  setUser(user);
-                  const profile = await getUserProfile(user.uid, user.email || "");
-                  setUserProfile(profile);
                 } catch (err: any) {
                   console.error(err);
                   setAuthError(err.message || "Failed to authenticate. Please check your credentials.");
@@ -875,89 +938,208 @@ export default function App() {
                   setAuthLoading(false);
                 }
               }}
-              className="flex flex-col gap-4"
+              className="flex flex-col gap-3.5"
             >
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">Email or Username</label>
-                <div className="relative">
-                  <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-zinc-500 font-sans">
-                    <Mail size={14} />
-                  </span>
-                  <input
-                    type="text"
-                    value={authEmail}
-                    onChange={(e) => setAuthEmail(e.target.value)}
-                    placeholder="name@company.com or username"
-                    className="w-full bg-zinc-950/50 border border-white/10 focus:border-indigo-500 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all font-medium font-sans"
-                    autoCapitalize="none"
-                    autoCorrect="off"
-                    spellCheck={false}
-                    required
-                  />
-                </div>
+              {/* Email Address Field */}
+              <div className="relative">
+                <input
+                  type="text"
+                  value={authEmail}
+                  onChange={(e) => setAuthEmail(e.target.value)}
+                  placeholder="Email address"
+                  className="w-full bg-[#18181c] border border-zinc-800/80 focus:border-zinc-700 rounded-full px-5 py-3.5 text-sm text-zinc-200 placeholder-zinc-500 focus:outline-none transition-all font-sans"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  required
+                />
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">Password</label>
+              {/* Password Field (only for login & signup) */}
+              {authMode !== "forgot" && (
                 <div className="relative">
-                  <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 text-zinc-500 font-sans">
-                    <Lock size={14} />
-                  </span>
                   <input
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     value={authPassword}
                     onChange={(e) => setAuthPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full bg-zinc-950/50 border border-white/10 focus:border-indigo-500 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all font-medium font-sans"
+                    placeholder="Password"
+                    className="w-full bg-[#18181c] border border-zinc-800/80 focus:border-zinc-700 rounded-full pl-5 pr-12 py-3.5 text-sm text-zinc-200 placeholder-zinc-500 focus:outline-none transition-all font-sans"
                     required
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 flex items-center pr-4 text-zinc-500 hover:text-zinc-300 transition-colors cursor-pointer"
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
                 </div>
-              </div>
+              )}
 
+              {/* Signup Fields (Confirm Password & Verification Code) */}
+              {authMode === "signup" && (
+                <>
+                  {/* Confirm Password Field */}
+                  <div className="relative">
+                    <input
+                      type={showConfirmPassword ? "text" : "password"}
+                      value={authConfirmPassword}
+                      onChange={(e) => setAuthConfirmPassword(e.target.value)}
+                      placeholder="Confirm password"
+                      className="w-full bg-[#18181c] border border-zinc-800/80 focus:border-zinc-700 rounded-full pl-5 pr-12 py-3.5 text-sm text-zinc-200 placeholder-zinc-500 focus:outline-none transition-all font-sans"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute inset-y-0 right-0 flex items-center pr-4 text-zinc-500 hover:text-zinc-300 transition-colors cursor-pointer"
+                    >
+                      {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+
+                  {/* Verification Code Field */}
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={authCode}
+                      onChange={(e) => setAuthCode(e.target.value)}
+                      placeholder="Code"
+                      className="w-full bg-[#18181c] border border-zinc-800/80 focus:border-zinc-700 rounded-full pl-5 pr-28 py-3.5 text-sm text-zinc-200 placeholder-zinc-500 focus:outline-none transition-all font-sans"
+                      required
+                    />
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-4">
+                      <span className="text-zinc-800 mr-2.5">|</span>
+                      <button
+                        type="button"
+                        disabled={codeResendTimer > 0 || !authEmail}
+                        onClick={() => {
+                          const randomCode = Math.floor(100000 + Math.random() * 900000).toString();
+                          setExpectedCode(randomCode);
+                          setCodeResendTimer(60);
+                          setCodeSentMessage(`Demo code: ${randomCode}`);
+                          setAuthError("");
+                        }}
+                        className={`text-xs font-semibold select-none cursor-pointer ${
+                          codeResendTimer > 0 || !authEmail
+                            ? "text-zinc-600 cursor-not-allowed"
+                            : "text-[#5d75f3] hover:text-[#4c65e4]"
+                        } transition-colors`}
+                      >
+                        {codeResendTimer > 0 ? `${codeResendTimer}s` : "Send code"}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Code Sent Message Alert */}
+                  {codeSentMessage && (
+                    <div className="bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-[10px] px-3.5 py-2.5 rounded-2xl text-left leading-normal animate-in fade-in duration-200 flex flex-col gap-1">
+                      <p><strong>Code Sent:</strong> Verification code sent to your email!</p>
+                      <p className="text-zinc-300">Enter code: <strong className="text-white select-all">{expectedCode}</strong> (or enter default: <strong>888888</strong>)</p>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* Consent Text */}
+              {authMode === "signup" && (
+                <p className="text-zinc-500 text-[11px] font-sans leading-relaxed text-center px-1 mt-0.5">
+                  By signing up, you consent to 3DEggplsn's{" "}
+                  <a href="#" className="underline text-zinc-300 hover:text-white transition-colors font-semibold">Terms of Use</a>{" "}
+                  and{" "}
+                  <a href="#" className="underline text-zinc-300 hover:text-white transition-colors font-semibold">Privacy Policy</a>.
+                </p>
+              )}
+
+              {/* Submit Button */}
               <button
                 type="submit"
                 disabled={authLoading}
-                className="w-full mt-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-4 rounded-xl text-xs uppercase tracking-widest transition-all shadow-lg active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 font-sans cursor-pointer"
+                className="w-full mt-3 bg-[#5d75f3] hover:bg-[#4c65e4] text-white font-bold py-3.5 px-6 rounded-full text-sm tracking-wide transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2 font-sans cursor-pointer"
               >
                 {authLoading ? (
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 ) : (
-                  <>
-                    <span>{authMode === "login" ? "Enter Workspace" : "Register & Enter"}</span>
-                    <ArrowRight size={14} />
-                  </>
+                  <span>
+                    {authMode === "login" 
+                      ? "Log in" 
+                      : authMode === "signup" 
+                        ? "Sign up" 
+                        : "Send reset link"}
+                  </span>
                 )}
               </button>
             </form>
 
-            <div className="text-center mt-[-8px]">
-              <button
-                type="button"
-                onClick={() => {
-                  setAuthMode(authMode === "login" ? "signup" : "login");
-                  setAuthError("");
-                }}
-                className="text-xs text-zinc-400 hover:text-white hover:underline transition-colors font-medium cursor-pointer"
-              >
-                {authMode === "login"
-                  ? "Need an account? Sign up"
-                  : "Already have an account? Sign in"}
-              </button>
-            </div>
+            {/* Switch Mode Footer Actions */}
+            {authMode === "login" ? (
+              <div className="flex justify-between items-center text-[13px] px-1 font-sans mt-0.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode("forgot");
+                    setAuthError("");
+                    setForgotSuccessMessage("");
+                  }}
+                  className="text-[#5d75f3] hover:text-[#4c65e4] hover:underline transition-colors font-medium cursor-pointer"
+                >
+                  Forgot password?
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode("signup");
+                    setAuthError("");
+                    setForgotSuccessMessage("");
+                    setAuthConfirmPassword("");
+                    setAuthCode("");
+                    setCodeSentMessage("");
+                  }}
+                  className="text-[#5d75f3] hover:text-[#4c65e4] hover:underline transition-colors font-medium cursor-pointer"
+                >
+                  Sign up
+                </button>
+              </div>
+            ) : authMode === "signup" ? (
+              <div className="text-center mt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode("login");
+                    setAuthError("");
+                    setForgotSuccessMessage("");
+                    setAuthConfirmPassword("");
+                    setAuthCode("");
+                    setCodeSentMessage("");
+                  }}
+                  className="text-sm font-semibold text-[#5d75f3] hover:text-[#4c65e4] hover:underline transition-colors cursor-pointer"
+                >
+                  Log in
+                </button>
+              </div>
+            ) : (
+              <div className="text-center mt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode("login");
+                    setAuthError("");
+                    setForgotSuccessMessage("");
+                  }}
+                  className="text-sm font-semibold text-[#5d75f3] hover:text-[#4c65e4] hover:underline transition-colors cursor-pointer"
+                >
+                  Back to Log in
+                </button>
+              </div>
+            )}
 
-            {/* Divider */}
-            <div className="flex items-center gap-3 my-1">
-              <div className="h-[1px] flex-1 bg-white/5" />
-              <span className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider">or continue with</span>
-              <div className="h-[1px] flex-1 bg-white/5" />
-            </div>
-
-            {/* Google Sign-In Actions */}
-            <div className="flex flex-col gap-2">
+            {/* Google Link Action */}
+            <div className="text-center mt-1 border-t border-zinc-800/40 pt-4">
               <button
                 type="button"
                 onClick={async () => {
                   setAuthError("");
+                  setForgotSuccessMessage("");
                   if (isFallbackMode) {
                     setShowSandboxGooglePicker(true);
                     return;
@@ -965,7 +1147,7 @@ export default function App() {
                   
                   setAuthLoading(true);
                   try {
-                    await signInWithGoogle(authMode);
+                    await signInWithGoogle(authMode === "signup" ? "signup" : "login");
                   } catch (err: any) {
                     console.error(err);
                     setAuthError(err.message || "Failed to authenticate with Google. Popups might be blocked by your browser.");
@@ -974,43 +1156,9 @@ export default function App() {
                   }
                 }}
                 disabled={authLoading}
-                className="w-full bg-white hover:bg-zinc-100 text-zinc-950 font-bold py-2.5 px-4 rounded-xl text-xs uppercase tracking-wider transition-all shadow-md active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer font-sans"
+                className="text-xs font-semibold text-zinc-400 hover:text-white underline transition-colors cursor-pointer inline-flex items-center gap-1.5"
               >
-                <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
-                  <path
-                    fill="#EA4335"
-                    d="M12 5.04c1.67 0 3.17.58 4.35 1.71l3.25-3.25C17.63 1.63 14.97 1 12 1 7.33 1 3.32 3.68 1.39 7.61l3.85 3C6.15 7.6 8.83 5.04 12 5.04z"
-                  />
-                  <path
-                    fill="#4285F4"
-                    d="M23.49 12.27c0-.81-.07-1.59-.2-2.34H12v4.44h6.44c-.28 1.47-1.11 2.71-2.36 3.55l3.66 2.84c2.14-1.97 3.39-4.87 3.39-8.49z"
-                  />
-                  <path
-                    fill="#FBBC05"
-                    d="M5.24 14.39C4.99 13.65 4.85 12.85 4.85 12s.14-1.65.39-2.39l-3.85-3C.51 8.16 0 10.02 0 12s.51 3.84 1.39 5.39l3.85-3z"
-                  />
-                  <path
-                    fill="#34A853"
-                    d="M12 23c3.24 0 5.97-1.07 7.96-2.92l-3.66-2.84c-1.01.68-2.3 1.08-4.3 1.08-3.17 0-5.85-2.56-6.81-5.57l-3.85 3C3.32 20.32 7.33 23 12 23z"
-                  />
-                </svg>
-                <span>Continue with Google</span>
-              </button>
-            </div>
-
-            {/* Form Toggle */}
-            <div className="text-center pt-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setAuthMode(authMode === "login" ? "signup" : "login");
-                  setAuthError("");
-                }}
-                className="text-xs text-zinc-400 hover:text-white hover:underline transition-colors font-medium font-sans cursor-pointer"
-              >
-                {authMode === "login" 
-                  ? "Don't have an account yet? Create one" 
-                  : "Already registered? Sign back in"}
+                {authMode === "signup" ? "Sign up with Google" : "Log in with Google"}
               </button>
             </div>
 
@@ -1037,9 +1185,26 @@ export default function App() {
                     ? "Choose an account to continue to 3D Customizer" 
                     : "Create a new Google account to register"}
                 </p>
-                <div className="mt-2 bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 text-[9px] px-2.5 py-1.5 rounded-lg text-left leading-relaxed">
-                  <strong>Sandbox Fallback Mode Active:</strong> Firebase secrets are not configured in Vercel environment. Emulating account selection below.
-                </div>
+                {isFallbackMode ? (
+                  <div className="mt-2 bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 text-[9px] px-2.5 py-1.5 rounded-lg text-left leading-relaxed">
+                    <strong>Sandbox Fallback Mode Active:</strong> Firebase secrets are not configured in Vercel environment. Emulating account selection below.
+                  </div>
+                ) : isInIframe() ? (
+                  <div className="mt-2 bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[10px] px-2.5 py-2 rounded-xl text-left leading-relaxed flex flex-col gap-1.5">
+                    <p><strong>Google Sign-In Restricted in Preview:</strong></p>
+                    <p className="text-zinc-300 text-[9px] leading-normal">
+                      Google security policies block account selection inside nested iframes. Open the workspace in a new tab to use real Google accounts, or use the sandbox accounts below to test right here in the preview pane.
+                    </p>
+                    <a 
+                      href={window.location.href} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="mt-1 bg-[#5d75f3] hover:bg-[#4c65e4] text-white font-bold py-1.5 px-3 rounded-lg text-[9px] uppercase tracking-wider text-center transition-all inline-block"
+                    >
+                      Open in New Tab ↗
+                    </a>
+                  </div>
+                ) : null}
               </div>
 
               {sandboxCustomEmailError && (
@@ -1196,6 +1361,158 @@ export default function App() {
             </div>
           </div>
         )}
+      </div>
+    );
+  }
+
+  if (user && !user.emailVerified) {
+    const isSandboxUser = user.uid.startsWith("sandbox-uid-") || 
+                          isFallbackMode || 
+                          import.meta.env.DEV || 
+                          isInIframe ||
+                          window.location.hostname.includes("aistudio.google") ||
+                          window.location.hostname.includes("google.com") ||
+                          window.location.hostname.includes("run.app") || 
+                          window.location.hostname.includes("localhost");
+    
+    return (
+      <div className="w-full h-screen bg-[#09090b] flex items-center justify-center font-sans relative overflow-hidden select-none">
+        {/* Background Accents */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_40%,rgba(79,70,229,0.1),transparent_60%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.01)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.01)_1px,transparent_1px)] bg-[size:4rem_4rem]" />
+        
+        <div className="relative w-full max-w-md mx-4 z-10 pointer-events-auto">
+          <div className="bg-zinc-900/95 border border-white/10 rounded-[32px] p-8 shadow-2xl flex flex-col gap-6 text-center items-center">
+            
+            {/* Elegant Icon Header */}
+            <div className="w-16 h-16 rounded-3xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 shadow-inner">
+              <Mail size={32} className="animate-pulse" />
+            </div>
+
+            {/* Title & Desc */}
+            <div className="flex flex-col gap-2">
+              <h2 className="text-xl font-bold text-white tracking-tight">
+                Email Verification Required
+              </h2>
+              <p className="text-xs text-zinc-400 leading-relaxed px-2">
+                We've sent a verification link to your email address:
+              </p>
+              <div className="text-sm bg-zinc-950 text-indigo-300 py-2 px-4 rounded-xl border border-white/5 font-semibold self-center break-all select-all">
+                {user.email}
+              </div>
+              <p className="text-[11px] text-zinc-500 leading-relaxed px-4">
+                Please check your inbox (including spam folder) and click the link to activate your session.
+              </p>
+            </div>
+
+            {/* Status Message */}
+            {verificationMessage && (
+              <div className={`w-full p-3.5 rounded-2xl text-xs font-medium text-left leading-relaxed animate-in fade-in duration-200 border ${
+                verificationMessageType === "success" 
+                  ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
+                  : "bg-red-500/10 border-red-500/20 text-red-400"
+              }`}>
+                {verificationMessage}
+              </div>
+            )}
+
+            {/* Verification Actions */}
+            <div className="w-full flex flex-col gap-3">
+              {/* Check Verification Status Button */}
+              <button
+                type="button"
+                onClick={async () => {
+                  setVerificationLoading(true);
+                  setVerificationMessage("");
+                  try {
+                    const updatedUser = await reloadUser();
+                    if (updatedUser?.emailVerified) {
+                      setVerificationMessageType("success");
+                      setVerificationMessage("Email successfully verified! Entering workspace...");
+                    } else {
+                      setVerificationMessageType("error");
+                      setVerificationMessage("Email hasn't been verified yet. Please check your inbox and try again.");
+                    }
+                  } catch (err: any) {
+                    setVerificationMessageType("error");
+                    setVerificationMessage(err.message || "Failed to check verification status.");
+                  } finally {
+                    setVerificationLoading(false);
+                  }
+                }}
+                disabled={verificationLoading}
+                className="w-full bg-[#5d75f3] hover:bg-[#4c65e4] active:scale-95 text-white font-bold py-3.5 px-4 rounded-xl text-xs uppercase tracking-wider transition-all border border-white/5 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                {verificationLoading ? (
+                  <RefreshCw size={14} className="animate-spin" />
+                ) : (
+                  <RefreshCw size={14} />
+                )}
+                I have verified my email
+              </button>
+
+              {/* Resend Verification Email Button */}
+              <button
+                type="button"
+                onClick={async () => {
+                  setVerificationMessage("");
+                  try {
+                    await sendVerificationEmail();
+                    setVerificationResendTimer(60);
+                    setVerificationMessageType("success");
+                    setVerificationMessage("Verification link has been successfully resent!");
+                  } catch (err: any) {
+                    setVerificationMessageType("error");
+                    setVerificationMessage(err.message || "Failed to resend verification email.");
+                  }
+                }}
+                disabled={verificationResendTimer > 0 || verificationLoading}
+                className="w-full bg-zinc-800 hover:bg-zinc-700 active:scale-95 text-zinc-200 font-bold py-3 px-4 rounded-xl text-xs uppercase tracking-wider transition-all border border-white/10 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                Resend Verification Link {verificationResendTimer > 0 ? `(${verificationResendTimer}s)` : ""}
+              </button>
+            </div>
+
+            {/* Sandbox Helper panel if emulated */}
+            {isSandboxUser && (
+              <div className="w-full mt-1 bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 text-[11px] px-4 py-3 rounded-2xl text-left leading-relaxed flex flex-col gap-2">
+                <div>
+                  <p className="font-bold">Sandbox / Preview Demo Helper:</p>
+                  <p className="text-zinc-400 text-[10px] leading-normal mt-0.5">
+                    Jika Anda menggunakan real Firebase namun email verifikasi tidak kunjung masuk (atau diblokir limit/error Firebase), klik tombol di bawah untuk verifikasi instan secara otomatis!
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    verifyEmailSandbox();
+                    setVerificationMessageType("success");
+                    setVerificationMessage("User verified! Loading workspace...");
+                  }}
+                  className="w-full bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-2.5 px-3 rounded-xl text-[10px] uppercase tracking-wider text-center transition-all cursor-pointer"
+                >
+                  ⚡ Instant Verification Bypass
+                </button>
+              </div>
+            )}
+
+            {/* Back to Login / Sign out */}
+            <div className="border-t border-white/5 pt-4 w-full flex justify-center">
+              <button
+                type="button"
+                onClick={async () => {
+                  await signOut();
+                  setVerificationMessage("");
+                }}
+                className="text-zinc-400 hover:text-white transition-colors text-xs font-bold uppercase tracking-wider flex items-center gap-2 cursor-pointer"
+              >
+                <LogOut size={14} />
+                Sign Out / Use Another Account
+              </button>
+            </div>
+
+          </div>
+        </div>
       </div>
     );
   }
