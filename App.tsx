@@ -852,8 +852,8 @@ export default function App() {
         {/* Abstract Background Accents */}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_40%,rgba(79,70,229,0.08),transparent_65%)]" />
         
-        <div className="relative w-full max-w-[370px] mx-4 z-10 pointer-events-auto">
-          <div className="bg-[#121214] border border-zinc-800/50 rounded-[32px] p-8 shadow-2xl flex flex-col gap-5 text-center">
+        <div className="relative w-full max-w-[370px] md:max-w-[420px] mx-4 z-10 pointer-events-auto">
+          <div className="bg-[#121214] border border-zinc-800/50 rounded-[32px] p-6 sm:p-8 shadow-2xl flex flex-col gap-5 text-center">
             
             {/* Header / Brand */}
             <div className="flex flex-col items-center gap-1.5 mb-1">
@@ -1134,33 +1134,91 @@ export default function App() {
             )}
 
             {/* Google Link Action */}
-            <div className="text-center mt-1 border-t border-zinc-800/40 pt-4">
-              <button
-                type="button"
-                onClick={async () => {
-                  setAuthError("");
-                  setForgotSuccessMessage("");
-                  if (isFallbackMode) {
-                    setShowSandboxGooglePicker(true);
-                    return;
-                  }
-                  
-                  setAuthLoading(true);
-                  try {
-                    await signInWithGoogle(authMode === "signup" ? "signup" : "login");
-                  } catch (err: any) {
-                    console.error(err);
-                    setAuthError(err.message || "Failed to authenticate with Google. Popups might be blocked by your browser.");
-                  } finally {
-                    setAuthLoading(false);
-                  }
-                }}
-                disabled={authLoading}
-                className="text-xs font-semibold text-zinc-400 hover:text-white underline transition-colors cursor-pointer inline-flex items-center gap-1.5"
-              >
-                {authMode === "signup" ? "Sign up with Google" : "Log in with Google"}
-              </button>
-            </div>
+            {authMode !== "forgot" && (
+              <div className="text-center mt-1 border-t border-zinc-800/40 pt-4 flex flex-col items-center justify-center">
+                {authMode === "login" ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        setAuthError("");
+                        setForgotSuccessMessage("");
+                        if (isFallbackMode) {
+                          setShowSandboxGooglePicker(true);
+                          return;
+                        }
+                        
+                        setAuthLoading(true);
+                        try {
+                          await signInWithGoogle("login");
+                        } catch (err: any) {
+                          console.error(err);
+                          setAuthError(err.message || "Failed to authenticate with Google. Popups might be blocked by your browser.");
+                        } finally {
+                          setAuthLoading(false);
+                        }
+                      }}
+                      disabled={authLoading}
+                      className="text-xs font-semibold text-zinc-400 hover:text-white underline transition-colors cursor-pointer inline-flex items-center gap-1.5"
+                    >
+                      Log in with Google
+                    </button>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        setAuthError("");
+                        setForgotSuccessMessage("");
+                        if (isFallbackMode) {
+                          setAuthMode("signup");
+                          setShowSandboxGooglePicker(true);
+                          return;
+                        }
+                        
+                        setAuthLoading(true);
+                        try {
+                          await signInWithGoogle("signup");
+                        } catch (err: any) {
+                          console.error(err);
+                          setAuthError(err.message || "Failed to authenticate with Google. Popups might be blocked by your browser.");
+                        } finally {
+                          setAuthLoading(false);
+                        }
+                      }}
+                      disabled={authLoading}
+                      className="text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors underline cursor-pointer mt-2 inline-block"
+                    >
+                      Baru pertama kali? Sign up with Google
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      setAuthError("");
+                      setForgotSuccessMessage("");
+                      if (isFallbackMode) {
+                        setShowSandboxGooglePicker(true);
+                        return;
+                      }
+                      
+                      setAuthLoading(true);
+                      try {
+                        await signInWithGoogle("signup");
+                      } catch (err: any) {
+                        console.error(err);
+                        setAuthError(err.message || "Failed to authenticate with Google. Popups might be blocked by your browser.");
+                      } finally {
+                        setAuthLoading(false);
+                      }
+                    }}
+                    disabled={authLoading}
+                    className="text-xs font-semibold text-zinc-400 hover:text-white underline transition-colors cursor-pointer inline-flex items-center gap-1.5"
+                  >
+                    Sign up with Google
+                  </button>
+                )}
+              </div>
+            )}
 
           </div>
         </div>
