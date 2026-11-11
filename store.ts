@@ -79,6 +79,25 @@ export const useStore = create<AppState>((set, get) => ({
   modelCalibrations: {},
   currentModel: DEMO_ASSET,
   customParts: [],
+  partMaterialSlots: {},
+  setPartMaterialSlots: (partId, slots) => set(state => {
+    const next = { ...state.partMaterialSlots };
+    if (slots.length) next[partId] = slots;
+    else delete next[partId];
+    return { partMaterialSlots: next };
+  }),
+  setPartColor: (partId, color, slot) => set(state => {
+    // Slot numbers belong to this mesh only; grouped meshes may use different slots.
+    const ids = slot === undefined ? getGroupParts(state, partId) : [partId];
+    const partConfigs = { ...state.partConfigs };
+    ids.forEach(id => {
+      const config = partConfigs[id] || { scale: 2, normalScale: 1, roughness: 0.5, displacementScale: 0 };
+      partConfigs[id] = slot === undefined
+        ? { ...config, diffuseColor: color, slotDiffuseColors: {} }
+        : { ...config, slotDiffuseColors: { ...config.slotDiffuseColors, [slot]: color } };
+    });
+    return pushHistory(state, { partConfigs });
+  }),
   modelResetCounter: 0,
   savedVariants: [],
   

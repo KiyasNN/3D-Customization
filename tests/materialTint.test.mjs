@@ -44,3 +44,19 @@ test('no palette selection leaves original imported material intact', () => {
   const source = new MeshStandardMaterial();
   assert.equal(tintMaterial(source), source);
 });
+
+test('slot tint changes only the requested material and retains all maps', () => {
+  const source = [new MeshStandardMaterial({ color: '#ff0000', map: new Texture() }),
+    new MeshStandardMaterial({ color: '#ffffff', map: new Texture() }),
+    new MeshStandardMaterial({ color: '#000000', map: new Texture() })];
+  const tinted = tintMaterial(source, undefined, { 1: '#00ff00' });
+  assert.deepEqual(tinted.map(m => m.color.getHexString()), ['ff0000', '00ff00', '000000']);
+  assert.deepEqual(source.map(m => m.color.getHexString()), ['ff0000', 'ffffff', '000000']);
+  tinted.forEach((mat, i) => assert.equal(mat.map, source[i].map));
+});
+
+test('slot tint overrides object tint without affecting other slots', () => {
+  const source = [new MeshStandardMaterial(), new MeshStandardMaterial()];
+  const tinted = tintMaterial(source, '#ff0000', { 1: '#0000ff' });
+  assert.deepEqual(tinted.map(m => m.color.getHexString()), ['ff0000', '0000ff']);
+});

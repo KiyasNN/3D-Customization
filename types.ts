@@ -72,6 +72,7 @@ export interface EffectsSettings {
 
 export interface TextureConfig {
   diffuseColor?: string; // Palette tint; preserves the material's texture maps.
+  slotDiffuseColors?: Record<number, string>;
   scale: number;
   normalScale: number;
   roughness: number;
@@ -196,6 +197,9 @@ export interface AppState {
   uploadedAssets: UploadedAsset[]; // List of uploaded model metadata
   currentModel: UploadedAsset | null; // Currently loaded custom model
   customParts: string[]; // List of part IDs found in custom model
+  partMaterialSlots: Record<string, string[]>;
+  setPartMaterialSlots: (partId: string, slots: string[]) => void;
+  setPartColor: (partId: string, color: string, slot?: number) => void;
   modelResetCounter: number; // Increment to force remount/reset of custom model
 
   savedVariants: SavedVariant[]; // Saved designs

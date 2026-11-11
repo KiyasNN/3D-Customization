@@ -14,8 +14,8 @@ import { SHOE_PARTS } from '../constants';
 import { Material, TextureConfig } from '../types';
 
 
-const usePaletteTint = (base: THREE.Material | THREE.Material[], color?: string) => {
-  const tinted = useMemo(() => tintMaterial(base, color), [base, color]);
+const usePaletteTint = (base: THREE.Material | THREE.Material[], color?: string, slots?: Record<number, string>) => {
+  const tinted = useMemo(() => tintMaterial(base, color, slots), [base, color, slots]);
   useEffect(() => () => {
     if (tinted !== base) {
       const instances = Array.isArray(tinted) ? tinted : [tinted];
@@ -885,7 +885,7 @@ const ShoePartMesh = ({ id, geometry, position, scale, explodeOffset, interactiv
     return getThreeMaterial(matId, materials, config, videoTexture, wireframeEnabled);
   }, [matId, materials, videoTexture, config, wireframeEnabled]);
 
-  const material = usePaletteTint(baseMaterial, config.diffuseColor);
+  const material = usePaletteTint(baseMaterial, config.diffuseColor, config.slotDiffuseColors);
 
   // Create unique geometry for each part based on its exact scale dimensions
   // This completely eliminates non-uniform scaling / stretching of the selection outline
@@ -1521,6 +1521,12 @@ const RecursiveMeshPart = React.memo(({ object, interactive, videoTexture }: any
     const updatePartConfig = useStore(s => s.updatePartConfig);
     const isDragging = useStore(s => s.isDragging);
 
+    useEffect(() => {
+      const slots = Array.isArray(object.material) ? object.material : [object.material];
+      useStore.getState().setPartMaterialSlots(id, slots.map((mat, index) => mat?.name || `Material ${index + 1}`));
+      return () => useStore.getState().setPartMaterialSlots(id, []);
+    }, [id, object.material]);
+
     const baseMaterial = useMemo(() => {
         if (!matId && object.material) {
             const baseMat = Array.isArray(object.material) ? object.material[0] : object.material;
@@ -1532,7 +1538,7 @@ const RecursiveMeshPart = React.memo(({ object, interactive, videoTexture }: any
         return getThreeMaterial(matId, materials, config, videoTexture, wireframeEnabled);
     }, [matId, materials, videoTexture, config, object.material, wireframeEnabled]);
 
-    const material = usePaletteTint(baseMaterial, config.diffuseColor);
+    const material = usePaletteTint(baseMaterial, config.diffuseColor, config.slotDiffuseColors);
 
     const meshRef = useRef<THREE.Mesh>(null);
     const isDraggingGizmo = useRef(false);

@@ -3519,6 +3519,10 @@ const RightPanel = ({ activeTab, showLeftPanel, onStartCamera, onStopCamera, onE
   const [showLibrary, setShowLibrary] = useState(true);
   const [prompt, setPrompt] = useState("");
   const [customHex, setCustomHex] = useState("#ffffff");
+  const partMaterialSlots = useStore(s => s.partMaterialSlots);
+  const [slotChoice, setSlotChoice] = useState<{ part: string | null; model: string | undefined; slot: string }>({ part: null, model: undefined, slot: "all" });
+  const availableSlots = selectedPart && !partMaterials[selectedPart] ? (partMaterialSlots[selectedPart] || []) : [];
+  const selectedSlot = slotChoice.part === selectedPart && slotChoice.model === currentModel?.id && Number(slotChoice.slot) < availableSlots.length ? slotChoice.slot : "all";
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(
     {},
   );
@@ -3614,7 +3618,7 @@ const RightPanel = ({ activeTab, showLeftPanel, onStartCamera, onStopCamera, onE
 
   const handleColorClick = (colorHex: string) => {
     if (!selectedPart) return;
-    useStore.getState().updatePartConfig(selectedPart, { diffuseColor: colorHex });
+    useStore.getState().setPartColor(selectedPart, colorHex, selectedSlot === "all" ? undefined : Number(selectedSlot));
   };
 
   const handlePresetClick = (preset: (typeof MATERIAL_PRESETS)[0]) => {
@@ -4038,6 +4042,23 @@ const RightPanel = ({ activeTab, showLeftPanel, onStartCamera, onStopCamera, onE
 
           {activeTab === "colors" && (
             <div className="flex flex-col gap-3">
+              {availableSlots.length > 1 && (
+                <label className="flex flex-col gap-1 text-xs text-zinc-300">
+                  Material slot
+                  <select
+                    aria-label="Material slot"
+                    value={selectedSlot}
+                    onChange={e => setSlotChoice({ part: selectedPart, model: currentModel?.id, slot: e.target.value })}
+                    className="w-full rounded-lg bg-zinc-800 border border-white/10 p-2 text-white"
+                  >
+                    <option value="all">Semua material</option>
+                    {availableSlots.map((name, index) => (
+                      <option key={index} value={String(index)}>{index + 1}. {name}</option>
+                    ))}
+                  </select>
+                  <span className="text-zinc-500">Pilih slot, lalu pilih warna. Tekstur tetap dipakai.</span>
+                </label>
+              )}
               <div className="flex items-center gap-2 p-2 bg-zinc-800/90 rounded-lg border border-white/10 sticky top-0 z-10 backdrop-blur-md shadow-lg">
                 <div className="relative w-8 h-8 rounded-full overflow-hidden border border-white/20 shrink-0">
                   <input
