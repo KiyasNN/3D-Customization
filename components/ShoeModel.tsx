@@ -4,7 +4,7 @@ import React, { useRef, useMemo, useEffect, useState, useLayoutEffect, useCallba
 import { Html, Outlines, Edges, Line, Text, Billboard, TransformControls } from '@react-three/drei';
 import * as THREE from 'three';
 // @ts-ignore
-import { useLoader, useFrame, useThree } from '@react-three/fiber';
+import { createPortal, useLoader, useFrame, useThree } from '@react-three/fiber';
 import { OBJLoader, GLTFLoader, SkeletonUtils } from 'three-stdlib';
 import { USDLoader } from 'three/examples/jsm/loaders/USDLoader.js';
 import { useStore } from '../store';
@@ -16,6 +16,14 @@ const InitialPositionsContext = React.createContext({
   initialRotations: new Map<string, THREE.Euler>(), 
   initialScales: new Map<string, THREE.Vector3>() 
 });
+
+// TransformControls computes its gizmo position in world space. Render it at the
+// scene root so model calibration and imported parent transforms aren't applied
+// a second time. The attached mesh stays in its original model hierarchy.
+const WorldTransformControls = (props: React.ComponentProps<typeof TransformControls>) => {
+  const scene = useThree(state => state.scene);
+  return createPortal(<TransformControls {...props} />, scene);
+};
 
 export const ShoeMeshOnly = ({ scene, interactive = false, videoTexture }: any) => {
   const currentModel = useStore(s => s.currentModel);
@@ -1090,7 +1098,7 @@ const ShoePartMesh = ({ id, geometry, position, scale, explodeOffset, interactiv
     <group>
       {meshElement}
       {isSelected && showTransformGizmo && isExploded && mesh && isVisible && (
-        <TransformControls
+        <WorldTransformControls
           object={mesh}
           mode={transformMode}
           size={transformGizmoSize}
@@ -1764,7 +1772,7 @@ const RecursiveMeshPart = React.memo(({ object, interactive, videoTexture }: any
         <group>
           {meshElement}
           {isSelected && showTransformGizmo && isExploded && mesh && isVisible && (
-            <TransformControls
+            <WorldTransformControls
               object={mesh}
               mode={transformMode}
               size={transformGizmoSize}
