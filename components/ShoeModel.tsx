@@ -1071,6 +1071,7 @@ const ShoePartMesh = ({ id, geometry, position, scale, explodeOffset, interactiv
   const meshElement = (
     <mesh
       ref={setMeshRef}
+      userData={{ fitViewSubject: true }}
       name={id}
       geometry={partGeometry}
       material={material}
@@ -1754,6 +1755,7 @@ const RecursiveMeshPart = React.memo(({ object, interactive, videoTexture }: any
     const meshElement = (
       <mesh
           ref={setMeshRef}
+      userData={{ fitViewSubject: true }}
           name={id}
           geometry={object.geometry}
           material={material}

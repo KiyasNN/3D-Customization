@@ -8,6 +8,7 @@ import { Environment, OrbitControls, MeshReflectorMaterial, ContactShadows, Stag
 // @ts-ignore
 import { EffectComposer, Bloom, Vignette, Noise, ChromaticAberration, TiltShift2, N8AO, SMAA } from '@react-three/postprocessing';
 import * as THREE from 'three';
+import { getModelBounds, getPerspectiveFit } from './services/cameraFit';
 import { RGBELoader, EXRLoader } from 'three-stdlib';
 import { Interface } from './components/Interface';
 import { ShoeModel } from './components/ShoeModel';
@@ -122,52 +123,39 @@ const CameraRig = ({ sceneRef }: { sceneRef: React.RefObject<THREE.Group> }) => 
   // When a fit request comes in, calculate bounds of all objects and frame them
   useEffect(() => {
     if (fitRequest > 0 && sceneRef.current) {
-      const group = sceneRef.current;
-      const box = new THREE.Box3().setFromObject(group);
-      
-      // If bounding box is empty/invalid, skip
-      if (box.isEmpty()) return;
+      const direction = fitWithDefaultDirection
+        ? new THREE.Vector3(4, 1.5, 4)
+        : camera.getWorldDirection(new THREE.Vector3()).negate();
+      const fit = getPerspectiveFit(camera as THREE.PerspectiveCamera, getModelBounds(sceneRef.current), direction);
+      if (!fit) return;
 
-      const center = new THREE.Vector3();
-      box.getCenter(center);
-      
-      const size = new THREE.Vector3();
-      box.getSize(size);
-      
-      const maxDim = Math.max(size.x, size.y, size.z);
-      
-      // Calculate fov in radians
-      const fov = (camera as THREE.PerspectiveCamera).fov * (Math.PI / 180);
-      
-      // Calculate distance to fit the object nicely
-      let distance = maxDim / (2 * Math.tan(fov / 2)) * 1.35;
-      
-      // Put a safe guard on distance
-      distance = Math.max(1.5, Math.min(distance, 15.0));
-      
-      // Maintain the camera's current viewing angle or use default
-      const direction = new THREE.Vector3();
-      if (fitWithDefaultDirection) {
-        // Default direction pointing towards the center [0, 0.5, 0] from [4, 2, 4]
-        // Which is: [4, 1.5, 4] normalized
-        direction.set(4, 1.5, 4).normalize();
-      } else {
-        camera.getWorldDirection(direction);
-        direction.negate().normalize();
+      // Fit is a recovery action: snap both camera and orbit target into place.
+      // Flush pending pan/rotation damping before applying the new view.
+      isAnimating.current = false;
+      const orbit = controls as any;
+      const damping = orbit?.enableDamping;
+      const autoRotate = orbit?.autoRotate;
+      try {
+        if (orbit) {
+          orbit.enableDamping = false;
+          orbit.autoRotate = false;
+          orbit.update();
+        }
+        camera.position.copy(fit.position);
+        camera.near = fit.near;
+        camera.far = fit.far;
+        camera.updateProjectionMatrix();
+        if (orbit) orbit.target.copy(fit.center);
+        camera.lookAt(fit.center);
+        orbit?.update();
+      } finally {
+        if (orbit) {
+          orbit.enableDamping = damping;
+          orbit.autoRotate = autoRotate;
+        }
       }
-      
-      // Fallback direction if camera is somehow at center
-      if (direction.length() < 0.01) {
-        direction.set(1, 0.5, 1).normalize();
-      }
-      
-      const nextCameraPos = center.clone().add(direction.multiplyScalar(distance));
-      
-      targetPos.current = nextCameraPos;
-      targetTarget.current = center;
-      isAnimating.current = true;
     }
-  }, [fitRequest, fitWithDefaultDirection, camera, sceneRef]);
+  }, [fitRequest, fitWithDefaultDirection, camera, controls, sceneRef]);
 
   useFrame(() => {
     if (isAnimating.current && targetPos.current && targetTarget.current) {
@@ -182,7 +170,8 @@ const CameraRig = ({ sceneRef }: { sceneRef: React.RefObject<THREE.Group> }) => 
       }
 
       // Stop animating when we are close enough
-      if (camera.position.distanceTo(targetPos.current) < 0.05) {
+      if (camera.position.distanceTo(targetPos.current) < 0.01 &&
+          (!orbitControls || orbitControls.target.distanceTo(targetTarget.current) < 0.01)) {
         isAnimating.current = false;
       }
     }
