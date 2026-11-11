@@ -9,8 +9,21 @@ import { OBJLoader, GLTFLoader, SkeletonUtils } from 'three-stdlib';
 import { USDLoader } from 'three/examples/jsm/loaders/USDLoader.js';
 import { useStore } from '../store';
 import { setWorldDragPosition } from '../services/dragPosition';
+import { tintMaterial } from '../services/materialTint';
 import { SHOE_PARTS } from '../constants';
 import { Material, TextureConfig } from '../types';
+
+
+const usePaletteTint = (base: THREE.Material | THREE.Material[], color?: string) => {
+  const tinted = useMemo(() => tintMaterial(base, color), [base, color]);
+  useEffect(() => () => {
+    if (tinted !== base) {
+      const instances = Array.isArray(tinted) ? tinted : [tinted];
+      instances.forEach(material => material.dispose());
+    }
+  }, [base, tinted]);
+  return tinted;
+};
 
 const InitialPositionsContext = React.createContext({ 
   initialPositions: new Map<string, THREE.Vector3>(), 
@@ -868,9 +881,11 @@ const ShoePartMesh = ({ id, geometry, position, scale, explodeOffset, interactiv
   const meshRef = useRef<THREE.Mesh>(null);
   const isDraggingGizmo = useRef(false);
 
-  const material = useMemo(() => {
+  const baseMaterial = useMemo(() => {
     return getThreeMaterial(matId, materials, config, videoTexture, wireframeEnabled);
   }, [matId, materials, videoTexture, config, wireframeEnabled]);
+
+  const material = usePaletteTint(baseMaterial, config.diffuseColor);
 
   // Create unique geometry for each part based on its exact scale dimensions
   // This completely eliminates non-uniform scaling / stretching of the selection outline
@@ -1506,7 +1521,7 @@ const RecursiveMeshPart = React.memo(({ object, interactive, videoTexture }: any
     const updatePartConfig = useStore(s => s.updatePartConfig);
     const isDragging = useStore(s => s.isDragging);
 
-    const material = useMemo(() => {
+    const baseMaterial = useMemo(() => {
         if (!matId && object.material) {
             const baseMat = Array.isArray(object.material) ? object.material[0] : object.material;
             if (baseMat) {
@@ -1516,6 +1531,8 @@ const RecursiveMeshPart = React.memo(({ object, interactive, videoTexture }: any
         }
         return getThreeMaterial(matId, materials, config, videoTexture, wireframeEnabled);
     }, [matId, materials, videoTexture, config, object.material, wireframeEnabled]);
+
+    const material = usePaletteTint(baseMaterial, config.diffuseColor);
 
     const meshRef = useRef<THREE.Mesh>(null);
     const isDraggingGizmo = useRef(false);

@@ -71,6 +71,7 @@ export interface EffectsSettings {
 }
 
 export interface TextureConfig {
+  diffuseColor?: string; // Palette tint; preserves the material's texture maps.
   scale: number;
   normalScale: number;
   roughness: number;

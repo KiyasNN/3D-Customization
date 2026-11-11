@@ -3614,30 +3614,7 @@ const RightPanel = ({ activeTab, showLeftPanel, onStartCamera, onStopCamera, onE
 
   const handleColorClick = (colorHex: string) => {
     if (!selectedPart) return;
-    const currentMatId = partMaterials[selectedPart];
-    const currentMat = materials.find((m) => m.id === currentMatId);
-
-    if (currentMat) {
-      const newMat = {
-        ...currentMat,
-        id: `${currentMat.id}-tint-${colorHex.replace("#", "")}-${Date.now()}`,
-        name: `${currentMat.name} (${colorHex})`,
-        color: colorHex,
-      };
-      addMaterial(newMat);
-      setMaterial(selectedPart, newMat.id);
-    } else {
-      const newColorMat = {
-        id: `color-${colorHex}-${Date.now()}`,
-        name: `Color ${colorHex}`,
-        color: colorHex,
-        roughness: 0.5,
-        metalness: 0.1,
-        type: "fabric" as const,
-      };
-      addMaterial(newColorMat);
-      setMaterial(selectedPart, newColorMat.id);
-    }
+    useStore.getState().updatePartConfig(selectedPart, { diffuseColor: colorHex });
   };
 
   const handlePresetClick = (preset: (typeof MATERIAL_PRESETS)[0]) => {
