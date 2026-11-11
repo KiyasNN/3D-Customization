@@ -790,17 +790,15 @@ export default function App() {
   const currentLighting = useStore(s => s.currentLighting);
   const showFloor = useStore(s => s.showFloor);
   const showEnvironmentBackground = useStore(s => s.showEnvironmentBackground);
-  const showTransformGizmo = useStore(s => s.showTransformGizmo);
   const isDragging = useStore(s => s.isDragging);
   const setIsDragging = useStore(s => s.setIsDragging);
-  const isExploded = useStore(s => s.isExploded);
   const turntableSettings = useStore(s => s.turntableSettings);
   const currentModel = useStore(s => s.currentModel);
   const sceneRef = useRef<THREE.Group>(null);
   
   // Calculate control states
   const isRecording = recordingStatus === 'recording';
-  const shouldAutoRotate = isTurntableActive && !isRecording && !isWalking && !(isExploded && showTransformGizmo);
+  const shouldAutoRotate = isTurntableActive && !isRecording && !isWalking;
   const computedTurntableSpeed = turntableSettings.direction === 'clockwise' ? turntableSpeed : -turntableSpeed;
   const controlsEnabled = !isRecording; 
 
