@@ -165,7 +165,7 @@ export const AssetBrowser: React.FC<AssetBrowserProps> = ({
       )}
 
       {/* Grid Content */}
-      <div className={`flex-1 overflow-y-auto custom-scrollbar p-2 ${isEmbedded ? "max-h-[300px] min-h-[220px]" : ""}`}>
+      <div className={`flex-1 overflow-y-auto custom-scrollbar p-2 ${isEmbedded ? "max-h-[300px]" : ""}`}>
         {activeMaterials.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-center p-4 py-8">
             {activeTab === "ai" ? (
@@ -192,7 +192,7 @@ export const AssetBrowser: React.FC<AssetBrowserProps> = ({
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-2 pb-2">
+          <div className={activeTab === "presets" ? "grid grid-cols-7 gap-1.5 pb-2" : "grid grid-cols-2 gap-2 pb-2"}>
             {activeMaterials.map((mat) => {
               const isAppliedToSelected = selectedPart && partMaterials[selectedPart] === mat.id;
               
@@ -205,7 +205,7 @@ export const AssetBrowser: React.FC<AssetBrowserProps> = ({
                     e.dataTransfer.effectAllowed = "copy";
                   }}
                   onClick={() => handleSelectMaterial(mat.id)}
-                  className={`group relative aspect-square rounded-lg overflow-hidden cursor-grab active:cursor-grabbing transition-all border ${
+                  className={`group relative aspect-square ${activeTab === "presets" ? "rounded-sm" : "rounded-lg"} overflow-hidden cursor-grab active:cursor-grabbing transition-all border ${
                     isAppliedToSelected 
                       ? "border-blue-500 ring-2 ring-blue-500/30 shadow-[0_0_12px_rgba(59,130,246,0.3)]" 
                       : "border-white/5 hover:border-blue-500/50 hover:shadow-lg hover:shadow-blue-900/10"
@@ -224,10 +224,10 @@ export const AssetBrowser: React.FC<AssetBrowserProps> = ({
                   />
                   
                   {/* Glass Gradient overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent opacity-80 group-hover:opacity-90 transition-opacity" />
+                  {activeTab !== "presets" && <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent opacity-80 group-hover:opacity-90 transition-opacity" />}
 
                   {/* Actions Overlay */}
-                  <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                  {activeTab !== "presets" && <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
                     {/* Quick Apply */}
                     {selectedPart && (
                       <button
@@ -255,14 +255,14 @@ export const AssetBrowser: React.FC<AssetBrowserProps> = ({
                         <Trash2 size={10} />
                       </button>
                     )}
-                  </div>
+                  </div>}
 
                   {/* Name Tag */}
-                  <div className="absolute bottom-0 left-0 right-0 p-1.5 bg-zinc-950/40 backdrop-blur-[2px]">
+                  {activeTab !== "presets" && <div className="absolute bottom-0 left-0 right-0 p-1.5 bg-zinc-950/40 backdrop-blur-[2px]">
                     <p className="text-[9px] font-semibold text-zinc-200 truncate group-hover:text-white">
                       {mat.name}
                     </p>
-                  </div>
+                  </div>}
                 </div>
               );
             })}
