@@ -3523,6 +3523,12 @@ const RightPanel = ({ activeTab, showLeftPanel, onStartCamera, onStopCamera, onE
   const [slotChoice, setSlotChoice] = useState<{ part: string | null; model: string | undefined; slot: string }>({ part: null, model: undefined, slot: "all" });
   const availableSlots = selectedPart && !partMaterials[selectedPart] ? (partMaterialSlots[selectedPart] || []) : [];
   const selectedSlot = slotChoice.part === selectedPart && slotChoice.model === currentModel?.id && Number(slotChoice.slot) < availableSlots.length ? slotChoice.slot : "all";
+  // GLTFLoader often splits primitives into separate, single-material meshes.
+  // List their slots too, rather than requiring one mesh with a material array.
+  const materialTargets = Object.entries(partMaterialSlots)
+    .filter(([part]) => !partMaterials[part])
+    .flatMap(([part, slots]) => slots.map((name, index) => ({ part, name, index })));
+  const slotValue = selectedSlot === "all" ? "all" : JSON.stringify([selectedPart, Number(selectedSlot)]);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(
     {},
   );
@@ -4042,23 +4048,38 @@ const RightPanel = ({ activeTab, showLeftPanel, onStartCamera, onStopCamera, onE
 
           {activeTab === "colors" && (
             <div className="flex flex-col gap-3">
-              {availableSlots.length > 1 && (
+              <div className="rounded-lg border border-white/10 bg-zinc-800/70 p-3">
                 <label className="flex flex-col gap-1 text-xs text-zinc-300">
                   Material slot
                   <select
                     aria-label="Material slot"
-                    value={selectedSlot}
-                    onChange={e => setSlotChoice({ part: selectedPart, model: currentModel?.id, slot: e.target.value })}
+                    value={slotValue}
+                    disabled={!selectedPart && materialTargets.length === 0}
+                    onChange={e => {
+                      if (e.target.value === "all") {
+                        setSlotChoice({ part: selectedPart, model: currentModel?.id, slot: "all" });
+                      } else {
+                        const [part, index] = JSON.parse(e.target.value);
+                        useStore.getState().selectPart(part);
+                        setSlotChoice({ part, model: currentModel?.id, slot: String(index) });
+                      }
+                    }}
                     className="w-full rounded-lg bg-zinc-800 border border-white/10 p-2 text-white"
                   >
-                    <option value="all">Semua material</option>
-                    {availableSlots.map((name, index) => (
-                      <option key={index} value={String(index)}>{index + 1}. {name}</option>
+                    <option value="all">{selectedPart ? `Semua material: ${selectedPart}` : "Pilih object / material"}</option>
+                    {materialTargets.map(({ part, name, index }) => (
+                      <option key={JSON.stringify([part, index])} value={JSON.stringify([part, index])}>{part} — {index + 1}. {name}</option>
                     ))}
                   </select>
-                  <span className="text-zinc-500">Pilih slot, lalu pilih warna. Tekstur tetap dipakai.</span>
+                  <span className="text-zinc-400">Pilih material di model, lalu pilih warna. Tekstur tetap dipakai.</span>
+                  {selectedPart && availableSlots.length === 1 && (
+                    <span className="text-zinc-500">Mesh terpilih punya 1 slot. Warna yang menyatu dalam satu texture map perlu mask untuk diedit terpisah.</span>
+                  )}
+                  {selectedPart && partMaterials[selectedPart] && (
+                    <span className="text-zinc-500">Part ini memakai material pengganti dari library, bukan slot asli GLB.</span>
+                  )}
                 </label>
-              )}
+              </div>
               <div className="flex items-center gap-2 p-2 bg-zinc-800/90 rounded-lg border border-white/10 sticky top-0 z-10 backdrop-blur-md shadow-lg">
                 <div className="relative w-8 h-8 rounded-full overflow-hidden border border-white/20 shrink-0">
                   <input
