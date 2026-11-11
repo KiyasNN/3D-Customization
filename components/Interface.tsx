@@ -9,6 +9,7 @@ import { SHOE_PARTS, INITIAL_MATERIALS, MATERIAL_PRESETS } from "../constants";
 import { generatePDF } from "../services/pdfService";
 import { processPBRMaps } from "../services/materialEngine";
 import { Material, UploadedAsset } from "../types";
+import CSI_COLORWALL from "../data/csi-colorwall.json";
 import {
   Layers,
   Undo2,
@@ -257,6 +258,7 @@ export const getThemeColorClass = (color: string) => {
 
 
 // Preset Colors with Names
+const CSI_COLORS = CSI_COLORWALL.map(color => ({ ...color, name: color.code }));
 const PRESET_COLORS = [
   { hex: "#ffffff", name: "Titanium White" },
   { hex: "#000000", name: "Midnight Black" },
@@ -3519,6 +3521,13 @@ const RightPanel = ({ activeTab, showLeftPanel, onStartCamera, onStopCamera, onE
   const [showLibrary, setShowLibrary] = useState(true);
   const [prompt, setPrompt] = useState("");
   const [customHex, setCustomHex] = useState("#ffffff");
+  const [paletteSource, setPaletteSource] = useState("csi");
+  const [colorSearch, setColorSearch] = useState("");
+  const [colorLimit, setColorLimit] = useState(140);
+  const [swatchInfo, setSwatchInfo] = useState("");
+  const catalog = paletteSource === "csi" ? CSI_COLORS : PRESET_COLORS;
+  const matchingColors = catalog.filter(color => (color.name + " " + color.hex).toLowerCase().includes(colorSearch.trim().toLowerCase()));
+
   const partMaterialSlots = useStore(s => s.partMaterialSlots);
   const [slotChoice, setSlotChoice] = useState<{ part: string | null; model: string | undefined; slot: string }>({ part: null, model: undefined, slot: "all" });
   const availableSlots = selectedPart && !partMaterials[selectedPart] ? (partMaterialSlots[selectedPart] || []) : [];
@@ -4112,29 +4121,44 @@ const RightPanel = ({ activeTab, showLeftPanel, onStartCamera, onStopCamera, onE
                   <Plus size={16} />
                 </button>
               </div>
-              <div className="grid grid-cols-1 gap-2 max-h-[350px] overflow-y-auto custom-scrollbar pr-1">
-                {PRESET_COLORS.map((col) => (
-                  <div
-                    key={col.hex}
-                    onClick={() => handleColorClick(col.hex)}
-                    className="group relative h-12 rounded-lg overflow-hidden cursor-pointer transition-all border border-transparent hover:border-white/30 shrink-0"
-                  >
-                    <div
-                      className="absolute inset-0"
-                      style={{ backgroundColor: col.hex }}
-                    ></div>
-                    <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-transparent" />
-                    <div className="absolute left-3 top-1/2 -translate-y-1/2">
-                      <p className="text-xs font-bold text-white shadow-sm">
-                        {col.name}
-                      </p>
-                      <p className="text-[10px] text-zinc-300 font-mono uppercase">
-                        {col.hex}
-                      </p>
-                    </div>
-                  </div>
-                ))}
+              <div className="flex items-center gap-2">
+                <select aria-label="Color library" value={paletteSource}
+                  onChange={e => { setPaletteSource(e.target.value); setColorLimit(140); setSwatchInfo(""); }}
+                  className="flex-1 min-w-0 rounded-md bg-zinc-800 border border-white/10 p-2 text-xs text-white">
+                  <option value="csi">CSI ColorWall</option>
+                  <option value="basic">Basic colors</option>
+                </select>
+                <span className="text-[10px] text-zinc-400">{matchingColors.length} colors</span>
               </div>
+              <input type="search" aria-label="Search color code or HEX" placeholder="Cari kode CSI / HEX…"
+                value={colorSearch} onChange={e => { setColorSearch(e.target.value); setColorLimit(140); }}
+                className="w-full rounded-md bg-zinc-800 border border-white/10 px-3 py-2 text-xs text-white" />
+              <div className="max-h-[300px] overflow-y-auto custom-scrollbar p-1">
+                <div className="grid grid-cols-7 gap-1.5">
+                  {matchingColors.slice(0, colorLimit).map(col => (
+                    <button type="button" key={col.name}
+                      title={col.name + " · " + col.hex.toUpperCase()}
+                      aria-label={col.name + " " + col.hex}
+                      disabled={!selectedPart}
+                      onMouseEnter={() => setSwatchInfo(col.name + " · " + col.hex.toUpperCase())}
+                      onFocus={() => setSwatchInfo(col.name + " · " + col.hex.toUpperCase())}
+                      onClick={() => { handleColorClick(col.hex); setCustomHex(col.hex); }}
+                      className="aspect-square w-full rounded-sm border border-white/20 transition-transform hover:scale-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white disabled:cursor-not-allowed"
+                      style={{ backgroundColor: col.hex }} />
+                  ))}
+                </div>
+                {matchingColors.length === 0 && <p className="py-4 text-center text-xs text-zinc-400">Warna tidak ditemukan.</p>}
+                {matchingColors.length > colorLimit && (
+                  <button type="button" onClick={() => setColorLimit(value => value + 140)}
+                    className="mt-3 w-full rounded-md bg-white/10 py-2 text-xs text-white">Tampilkan lebih banyak</button>
+                )}
+              </div>
+              <p className="min-h-4 text-[10px] text-zinc-300 font-mono break-all" aria-live="polite">{swatchInfo || "Arahkan mouse ke kotak untuk melihat kode warna."}</p>
+              {paletteSource === "csi" && (
+                <p className="text-[10px] text-zinc-500">CSI ColorWall · katalog digital 2021 · preview sRGB.
+                  {" "}<a href="https://csicolors.com/color-communication-tools/downloadable-digital-media/" target="_blank" rel="noreferrer" className="underline">Sumber resmi</a>
+                </p>
+              )}
             </div>
           )}
 
