@@ -66,7 +66,7 @@ export const GuidedTour: React.FC<GuidedTourProps> = ({
   const steps: Step[] = [
     {
       title: "Welcome to 3D Shoe Customizer!",
-      description: "Let's take 1 minute to explore the advanced features of this 3D shoe visualization platform. You can design custom materials with AI, record rotating turntable videos, and so much more!",
+      description: "Let's take 1 minute to explore the advanced features of this 3D shoe visualization platform. You can customize materials and colors, record rotating turntable videos, and so much more!",
       icon: <Sparkles className="w-6 h-6 text-yellow-400 animate-pulse" />,
       selector: "",
       placement: "center"
@@ -79,16 +79,6 @@ export const GuidedTour: React.FC<GuidedTourProps> = ({
       placement: "right",
       onEnter: () => {
         setShowLeftPanel(true);
-      }
-    },
-    {
-      title: "AI Texture Generator",
-      description: "Harness the power of Gemini AI to create textures that have never existed before! Simply type a prompt like 'cracked lava', 'golden circuit board', or 'dragon scales'. The AI will paint high-quality seamless materials instantly.",
-      icon: <Sparkles className="w-6 h-6 text-purple-400" />,
-      selector: "#tour-right-panel",
-      placement: "left",
-      onEnter: () => {
-        setActiveTab("mix");
       }
     },
     {

@@ -16,7 +16,6 @@ import {
   Redo2,
   Camera,
   Box,
-  Bot,
   Sparkles,
   Download,
   CheckCircle,
@@ -1218,7 +1217,7 @@ export const Interface: React.FC = () => {
   const [authError, setAuthError] = useState("");
 
   const [activeTab, setActiveTab] = useState<
-    "dashboard" | "models" | "materials" | "colors" | "mix" | "light"
+    "dashboard" | "models" | "materials" | "colors" | "light"
   >("dashboard");
 
   const [showWalkModal, setShowWalkModal] = useState(false);
@@ -2904,7 +2903,6 @@ export const Interface: React.FC = () => {
               { id: "models", icon: Box, label: "Models" },
               { id: "materials", icon: Layers, label: "Materials" },
               { id: "colors", icon: Palette, label: "Colors" },
-              { id: "mix", icon: Bot, label: "AI" },
               { id: "light", icon: Sun, label: "Light" },
             ];
             return items;
@@ -3724,8 +3722,6 @@ const RightPanel = ({ activeTab, showLeftPanel, onStartCamera, onStopCamera, onE
                   ? "Color Palette"
                   : activeTab === "light"
                     ? "Environment"
-                    : activeTab === "mix"
-                      ? "AI Texture Generator"
                       : selectedPart
                         ? `Editing: ${displayParts.find((p) => p.id === selectedPart)?.name || selectedPart}`
                         : "Select a part"}
@@ -4486,9 +4482,6 @@ const RightPanel = ({ activeTab, showLeftPanel, onStartCamera, onStopCamera, onE
             </div>
           )}
 
-          {activeTab === "mix" && (
-            <AISection />
-          )}
         </div>
       </div>
 
@@ -4500,205 +4493,6 @@ const RightPanel = ({ activeTab, showLeftPanel, onStartCamera, onStopCamera, onE
           isMobile={isMobile}
         />
       )}
-    </div>
-  );
-};
-
-const AISection = () => {
-  const saasConfig = useStore((s) => s.saasConfig);
-  const setAdminPanelOpen = useStore((s) => s.setAdminPanelOpen);
-  const {
-    isGenerating,
-    materials,
-    partMaterials,
-    selectedPart,
-    removeMaterial,
-    removeMaterialGroup,
-    generateFullDesign,
-  } = useStore();
-  const [prompt, setPrompt] = useState("");
-  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
-
-  if (!saasConfig.enabledFeatures.aiGen) {
-    return (
-      <div className="p-6 text-center bg-zinc-950/40 border border-white/5 rounded-2xl space-y-4 animate-in fade-in duration-200">
-        <div className="mx-auto w-12 h-12 bg-amber-500/10 border border-amber-500/20 text-amber-500 rounded-full flex items-center justify-center">
-          <Lock size={18} className="animate-pulse" />
-        </div>
-        <div className="space-y-1.5">
-          <h3 className="text-white text-xs font-bold tracking-tight">AI Texture Generator Locked</h3>
-          <p className="text-[10px] text-zinc-400 max-w-[210px] mx-auto leading-normal">
-            The Gemini AI Material Generator has been disabled. Toggles can be modified in the Control Panel.
-          </p>
-        </div>
-        <button
-          onClick={() => setAdminPanelOpen(true)}
-          className="mx-auto flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-bold px-3 py-2 rounded-lg shadow-lg transition-colors cursor-pointer"
-        >
-          <Sliders size={12} /> Configure in Control Panel
-        </button>
-      </div>
-    );
-  }
-
-  const handleGenerate = async () => {
-    if (!prompt.trim()) return;
-    await generateFullDesign(prompt);
-    setExpandedGroups((prev) => ({ ...prev, [prompt]: true }));
-    setPrompt("");
-  };
-
-  const handleMaterialClick = (matId: string) => {
-    if (selectedPart) useStore.getState().setMaterial(selectedPart, matId);
-  };
-
-  const toggleGroup = (groupName: string) => {
-    setExpandedGroups((prev) => ({ ...prev, [groupName]: !prev[groupName] }));
-  };
-
-  const handleDeleteGroup = (e: React.MouseEvent, groupName: string) => {
-    e.stopPropagation();
-    removeMaterialGroup(groupName);
-  };
-
-  const aiMaterials = materials.filter((m) => m.type === "ai-generated");
-  const aiGroups: Record<string, typeof aiMaterials> = {};
-  aiMaterials.forEach((m) => {
-    const groupName = m.group || "Older Generations";
-    if (!aiGroups[groupName]) aiGroups[groupName] = [];
-    aiGroups[groupName].push(m);
-  });
-
-  return (
-    <div className="space-y-4">
-      <div className="bg-gradient-to-br from-indigo-500/20 to-purple-500/20 rounded-lg p-4 border border-white/10 sticky top-0 z-10 backdrop-blur-md">
-        <div className="flex items-center gap-2 mb-3">
-          <Bot size={16} className="text-purple-400" />
-          <span className="text-sm font-bold text-white">
-            AI Texture Gen
-          </span>
-        </div>
-        <p className="text-xs text-zinc-400 mb-3">
-          Describe a style or theme.
-        </p>
-        <div className="flex gap-2">
-          <input
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            className="bg-black/40 border border-white/10 rounded px-2 py-1 text-xs text-white flex-1 focus:outline-none focus:border-purple-500"
-            placeholder="Prompt..."
-            onKeyDown={(e) => e.key === "Enter" && handleGenerate()}
-          />
-          <button
-            onClick={handleGenerate}
-            disabled={isGenerating}
-            className="bg-purple-600 hover:bg-purple-500 text-white rounded p-1.5 transition-colors disabled:opacity-50"
-          >
-            {isGenerating ? (
-              <Loader2 size={14} className="animate-spin" />
-            ) : (
-              <ChevronRight size={14} />
-            )}
-          </button>
-        </div>
-      </div>
-      <div className="max-h-[350px] overflow-y-auto custom-scrollbar pr-1">
-        {Object.keys(aiGroups).length === 0 ? (
-          <div className="text-center py-4 bg-white/5 rounded-lg border border-dashed border-white/10">
-            <span className="text-[10px] text-zinc-500">
-              No generated materials yet.
-            </span>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {Object.entries(aiGroups)
-              .reverse()
-              .map(([groupName, groupMats]) => {
-                const isExpanded = expandedGroups[groupName];
-                return (
-                  <div
-                    key={groupName}
-                    className="bg-zinc-800/50 rounded-lg border border-white/5 overflow-hidden"
-                  >
-                    <div
-                      className="p-2 flex items-center justify-between cursor-pointer hover:bg-white/5 transition-colors"
-                      onClick={() => toggleGroup(groupName)}
-                    >
-                      <div className="flex items-center gap-2 overflow-hidden">
-                        {isExpanded ? (
-                          <ChevronDown
-                            size={12}
-                            className="text-zinc-500"
-                          />
-                        ) : (
-                          <ChevronRight
-                            size={12}
-                            className="text-zinc-500"
-                          />
-                        )}
-                        <span
-                          className="text-[10px] font-medium text-zinc-300 truncate flex-1"
-                          title={groupName}
-                        >
-                          {groupName.length > 25
-                            ? groupName.substring(0, 25) + "..."
-                            : groupName}
-                        </span>
-                        <span className="text-[9px] text-zinc-600 bg-black/20 px-1.5 py-0.5 rounded-full">
-                          {groupMats.length}
-                        </span>
-                      </div>
-                      <button
-                        onClick={(e) => handleDeleteGroup(e, groupName)}
-                        className="p-1 hover:text-red-400 text-zinc-600 transition-colors"
-                      >
-                        <Trash2 size={12} />
-                      </button>
-                    </div>
-
-                    {isExpanded && (
-                      <div className="p-2 pt-0 grid grid-cols-2 gap-2 animate-in slide-in-from-top-2">
-                        {groupMats.map((mat) => (
-                          <div
-                            key={mat.id}
-                            onClick={() => handleMaterialClick(mat.id)}
-                            className={`group relative h-16 rounded-lg overflow-hidden cursor-pointer transition-all border ${partMaterials[selectedPart || ""] === mat.id ? "border-purple-500 ring-1 ring-blue-500" : "border-transparent hover:border-white/30"}`}
-                          >
-                            <div
-                              className="absolute inset-0"
-                              style={{
-                                backgroundImage: mat.textureUrl
-                                  ? `url(${mat.textureUrl})`
-                                  : "none",
-                                backgroundSize: "cover",
-                              }}
-                            ></div>
-                            <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-transparent" />
-                            <div className="absolute left-2 top-1/2 -translate-y-1/2">
-                              <p className="text-[10px] font-medium text-white shadow-sm truncate w-20">
-                                {mat.name}
-                              </p>
-                            </div>
-                            <button
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                removeMaterial(mat.id);
-                              }}
-                              className="absolute top-1 right-1 p-1.5 bg-red-600 hover:bg-red-500 rounded-full text-white transition-all z-20 shadow-md backdrop-blur-sm opacity-0 group-hover:opacity-100 scale-75"
-                            >
-                              <Trash2 size={12} />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-          </div>
-        )}
-      </div>
     </div>
   );
 };
