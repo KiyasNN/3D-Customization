@@ -8,6 +8,7 @@ import { createPortal, useLoader, useFrame, useThree } from '@react-three/fiber'
 import { OBJLoader, GLTFLoader, SkeletonUtils } from 'three-stdlib';
 import { USDLoader } from 'three/examples/jsm/loaders/USDLoader.js';
 import { useStore } from '../store';
+import { setWorldDragPosition } from '../services/dragPosition';
 import { SHOE_PARTS } from '../constants';
 import { Material, TextureConfig } from '../types';
 
@@ -913,9 +914,10 @@ const ShoePartMesh = ({ id, geometry, position, scale, explodeOffset, interactiv
       normal.negate();
       
       if (meshRef.current) {
-          dragPlane.setFromNormalAndCoplanarPoint(normal, meshRef.current.position);
+          const worldPosition = meshRef.current.getWorldPosition(new THREE.Vector3());
+          dragPlane.setFromNormalAndCoplanarPoint(normal, worldPosition);
           if (raycaster.ray.intersectPlane(dragPlane, intersection)) {
-              dragOffset.copy(meshRef.current.position).sub(intersection);
+              dragOffset.copy(worldPosition).sub(intersection);
           }
       }
       
@@ -929,7 +931,7 @@ const ShoePartMesh = ({ id, geometry, position, scale, explodeOffset, interactiv
 
       if (raycaster.ray.intersectPlane(dragPlane, intersection)) {
           const newPos = intersection.clone().add(dragOffset);
-          meshRef.current.position.copy(newPos);
+          setWorldDragPosition(meshRef.current, newPos);
       }
   }, [dragPlane, dragOffset, intersection, raycaster.ray]);
 
@@ -970,7 +972,7 @@ const ShoePartMesh = ({ id, geometry, position, scale, explodeOffset, interactiv
        const target = isExploded ? 1 : 0;
        
        const currentSig = `${isExploded}_${config.explosionOffset?.join(',')}_${config.meshScale}_${config.meshRotation?.join(',')}`;
-       const isDraggingActive = isDraggingGizmo.current || justFinishedDragging.current;
+       const isDraggingActive = isDraggingGizmo.current || isDraggingMesh.current || justFinishedDragging.current;
 
        if (isSettled.current && currentSig === lastConfigSignature.current && !isDraggingActive) {
           return;
@@ -982,7 +984,7 @@ const ShoePartMesh = ({ id, geometry, position, scale, explodeOffset, interactiv
        }
        
        // Position - Only set if not actively being dragged by 3D transform cursor
-       if (!isDraggingGizmo.current && !justFinishedDragging.current) {
+       if (!isDraggingActive) {
          let finalOffset = explodeOffset;
          if (config.explosionOffset) {
              finalOffset = config.explosionOffset;
@@ -996,13 +998,13 @@ const ShoePartMesh = ({ id, geometry, position, scale, explodeOffset, interactiv
        }
        
        // Scale - Only apply scaling factor when exploded, and only if not dragging
-       if (!isDraggingGizmo.current && !justFinishedDragging.current) {
+       if (!isDraggingActive) {
          const currentScaleFactor = THREE.MathUtils.lerp(1, meshScale, currentExpansion.current);
          meshRef.current.scale.copy(baseScale).multiplyScalar(currentScaleFactor);
        }
 
        // Rotation - Interpolate to saved rotation when exploded, reset otherwise
-       if (!isDraggingGizmo.current && !justFinishedDragging.current) {
+       if (!isDraggingActive) {
          const targetRot = config.meshRotation || [0, 0, 0];
          const finalRotX = isExploded ? targetRot[0] : 0;
          const finalRotY = isExploded ? targetRot[1] : 0;
@@ -1599,9 +1601,10 @@ const RecursiveMeshPart = React.memo(({ object, interactive, videoTexture }: any
         normal.negate();
         
         if (meshRef.current) {
-            dragPlane.setFromNormalAndCoplanarPoint(normal, meshRef.current.position);
+            const worldPosition = meshRef.current.getWorldPosition(new THREE.Vector3());
+            dragPlane.setFromNormalAndCoplanarPoint(normal, worldPosition);
             if (raycaster.ray.intersectPlane(dragPlane, intersection)) {
-                dragOffset.copy(meshRef.current.position).sub(intersection);
+                dragOffset.copy(worldPosition).sub(intersection);
             }
         }
         
@@ -1615,7 +1618,7 @@ const RecursiveMeshPart = React.memo(({ object, interactive, videoTexture }: any
 
         if (raycaster.ray.intersectPlane(dragPlane, intersection)) {
             const newPos = intersection.clone().add(dragOffset);
-            meshRef.current.position.copy(newPos);
+            setWorldDragPosition(meshRef.current, newPos);
         }
     }, [dragPlane, dragOffset, intersection, raycaster.ray]);
 
@@ -1653,7 +1656,7 @@ const RecursiveMeshPart = React.memo(({ object, interactive, videoTexture }: any
            const target = isExploded ? 1 : 0;
            
            const currentSig = `${isExploded}_${config.explosionOffset?.join(',')}_${config.meshScale}_${config.meshRotation?.join(',')}`;
-           const isDraggingActive = isDraggingGizmo.current || justFinishedDragging.current;
+           const isDraggingActive = isDraggingGizmo.current || isDraggingMesh.current || justFinishedDragging.current;
 
            if (isSettled.current && currentSig === lastConfigSignature.current && !isDraggingActive) {
               return;
@@ -1665,7 +1668,7 @@ const RecursiveMeshPart = React.memo(({ object, interactive, videoTexture }: any
            }
            
            // Position
-           if (!isDraggingGizmo.current && !justFinishedDragging.current) {
+           if (!isDraggingActive) {
              let finalOffset = config.explosionOffset || [0,0,0];
              
              if (finalOffset[0] !== 0 || finalOffset[1] !== 0 || finalOffset[2] !== 0) {
@@ -1680,13 +1683,13 @@ const RecursiveMeshPart = React.memo(({ object, interactive, videoTexture }: any
            }
            
            // Scale - Interpolate between 1.0 (default) and meshScale based on expansion state
-           if (!isDraggingGizmo.current && !justFinishedDragging.current) {
+           if (!isDraggingActive) {
                const currentScaleFactor = THREE.MathUtils.lerp(1, meshScale, currentExpansion.current);
                meshRef.current.scale.copy(originalScale.current).multiplyScalar(currentScaleFactor);
            }
 
            // Rotation - Interpolate to saved rotation when exploded, reset to original otherwise
-           if (!isDraggingGizmo.current && !justFinishedDragging.current) {
+           if (!isDraggingActive) {
                const targetRot = config.meshRotation || [originalRotation.current.x, originalRotation.current.y, originalRotation.current.z];
                const finalRotX = isExploded ? targetRot[0] : originalRotation.current.x;
                const finalRotY = isExploded ? targetRot[1] : originalRotation.current.y;
