@@ -27,3 +27,34 @@ test('shortest existing parent name wins instead of nesting stitch groups', () =
     Heel: ['Heel', 'Inner Heel', 'Stitch Inner Heel'],
   });
 });
+
+test('material-code variants form a Midsole group without a standalone Midsole mesh', () => {
+  const parts = ['Midsole_nke 001', 'Midsole__nk003', 'Midsole_NKE_004', 'Upper_1'];
+  assert.deepEqual(mergeAutomaticPartGroups(parts), {
+    Midsole: ['Midsole_nke 001', 'Midsole__nk003', 'Midsole_NKE_004'],
+  });
+  // Child labels can still distinguish material variants; internal IDs are intact.
+  assert.equal(formatPartName(parts[0]), 'Midsole nke 001');
+  assert.equal(formatPartName(parts[1]), 'Midsole nk003');
+  assert.equal(formatPartName(parts[2]), 'Midsole NKE 004');
+  assert.equal(formatPartName('Midsole_NKE_004_1'), 'Midsole NKE 004');
+});
+
+test('material codes support case, separators and trailing export indices', () => {
+  const parts = ['Midsole_NK-001_1', 'Midsole_nke002.001', 'Midsole_nK 003_2'];
+  assert.deepEqual(mergeAutomaticPartGroups(parts), { Midsole: parts });
+});
+
+test('material suffix grouping combines with stitch grouping and separates other parts', () => {
+  const parts = ['Midsole_nke001', 'Stitch Midsole_nk003', 'Heel_NKE001', 'Heel_NK002'];
+  assert.deepEqual(mergeAutomaticPartGroups(parts), {
+    Midsole: ['Midsole_nke001', 'Stitch Midsole_nk003'],
+    Heel: ['Heel_NKE001', 'Heel_NK002'],
+  });
+});
+
+test('material-code grouping leaves manual memberships unchanged', () => {
+  const parts = ['Midsole_nke001', 'Midsole_nk003'];
+  const manual = { Custom: ['Midsole_nke001'] };
+  assert.deepEqual(mergeAutomaticPartGroups(parts, manual), manual);
+});

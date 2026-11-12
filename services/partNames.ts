@@ -1,5 +1,7 @@
 export function formatPartName(id: string): string {
-  return id.replace(/(?:_\d+|\.\d{3})+$/, '')
+  // Keep NK/NKE material numbers in child labels; only discard export counters.
+  const materialCode = id.match(/^(.*[\s_.-]+nke?[\s_.-]*\d+?)(?:_\d+|\.\d{3})*$/i);
+  return (materialCode ? materialCode[1] : id.replace(/(?:_\d+|\.\d{3})+$/, ''))
     .replace(/[_-]+/g, ' ')
     .replace(/([a-z\d])([A-Z])/g, '$1 $2')
     .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
@@ -7,7 +9,14 @@ export function formatPartName(id: string): string {
     .replace(/^./, char => char.toUpperCase());
 }
 
-// Infer parent names only from parts actually present in the model. IDs stay
+function groupingName(id: string): string {
+  // Material codes describe variants of the same part, not separate parent groups.
+  // Match before display formatting, which also removes numeric export suffixes.
+  const base = id.replace(/[\s_.-]+nke?[\s_.-]*\d+(?:_\d+|\.\d{3})*$/i, '');
+  return formatPartName(base);
+}
+
+// Infer parent names from model parts and material-code variants. IDs stay
 // untouched, and existing manual groups take precedence over automatic groups.
 export function mergeAutomaticPartGroups(parts: string[], existing: Record<string, string[]> = {}): Record<string, string[]> {
   const valid = new Set(parts);
@@ -15,7 +24,7 @@ export function mergeAutomaticPartGroups(parts: string[], existing: Record<strin
     .map(([name, members]) => [name, members.filter(id => valid.has(id))] as const)
     .filter(([, members]) => members.length > 0));
   const assigned = new Set(Object.values(result).flat());
-  const available = parts.filter(id => !assigned.has(id)).map(id => ({ id, name: formatPartName(id) }));
+  const available = parts.filter(id => !assigned.has(id)).map(id => ({ id, name: groupingName(id) }));
   const candidates = [...available].sort((a, b) => a.name.length - b.name.length);
   const groups = new Map<string, { name: string; ids: string[] }>();
   for (const part of available) {

@@ -83,12 +83,11 @@ export const useStore = create<AppState>((set, get) => ({
   currentModel: DEMO_ASSET,
   customParts: [],
   setPartColor: (partId, color) => set(state => {
-    const ids = getGroupParts(state, partId);
-    const partConfigs = { ...state.partConfigs };
-    ids.forEach(id => {
-      const config = partConfigs[id] || { scale: 2, normalScale: 1, roughness: 0.5, displacementScale: 0 };
-      partConfigs[id] = { ...config, diffuseColor: color, slotDiffuseColors: {} };
-    });
+    const config = state.partConfigs[partId] || { scale: 2, normalScale: 1, roughness: 0.5, displacementScale: 0 };
+    const partConfigs = {
+      ...state.partConfigs,
+      [partId]: { ...config, diffuseColor: color, slotDiffuseColors: {} },
+    };
     return pushHistory(state, { partConfigs });
   }),
   modelResetCounter: 0,
@@ -239,11 +238,7 @@ export const useStore = create<AppState>((set, get) => ({
   hoverPart: (partId) => set({ hoveredPart: partId }),
 
   setMaterial: (partId, materialId) => set((state) => {
-    const partsToUpdate = getGroupParts(state, partId);
-    const newMaterials = { ...state.partMaterials };
-    partsToUpdate.forEach(id => {
-      newMaterials[id] = materialId;
-    });
+    const newMaterials = { ...state.partMaterials, [partId]: materialId };
     return pushHistory(state, { partMaterials: newMaterials });
   }),
 
