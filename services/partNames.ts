@@ -16,7 +16,8 @@ function groupingName(id: string): string {
   return formatPartName(base);
 }
 
-// Infer parent names from model parts and material-code variants. IDs stay
+// Group by leading part names, retaining suffix matches such as Stitch Heel.
+// IDs stay
 // untouched, and existing manual groups take precedence over automatic groups.
 export function mergeAutomaticPartGroups(parts: string[], existing: Record<string, string[]> = {}): Record<string, string[]> {
   const valid = new Set(parts);
@@ -25,17 +26,17 @@ export function mergeAutomaticPartGroups(parts: string[], existing: Record<strin
     .filter(([, members]) => members.length > 0));
   const assigned = new Set(Object.values(result).flat());
   const available = parts.filter(id => !assigned.has(id)).map(id => ({ id, name: groupingName(id) }));
-  const candidates = [...available].sort((a, b) => a.name.length - b.name.length);
+  const candidates = available.map(part => part.name).sort((a, b) => a.length - b.length);
   const groups = new Map<string, { name: string; ids: string[] }>();
   for (const part of available) {
     const lower = part.name.toLowerCase();
-    const base = candidates.find(candidate => {
-      const name = candidate.name.toLowerCase();
-      return name && (lower === name || lower.endsWith(' ' + name));
-    });
+    // Keep existing parent relationships (Stitch Heel -> Heel), then use the
+    // first name token for arbitrary variants (Midsole Paint -> Midsole).
+    const base = candidates.find(candidate => lower.endsWith(' ' + candidate.toLowerCase()))
+      || part.name.split(' ')[0];
     if (!base) continue;
-    const key = base.name.toLowerCase();
-    if (!groups.has(key)) groups.set(key, { name: base.name, ids: [] });
+    const key = base.toLowerCase();
+    if (!groups.has(key)) groups.set(key, { name: base, ids: [] });
     groups.get(key)!.ids.push(part.id);
   }
   for (const group of groups.values()) {

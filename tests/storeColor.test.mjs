@@ -18,7 +18,7 @@ await build({
 const { useStore } = await import(pathToFileURL(path.join(outDir, 'store.mjs')).href);
 
 test('grouped objects retain independent colors and materials through undo/redo', () => {
-  const target = 'Midsole_nke 001', sibling = 'Midsole__nk003';
+  const target = 'Midsole_paint', sibling = 'Midsole__nk003';
   const { setCustomParts, selectPart, setPartColor, setMaterial, undo, redo } = useStore.getState();
   setCustomParts([target, sibling]);
   assert.deepEqual(useStore.getState().partGroups.Midsole, [target, sibling]);

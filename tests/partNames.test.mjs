@@ -58,3 +58,24 @@ test('material-code grouping leaves manual memberships unchanged', () => {
   const manual = { Custom: ['Midsole_nke001'] };
   assert.deepEqual(mergeAutomaticPartGroups(parts, manual), manual);
 });
+
+test('all Midsole prefixes group together regardless of material suffix', () => {
+  const parts = ['Midsole_paint', 'Midsole_nke 001', 'Midsole__nk003', 'Midsole_rubber_1'];
+  assert.deepEqual(mergeAutomaticPartGroups(parts), { Midsole: parts });
+});
+
+test('leading part name creates groups even without material codes or a standalone base', () => {
+  const parts = ['Midsole_paint_1', 'Midsole_Foam_2', 'Upper_mesh_1', 'Upper_fabric_1'];
+  assert.deepEqual(mergeAutomaticPartGroups(parts), {
+    Midsole: ['Midsole_paint_1', 'Midsole_Foam_2'],
+    Upper: ['Upper_mesh_1', 'Upper_fabric_1'],
+  });
+});
+
+test('spaces, double underscores and camel case share the same prefix rule', () => {
+  const parts = ['Midsole Paint', 'Midsole__foam', 'MidsoleRubber', 'Heel_1', 'Stitch_Heel_1'];
+  assert.deepEqual(mergeAutomaticPartGroups(parts), {
+    Midsole: ['Midsole Paint', 'Midsole__foam', 'MidsoleRubber'],
+    Heel: ['Heel_1', 'Stitch_Heel_1'],
+  });
+});
