@@ -893,10 +893,28 @@ const PartProperties = () => {
     toggleMeasurements,
     labelSize,
     setLabelSize,
-    selectedParts = [],
     saasConfig,
     setAdminPanelOpen,
   } = useStore();
+
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const panelRef = useRef<HTMLDivElement>(null);
+  useEffect(() => { setDetailsOpen(false); }, [selectedPart]);
+  useEffect(() => {
+    if (!detailsOpen) return;
+    const closeOutside = (event: PointerEvent) => {
+      if (!panelRef.current?.contains(event.target as Node)) setDetailsOpen(false);
+    };
+    const closeEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setDetailsOpen(false);
+    };
+    document.addEventListener('pointerdown', closeOutside);
+    document.addEventListener('keydown', closeEscape);
+    return () => {
+      document.removeEventListener('pointerdown', closeOutside);
+      document.removeEventListener('keydown', closeEscape);
+    };
+  }, [detailsOpen]);
 
   // Logic to determine defaults if annotation doesn't exist yet
   const getDisplayName = (id: string) => {
@@ -931,20 +949,8 @@ const PartProperties = () => {
   const currentConfig = selectedPart
     ? partConfigs[selectedPart] || { explosionOffset: [0, 0, 0], meshScale: 1 }
     : null;
-  const [ex, ey, ez] = currentConfig?.explosionOffset || [0, 0, 0];
   const meshScale =
     currentConfig?.meshScale !== undefined ? currentConfig.meshScale : 1;
-
-  const updateExplosion = (index: number, val: number) => {
-    if (!selectedPart) return;
-    const newOffset = [...(currentConfig?.explosionOffset || [0, 0, 0])] as [
-      number,
-      number,
-      number,
-    ];
-    newOffset[index] = val;
-    updatePartConfig(selectedPart, { explosionOffset: newOffset });
-  };
 
   const updateScale = (val: number) => {
     if (!selectedPart) return;
@@ -953,205 +959,79 @@ const PartProperties = () => {
 
   if (!selectedPart) return null;
 
+  const buttonClass = "flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-zinc-400 hover:bg-white/10 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors";
+  const activeClass = "bg-orange-500/20 text-orange-300";
+  const annotationLabel = showAnnotations ? t("Hide Global Annotations") : t("Show Global Annotations");
+  const measurementLabel = showMeasurements ? t("Hide Measurements") : t("Show Measurements");
+
   return (
-    <div className="flex min-w-0 flex-col">
-      <div className="px-3 py-2 border-b border-white/5 bg-white/5 flex items-center gap-2 shrink-0">
-        <TypeIcon size={14} className="text-blue-400" />
-        <span className="text-xs font-bold uppercase tracking-wider text-zinc-400">
-           {t("Annotation & Transform")} </span>
-      </div>
-      <div className="overflow-x-auto custom-scrollbar">
-      <div className="grid min-w-[960px] grid-cols-[minmax(200px,1.1fr)_minmax(220px,1fr)_minmax(200px,1fr)_minmax(200px,1fr)] gap-4 p-3 max-h-[210px] overflow-y-auto custom-scrollbar">
-        <div className="flex flex-col gap-3">
-          <div>
-            <span className="text-[10px] font-medium text-zinc-400 block mb-1">
-               {t("Title")} </span>
-            <input
-              type="text"
-              value={titleValue}
-              onChange={(e) => handleUpdate("title", e.target.value)}
-              placeholder={t("Part Name")}
-              className="w-full bg-black/30 border border-white/10 rounded px-2 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500/50"
-            />
-          </div>
-          <div>
-            <span className="text-[10px] font-medium text-zinc-400 block mb-1">
-               {t("Description")} </span>
-            <textarea
-              value={descValue}
-              onChange={(e) => handleUpdate("description", e.target.value)}
-              placeholder={t("Details...")}
-              rows={2}
-              className="w-full bg-black/30 border border-white/10 rounded px-2 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500/50 resize-none"
-            />
-          </div>
-        </div>
-        <div className="flex flex-col gap-3 border-l border-white/10 pl-4">
-          <SliderControl
-            label={t("Label Distance")}
-            value={offsetValue}
-            min="20"
-            max="200"
-            step="5"
-            onChange={(v: number) => handleUpdate("offset", v)}
-          />
-          <SliderControl
-            label={t("Global Label Size")}
-            value={labelSize}
-            min="0.05"
-            max="2.5"
-            step="0.05"
-            displayValue={`${labelSize % 0.1 === 0 ? labelSize.toFixed(1) : labelSize.toFixed(2)}x`}
-            onChange={(v: number) => setLabelSize(v)}
-          />
-          <button
-            onClick={toggleAnnotations}
-            className={`w-full py-1.5 mt-1 border rounded text-center transition-colors flex items-center justify-center gap-2 group ${
-              showAnnotations 
-                ? "bg-blue-500/20 border-blue-500/30 hover:bg-blue-500/30 text-blue-400" 
-                : "bg-zinc-900/50 border-white/5 hover:bg-zinc-800 text-zinc-400 hover:text-white"
-            }`}
-          >
-            {showAnnotations ? <EyeOff size={12} /> : <Eye size={12} />}
-            <span className="text-[10px]">
-              {showAnnotations ? t("Hide Global Annotations") : t("Show Global Annotations")}
-            </span>
+    <div ref={panelRef} className="relative">
+      <div className="max-w-full overflow-x-auto custom-scrollbar">
+        <div className="flex h-10 w-max items-center gap-1 px-1.5">
+          <input aria-label={t("Part Name")} title={titleValue}
+            value={titleValue} onChange={e => handleUpdate("title", e.target.value)}
+            className="h-7 w-36 rounded-md border border-white/10 bg-black/20 px-2 text-[11px] text-zinc-200 outline-none focus:border-blue-500/50" />
+          <button type="button" onClick={() => setDetailsOpen(open => !open)}
+            aria-expanded={detailsOpen} aria-controls="annotation-details" title={t("Annotation")}
+            className="flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2 text-[10px] text-zinc-300 hover:bg-white/10">
+            <TypeIcon size={12} /><span>{t("Annotation")}</span><ChevronDown size={10} />
           </button>
-          <button
+          <button type="button" className={buttonClass + (showAnnotations ? " bg-blue-500/15 text-blue-300" : "")}
+            onClick={toggleAnnotations} title={annotationLabel} aria-label={annotationLabel} aria-pressed={showAnnotations}>
+            {showAnnotations ? <Eye size={13} /> : <EyeOff size={13} />}
+          </button>
+          <button type="button" className={buttonClass + (showMeasurements ? " bg-blue-500/15 text-blue-300" : "")}
+            title={measurementLabel} aria-label={measurementLabel} aria-pressed={showMeasurements}
             onClick={() => {
-              if (!saasConfig.enabledFeatures.measurements) {
-                alert(t("Upgrade Required: Sizing Measurements is a Premium feature. Enable it in the Control Panel!"));
-                setAdminPanelOpen(true);
-              } else {
-                toggleMeasurements();
-              }
-            }}
-            className={`w-full py-1.5 mt-1 border rounded text-center transition-colors flex items-center justify-center gap-2 group ${
-              !saasConfig.enabledFeatures.measurements
-                ? "bg-amber-500/10 border-amber-500/20 text-amber-400 hover:bg-amber-500/20"
-                : showMeasurements 
-                  ? "bg-blue-500/20 border-blue-500/30 hover:bg-blue-500/30 text-blue-400" 
-                  : "bg-zinc-900/50 border-white/5 hover:bg-zinc-800 text-zinc-400 hover:text-white"
-            }`}
-          >
-            {!saasConfig.enabledFeatures.measurements ? <Lock size={12} className="text-amber-400 animate-pulse" /> : showMeasurements ? <EyeOff size={12} /> : <Ruler size={12} />}
-            <span className="text-[10px]">
-              {!saasConfig.enabledFeatures.measurements ? t("Measurements (Premium)") : showMeasurements ? t("Hide Measurements") : t("Show Measurements")}
-            </span>
-          </button>
-        </div>
-
-        {/* Transform Section */}
-        <div className="flex flex-col gap-2 border-l border-white/10 pl-4">
-          <div className="flex items-center gap-2 mb-1">
-            <Move size={12} className="text-orange-400" />
-            <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
-               {t("Part Transform")} </span>
-          </div>
-
-          <div className="flex gap-1 mb-2">
-            {(['translate', 'rotate', 'scale'] as const).map((mode) => (
-              <button
-                key={mode}
-                onClick={() => setTransformMode(mode)}
-                className={`flex-1 py-1.5 rounded flex items-center justify-center transition-all ${
-                  transformMode === mode 
-                    ? 'bg-orange-500 text-white shadow-lg shadow-orange-900/20' 
-                    : 'bg-zinc-900/50 text-zinc-500 hover:text-zinc-300 border border-white/5'
-                }`}
-                title={t("{0} Mode", [mode.charAt(0).toUpperCase() + mode.slice(1)])}
-              >
-                {mode === 'translate' && <Move size={12} />}
-                {mode === 'rotate' && <RotateCw size={12} />}
-                {mode === 'scale' && <Maximize2 size={12} />}
-              </button>
-            ))}
-          </div>
-
-          {/* Scale Control - Only visible when exploded */}
-          {isExploded ? (
-            <SliderControl
-              label={t("Scale (Exploded)")}
-              value={meshScale}
-              min="0.1"
-              max="5.0"
-              step="0.01"
-              displayValue={`${meshScale.toFixed(2)}x`}
-              onChange={updateScale}
-            />
-          ) : (
-            <button
-              onClick={toggleExploded}
-              className="w-full py-2 px-3 bg-zinc-900/50 border border-white/5 rounded text-center hover:bg-white/5 transition-colors flex items-center justify-center gap-2 group mb-2"
-            >
-              <Maximize2
-                size={12}
-                className="text-orange-400 group-hover:scale-110 transition-transform"
-              />
-              <span className="text-[10px] text-zinc-400 group-hover:text-white">
-                 {t("Enable")}{" "}
-                <span className="text-orange-400 font-bold">{t("Explode")}</span>  {t("to Scale")} </span>
+              if (!saasConfig.enabledFeatures.measurements) setAdminPanelOpen(true);
+              else toggleMeasurements();
+            }}><Ruler size={13} /></button>
+          <span className="mx-1 h-5 w-px shrink-0 bg-white/10" />
+          {(['translate', 'rotate', 'scale'] as const).map(mode => (
+            <button type="button" key={mode} onClick={() => setTransformMode(mode)}
+              title={t("{0} Mode", [mode.charAt(0).toUpperCase() + mode.slice(1)])}
+              aria-label={t("{0} Mode", [mode.charAt(0).toUpperCase() + mode.slice(1)])}
+              aria-pressed={transformMode === mode} className={buttonClass + (transformMode === mode ? " " + activeClass : "")}>
+              {mode === 'translate' ? <Move size={13} /> : mode === 'rotate' ? <RotateCw size={13} /> : <Maximize2 size={13} />}
             </button>
-          )}
-
-
-
-        </div>
-        <div className="flex flex-col gap-2 border-l border-white/10 pl-4">
+          ))}
+          <span className="mx-1 h-5 w-px shrink-0 bg-white/10" />
+          <button type="button" onClick={toggleExploded} aria-pressed={isExploded}
+            title={t("Explode")} className={"flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2 text-[10px] hover:bg-white/10 " + (isExploded ? activeClass : "text-zinc-400")}>
+            <Maximize2 size={12} />{t("Explode")}
+          </button>
           {isExploded && (
             <>
-              <div className="flex items-center justify-between">
-                <div className="flex flex-col text-left">
-                  <span className="text-[10px] font-medium text-zinc-300">{t("3D Viewport Gizmo")}</span>
-                  <span className="text-[8px] text-zinc-500">{t("Drag part directly in 3D scene")}</span>
-                </div>
-                <button
-                  onClick={() => setShowTransformGizmo(!showTransformGizmo)}
-                  className={`w-9 h-5 rounded-full p-0.5 transition-colors focus:outline-none ${
-                    showTransformGizmo ? "bg-orange-500" : "bg-zinc-800"
-                  }`}
-                >
-                  <div
-                    className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
-                      showTransformGizmo ? "translate-x-4" : "translate-x-0"
-                    }`}
-                  />
-                </button>
-              </div>
-              {showTransformGizmo && (
-                <div className="mt-2 pl-1 pr-2">
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="text-[9px] text-zinc-500">{t("Gizmo Size")}</span>
-                    <span className="text-[9px] text-zinc-400 font-mono">{(transformGizmoSize * 100).toFixed(0)}%</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="0.1"
-                    max="1.5"
-                    step="0.05"
-                    value={transformGizmoSize}
-                    onChange={(e) => setTransformGizmoSize(parseFloat(e.target.value))}
-                    className="w-full accent-orange-500"
-                  />
-                </div>
-              )}
-              <button
-                onClick={resetAllExplode}
-                className="w-full py-1.5 mt-2 bg-red-900/30 border border-red-500/20 rounded text-center hover:bg-red-900/50 transition-colors flex items-center justify-center gap-2 group"
-              >
-                <RotateCcw
-                  size={12}
-                  className="text-red-400 group-hover:-rotate-90 transition-transform"
-                />
-                <span className="text-[10px] text-red-400">
-                  {selectedPart || selectedParts.length > 0 ? t("Reset Selected Transforms") : t("Reset All Transforms")}
-                </span>
-              </button>
+              <label title={t("Scale (Exploded)")} className="flex h-7 items-center gap-1 rounded-md border border-white/10 bg-black/20 px-1.5 text-[10px] text-zinc-400">
+                <input type="number" aria-label={t("Scale (Exploded)")} min="0.1" max="5" step="0.01" value={meshScale}
+                  onChange={event => { const value = Number.parseFloat(event.target.value); if (Number.isFinite(value)) updateScale(Math.max(0.1, Math.min(5, value))); }}
+                  className="w-11 bg-transparent text-[11px] text-zinc-200 outline-none" />x
+              </label>
+              <button type="button" onClick={() => setShowTransformGizmo(!showTransformGizmo)}
+                title={t("3D Viewport Gizmo")} aria-label={t("3D Viewport Gizmo")} aria-pressed={showTransformGizmo}
+                className={buttonClass + (showTransformGizmo ? " " + activeClass : "")}><Move size={13} /></button>
+              <button type="button" onClick={resetAllExplode} title={t("Reset Selected Transforms")} aria-label={t("Reset Selected Transforms")}
+                className={buttonClass + " hover:text-red-400"}><RotateCcw size={13} /></button>
             </>
           )}
         </div>
       </div>
-      </div>
+      {detailsOpen && (
+        <div id="annotation-details" className="absolute left-0 top-full z-50 mt-2 w-72 max-w-[calc(100vw-2rem)] max-h-[60vh] overflow-y-auto custom-scrollbar rounded-xl border border-white/10 bg-zinc-900 p-3 shadow-2xl">
+          <label className="mb-3 flex flex-col gap-1 text-[10px] text-zinc-400">
+            {t("Description")}
+            <textarea value={descValue} onChange={e => handleUpdate("description", e.target.value)} placeholder={t("Details...")}
+              rows={2} className="w-full resize-none rounded-md border border-white/10 bg-black/30 p-2 text-xs text-white outline-none focus:border-blue-500/50" />
+          </label>
+          <div className="flex flex-col gap-3">
+            <SliderControl label={t("Label Distance")} value={offsetValue} min="20" max="200" step="5" onChange={(v: number) => handleUpdate("offset", v)} />
+            <SliderControl label={t("Global Label Size")} value={labelSize} min="0.05" max="2.5" step="0.05" displayValue={labelSize.toFixed(2) + 'x'} onChange={setLabelSize} />
+            {isExploded && showTransformGizmo && (
+              <SliderControl label={t("Gizmo Size")} value={transformGizmoSize} min="0.1" max="1.5" step="0.05" displayValue={(transformGizmoSize * 100).toFixed(0) + '%'} onChange={setTransformGizmoSize} />
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -2803,7 +2683,7 @@ export const Interface: React.FC = () => {
 
       {selectedPart && showLeftPanel && recordingStatus !== "recording" && (
         <section id="part-properties-panel" aria-label={t("Annotation & Transform")}
-          className="relative z-30 mx-4 mb-3 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-zinc-900/95 backdrop-blur-md shadow-xl pointer-events-auto">
+          className="relative z-30 mb-3 w-fit max-w-[calc(100%-2rem)] self-center shrink-0 rounded-xl border border-white/10 bg-zinc-900/95 backdrop-blur-md shadow-xl pointer-events-auto">
           <PartProperties />
         </section>
       )}
