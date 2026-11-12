@@ -2783,6 +2783,8 @@ const LeftPanel = ({ showLeftPanel, setShowLeftPanel }: any) => {
   const showAnnotations = useStore((s) => s.showAnnotations);
 
   const partGroups = useStore((s) => s.partGroups || {});
+  const groupMoveEnabled = useStore((s) => s.groupMoveEnabled || {});
+  const toggleGroupMove = useStore((s) => s.toggleGroupMove);
   const groupPart = useStore((s) => s.groupPart);
   const groupParts = useStore((s) => s.groupParts);
   const releasePartFromGroup = useStore((s) => s.releasePartFromGroup);
@@ -3045,6 +3047,18 @@ const LeftPanel = ({ showLeftPanel, setShowLeftPanel }: any) => {
                     <span className="text-[9px] font-mono text-zinc-500 px-1 bg-black/30 rounded shrink-0">
                       {parts.length}
                     </span>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={groupMoveEnabled[groupName] !== false}
+                      aria-label={t("Move group: {0}", [groupName])}
+                      title={t(groupMoveEnabled[groupName] !== false ? "Move group together" : "Move selected object only")}
+                      onClick={(e) => { e.stopPropagation(); toggleGroupMove(groupName); }}
+                      onDoubleClick={(e) => e.stopPropagation()}
+                      className={`relative h-3.5 w-6 shrink-0 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-indigo-400 ${groupMoveEnabled[groupName] !== false ? "bg-indigo-500" : "bg-zinc-700"}`}
+                    >
+                      <span className={`absolute top-0.5 h-2.5 w-2.5 rounded-full bg-white transition-transform ${groupMoveEnabled[groupName] !== false ? "translate-x-3" : "translate-x-0.5"}`} />
+                    </button>
                   </div>
                 </div>
 

@@ -266,6 +266,9 @@ export interface AppState {
   
   // Part Groups
   partGroups: Record<string, string[]>; // Map of groupName -> list of partIds in that group
+  groupMoveEnabled: Record<string, boolean>;
+  toggleGroupMove: (groupName: string) => void;
+  commitPartMoves: (offsets: Record<string, [number, number, number]>) => void;
   
   // Camera / Video
   activeVideoStream: MediaStream | null;

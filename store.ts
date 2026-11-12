@@ -1,4 +1,5 @@
 import { mergeAutomaticPartGroups } from './services/partNames';
+import { getMoveMembers } from './services/partMovement';
 import { create } from 'zustand';
 import { 
   AppState, 
@@ -76,6 +77,19 @@ export const useStore = create<AppState>((set, get) => ({
   partTextureScales: {},
   partConfigs: {},
   partGroups: {}, // Init empty part groups
+  groupMoveEnabled: {},
+  toggleGroupMove: (groupName) => set(state => ({
+    groupMoveEnabled: { ...state.groupMoveEnabled, [groupName]: state.groupMoveEnabled[groupName] === false },
+  })),
+  commitPartMoves: (offsets) => set(state => {
+    if (!Object.keys(offsets).length) return {};
+    const partConfigs = { ...state.partConfigs };
+    Object.entries(offsets).forEach(([id, explosionOffset]) => {
+      const current = partConfigs[id] || { scale: 2, normalScale: 1, roughness: 0.5, displacementScale: 0 };
+      partConfigs[id] = { ...current, explosionOffset };
+    });
+    return pushHistory(state, { partConfigs });
+  }),
   partAnnotations: {}, // Init empty
   materials: [...INITIAL_MATERIALS],
   uploadedAssets: [],
@@ -254,13 +268,20 @@ export const useStore = create<AppState>((set, get) => ({
   }),
 
   updatePartConfig: (partId, config) => set((state) => {
-    const partsToUpdate = getGroupParts(state, partId);
+    const partsToUpdate = config.explosionOffset !== undefined
+      ? getMoveMembers(state.partGroups, state.groupMoveEnabled, partId)
+      : getGroupParts(state, partId);
     const newPartConfigs = { ...state.partConfigs };
     const newTextureScales = { ...state.partTextureScales };
     
     partsToUpdate.forEach(id => {
       const current = newPartConfigs[id] || { scale: 2, normalScale: 1, roughness: 0.5, displacementScale: 0 };
       newPartConfigs[id] = { ...current, ...config };
+      if (config.explosionOffset && id !== partId) {
+        const previous = state.partConfigs[partId]?.explosionOffset || [0, 0, 0];
+        const offset = current.explosionOffset || [0, 0, 0];
+        newPartConfigs[id].explosionOffset = offset.map((value, axis) => value + config.explosionOffset![axis] - previous[axis]) as [number, number, number];
+      }
       if (config.scale) {
         newTextureScales[id] = config.scale;
       }
@@ -957,7 +978,12 @@ export const useStore = create<AppState>((set, get) => ({
       newGroups[newName] = newGroups[oldName];
       delete newGroups[oldName];
     }
-    return { partGroups: newGroups };
+    const groupMoveEnabled = { ...state.groupMoveEnabled };
+    if (oldName !== newName && newGroups[newName] && !newGroups[oldName]) {
+      groupMoveEnabled[newName] = groupMoveEnabled[oldName] !== false;
+      delete groupMoveEnabled[oldName];
+    }
+    return { partGroups: newGroups, groupMoveEnabled };
   }),
 
   releasePartFromGroup: (partId) => set((state) => {
@@ -976,7 +1002,9 @@ export const useStore = create<AppState>((set, get) => ({
   ungroupGroup: (groupName) => set((state) => {
     const newGroups = { ...state.partGroups };
     delete newGroups[groupName];
-    return { partGroups: newGroups };
+    const groupMoveEnabled = { ...state.groupMoveEnabled };
+    delete groupMoveEnabled[groupName];
+    return { partGroups: newGroups, groupMoveEnabled };
   }),
 
   toggleSelectPartMulti: (partId) => set((state) => {

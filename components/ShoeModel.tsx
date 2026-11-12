@@ -9,6 +9,7 @@ import { OBJLoader, GLTFLoader, SkeletonUtils } from 'three-stdlib';
 import { USDLoader } from 'three/examples/jsm/loaders/USDLoader.js';
 import { useStore } from '../store';
 import { setWorldDragPosition } from '../services/dragPosition';
+import { beginPartMove, cancelPartMove, finishPartMove, isPartMoving, PartMoveSession, registerPartMovement, syncPartMove } from '../services/partMovement';
 import { tintMaterial, configureImportedMaterial } from '../services/materialTint';
 import { SHOE_PARTS } from '../constants';
 import { Material, TextureConfig } from '../types';
@@ -37,6 +38,39 @@ const InitialPositionsContext = React.createContext({
 const WorldTransformControls = (props: React.ComponentProps<typeof TransformControls>) => {
   const scene = useThree(state => state.scene);
   return createPortal(<TransformControls {...props} />, scene);
+};
+
+const usePartGroupMove = (meshRef: React.RefObject<THREE.Mesh>, partId: string) => {
+  const session = useRef<PartMoveSession | null>(null);
+  const isExploded = useStore(s => s.isExploded);
+  const begin = useCallback(() => {
+    const anchor = meshRef.current;
+    if (!anchor) return;
+    const state = useStore.getState();
+    const group = Object.entries(state.partGroups).find(([, members]) => members.includes(partId));
+    const members = group && state.groupMoveEnabled[group[0]] !== false ? group[1] : [partId];
+    session.current = beginPartMove(anchor, members);
+  }, [meshRef, partId]);
+  const sync = useCallback(() => {
+    if (session.current) syncPartMove(session.current);
+  }, []);
+  const finish = useCallback(() => {
+    if (!session.current) return false;
+    syncPartMove(session.current);
+    const offsets = finishPartMove(session.current);
+    session.current = null;
+    if (!Object.keys(offsets).length) return false;
+    useStore.getState().commitPartMoves(offsets);
+    return true;
+  }, []);
+  const cancel = useCallback(() => {
+    if (!session.current) return;
+    cancelPartMove(session.current);
+    session.current = null;
+  }, []);
+  useEffect(() => { if (!isExploded) cancel(); }, [isExploded, cancel]);
+  useEffect(() => cancel, [cancel]);
+  return { begin, sync, finish, cancel };
 };
 
 export const ShoeMeshOnly = ({ scene, interactive = false, videoTexture }: any) => {
@@ -880,6 +914,7 @@ const ShoePartMesh = ({ id, geometry, position, scale, explodeOffset, interactiv
 
   const meshRef = useRef<THREE.Mesh>(null);
   const isDraggingGizmo = useRef(false);
+  const groupMove = usePartGroupMove(meshRef, id);
 
   const baseMaterial = useMemo(() => {
     return getThreeMaterial(matId, materials, config, videoTexture, wireframeEnabled);
@@ -943,10 +978,11 @@ const ShoePartMesh = ({ id, geometry, position, scale, explodeOffset, interactiv
               dragOffset.copy(worldPosition).sub(intersection);
           }
       }
+      groupMove.begin();
       
       const controls = (window as any).controls;
       if (controls) controls.enabled = false;
-  }, [isSelected, isExploded, interactive, transformMode, setIsDragging, camera, raycaster, dragPlane, dragOffset, intersection]);
+  }, [isSelected, isExploded, interactive, transformMode, setIsDragging, camera, raycaster, dragPlane, dragOffset, intersection, groupMove.begin]);
 
   const onMeshPointerMove = useCallback((e: any) => {
       if (!isExploded || !isDraggingMesh.current || !meshRef.current) return;
@@ -955,8 +991,9 @@ const ShoePartMesh = ({ id, geometry, position, scale, explodeOffset, interactiv
       if (raycaster.ray.intersectPlane(dragPlane, intersection)) {
           const newPos = intersection.clone().add(dragOffset);
           setWorldDragPosition(meshRef.current, newPos);
+          groupMove.sync();
       }
-  }, [isExploded, dragPlane, dragOffset, intersection, raycaster.ray]);
+  }, [isExploded, dragPlane, dragOffset, intersection, raycaster.ray, groupMove.sync]);
 
   const onMeshPointerUp = useCallback((e: any) => {
       if (!isDraggingMesh.current) return;
@@ -971,15 +1008,17 @@ const ShoePartMesh = ({ id, geometry, position, scale, explodeOffset, interactiv
           justFinishedDragging.current = true;
           setTimeout(() => { justFinishedDragging.current = false; }, 100);
 
-          const expansion = currentExpansion.current > 0.05 ? currentExpansion.current : 1.0;
-          const newOffset: [number, number, number] = [
-              (meshRef.current.position.x - position[0]) / expansion,
-              (meshRef.current.position.y - position[1]) / expansion,
-              (meshRef.current.position.z - position[2]) / expansion
-          ];
-          updatePartConfig(id, { explosionOffset: newOffset });
+          if (!groupMove.finish()) {
+            const expansion = currentExpansion.current > 0.05 ? currentExpansion.current : 1.0;
+            const newOffset: [number, number, number] = [
+                (meshRef.current.position.x - position[0]) / expansion,
+                (meshRef.current.position.y - position[1]) / expansion,
+                (meshRef.current.position.z - position[2]) / expansion
+            ];
+            updatePartConfig(id, { explosionOffset: newOffset });
+          }
       }
-  }, [id, position, setIsDragging, updatePartConfig]);
+  }, [id, position, setIsDragging, updatePartConfig, groupMove.finish]);
 
   useEffect(() => {
     return () => {
@@ -995,7 +1034,7 @@ const ShoePartMesh = ({ id, geometry, position, scale, explodeOffset, interactiv
        const target = isExploded ? 1 : 0;
        
        const currentSig = `${isExploded}_${config.explosionOffset?.join(',')}_${config.meshScale}_${config.meshRotation?.join(',')}`;
-       const isDraggingActive = isDraggingGizmo.current || isDraggingMesh.current || justFinishedDragging.current;
+       const isDraggingActive = isDraggingGizmo.current || isDraggingMesh.current || justFinishedDragging.current || isPartMoving(meshRef.current);
 
        if (isSettled.current && currentSig === lastConfigSignature.current && !isDraggingActive) {
           return;
@@ -1073,8 +1112,9 @@ const ShoePartMesh = ({ id, geometry, position, scale, explodeOffset, interactiv
 
   const setMeshRef = useCallback((node: THREE.Mesh | null) => {
     meshRef.current = node;
+    if (node) registerPartMovement(node, new THREE.Vector3(position[0], position[1], position[2]), currentExpansion);
     setMesh(node);
-  }, []);
+  }, [position]);
 
   const meshElement = (
     <mesh
@@ -1132,7 +1172,9 @@ const ShoePartMesh = ({ id, geometry, position, scale, explodeOffset, interactiv
           onMouseDown={() => {
             isDraggingGizmo.current = true;
             setIsDragging(true);
+            if (transformMode === 'translate') groupMove.begin();
           }}
+          onObjectChange={() => { if (transformMode === 'translate') groupMove.sync(); }}
           onMouseUp={() => {
             isDraggingGizmo.current = false;
             setIsDragging(false);
@@ -1141,19 +1183,16 @@ const ShoePartMesh = ({ id, geometry, position, scale, explodeOffset, interactiv
               justFinishedDragging.current = true;
               setTimeout(() => { justFinishedDragging.current = false; }, 100);
 
-              const posX = meshRef.current.position.x;
-              const posY = meshRef.current.position.y;
-              const posZ = meshRef.current.position.z;
-
-              const expansion = currentExpansion.current > 0.05 ? currentExpansion.current : 1.0;
-              const newOffset: [number, number, number] = [
-                (posX - position[0]) / expansion,
-                (posY - position[1]) / expansion,
-                (posZ - position[2]) / expansion
-              ];
-
               if (transformMode === 'translate') {
-                updatePartConfig(id, { explosionOffset: newOffset });
+                if (!groupMove.finish()) {
+                  const expansion = currentExpansion.current > 0.05 ? currentExpansion.current : 1.0;
+                  const newOffset: [number, number, number] = [
+                    (meshRef.current.position.x - position[0]) / expansion,
+                    (meshRef.current.position.y - position[1]) / expansion,
+                    (meshRef.current.position.z - position[2]) / expansion
+                  ];
+                  updatePartConfig(id, { explosionOffset: newOffset });
+                }
               } else if (transformMode === 'scale') {
                 const newScale = (meshRef.current.scale.x / baseScale.x + meshRef.current.scale.y / baseScale.y + meshRef.current.scale.z / baseScale.z) / 3;
                 updatePartConfig(id, { meshScale: newScale });
@@ -1478,6 +1517,7 @@ const InteractiveModel = ({ url, isObj, isUsdz, customScale, customPosition, cus
   return (
     <group 
       ref={setSceneRef}
+      userData={{ partMoveRoot: true }}
       position={finalPosition}
       rotation={finalRotation}
       scale={finalScale}
@@ -1554,6 +1594,7 @@ const RecursiveMeshPart = React.memo(({ object, interactive, videoTexture }: any
 
     const meshRef = useRef<THREE.Mesh>(null);
     const isDraggingGizmo = useRef(false);
+  const groupMove = usePartGroupMove(meshRef, id);
 
     const initialPos = initialPositions.get(object.uuid) || object.position.clone();
     const initialRot = initialRotations.get(object.uuid) || object.rotation.clone();
@@ -1650,10 +1691,11 @@ const RecursiveMeshPart = React.memo(({ object, interactive, videoTexture }: any
                 dragOffset.copy(worldPosition).sub(intersection);
             }
         }
+        groupMove.begin();
         
         const controls = (window as any).controls;
         if (controls) controls.enabled = false;
-    }, [isSelected, isExploded, interactive, transformMode, setIsDragging, camera, raycaster, dragPlane, dragOffset, intersection]);
+    }, [isSelected, isExploded, interactive, transformMode, setIsDragging, camera, raycaster, dragPlane, dragOffset, intersection, groupMove.begin]);
 
     const onMeshPointerMove = useCallback((e: any) => {
         if (!isExploded || !isDraggingMesh.current || !meshRef.current) return;
@@ -1662,8 +1704,9 @@ const RecursiveMeshPart = React.memo(({ object, interactive, videoTexture }: any
         if (raycaster.ray.intersectPlane(dragPlane, intersection)) {
             const newPos = intersection.clone().add(dragOffset);
             setWorldDragPosition(meshRef.current, newPos);
+            groupMove.sync();
         }
-    }, [isExploded, dragPlane, dragOffset, intersection, raycaster.ray]);
+    }, [isExploded, dragPlane, dragOffset, intersection, raycaster.ray, groupMove.sync]);
 
     const onMeshPointerUp = useCallback((e: any) => {
         if (!isDraggingMesh.current) return;
@@ -1678,15 +1721,17 @@ const RecursiveMeshPart = React.memo(({ object, interactive, videoTexture }: any
             justFinishedDragging.current = true;
             setTimeout(() => { justFinishedDragging.current = false; }, 100);
 
-            const expansion = currentExpansion.current > 0.05 ? currentExpansion.current : 1.0;
-            const newOffset: [number, number, number] = [
-                (meshRef.current.position.x - originalPosition.current.x) / expansion,
-                (meshRef.current.position.y - originalPosition.current.y) / expansion,
-                (meshRef.current.position.z - originalPosition.current.z) / expansion
-            ];
-            updatePartConfig(id, { explosionOffset: newOffset });
+            if (!groupMove.finish()) {
+              const expansion = currentExpansion.current > 0.05 ? currentExpansion.current : 1.0;
+              const newOffset: [number, number, number] = [
+                  (meshRef.current.position.x - originalPosition.current.x) / expansion,
+                  (meshRef.current.position.y - originalPosition.current.y) / expansion,
+                  (meshRef.current.position.z - originalPosition.current.z) / expansion
+              ];
+              updatePartConfig(id, { explosionOffset: newOffset });
+            }
         }
-    }, [id, setIsDragging, updatePartConfig]);
+    }, [id, setIsDragging, updatePartConfig, groupMove.finish]);
 
     useEffect(() => {
         return () => {
@@ -1699,7 +1744,7 @@ const RecursiveMeshPart = React.memo(({ object, interactive, videoTexture }: any
            const target = isExploded ? 1 : 0;
            
            const currentSig = `${isExploded}_${config.explosionOffset?.join(',')}_${config.meshScale}_${config.meshRotation?.join(',')}`;
-           const isDraggingActive = isDraggingGizmo.current || isDraggingMesh.current || justFinishedDragging.current;
+           const isDraggingActive = isDraggingGizmo.current || isDraggingMesh.current || justFinishedDragging.current || isPartMoving(meshRef.current);
 
            if (isSettled.current && currentSig === lastConfigSignature.current && !isDraggingActive) {
               return;
@@ -1768,6 +1813,7 @@ const RecursiveMeshPart = React.memo(({ object, interactive, videoTexture }: any
 
     const setMeshRef = useCallback((node: THREE.Mesh | null) => {
         meshRef.current = node;
+        if (node) registerPartMovement(node, originalPosition.current, currentExpansion);
         setMesh(node);
     }, []);
 
@@ -1827,7 +1873,9 @@ const RecursiveMeshPart = React.memo(({ object, interactive, videoTexture }: any
               onMouseDown={() => {
                 isDraggingGizmo.current = true;
                 setIsDragging(true);
+                if (transformMode === 'translate') groupMove.begin();
               }}
+              onObjectChange={() => { if (transformMode === 'translate') groupMove.sync(); }}
               onMouseUp={() => {
                 isDraggingGizmo.current = false;
                 setIsDragging(false);
@@ -1836,19 +1884,16 @@ const RecursiveMeshPart = React.memo(({ object, interactive, videoTexture }: any
                   justFinishedDragging.current = true;
                   setTimeout(() => { justFinishedDragging.current = false; }, 100);
 
-                  const posX = meshRef.current.position.x;
-                  const posY = meshRef.current.position.y;
-                  const posZ = meshRef.current.position.z;
-
-                  const expansion = currentExpansion.current > 0.05 ? currentExpansion.current : 1.0;
-                  const newOffset: [number, number, number] = [
-                    (posX - originalPosition.current.x) / expansion,
-                    (posY - originalPosition.current.y) / expansion,
-                    (posZ - originalPosition.current.z) / expansion
-                  ];
-
                   if (transformMode === 'translate') {
-                    updatePartConfig(id, { explosionOffset: newOffset });
+                    if (!groupMove.finish()) {
+                      const expansion = currentExpansion.current > 0.05 ? currentExpansion.current : 1.0;
+                      const newOffset: [number, number, number] = [
+                        (meshRef.current.position.x - originalPosition.current.x) / expansion,
+                        (meshRef.current.position.y - originalPosition.current.y) / expansion,
+                        (meshRef.current.position.z - originalPosition.current.z) / expansion
+                      ];
+                      updatePartConfig(id, { explosionOffset: newOffset });
+                    }
                   } else if (transformMode === 'scale') {
                     const newScale = (meshRef.current.scale.x / originalScale.current.x + 
                                       meshRef.current.scale.y / originalScale.current.y + 
@@ -1916,6 +1961,7 @@ const DefaultShoe = ({ customScale, customPosition, customRotation, interactive,
   return (
     <group 
       ref={setSceneRef}
+      userData={{ partMoveRoot: true }}
       position={customPosition ? [customPosition[0], customPosition[1], customPosition[2]] : [0,0,0]}
       rotation={customRotation ? [customRotation[0], customRotation[1], customRotation[2]] : [0,0,0]}
       scale={customScale ? [customScale, customScale, customScale] : [1,1,1]}
