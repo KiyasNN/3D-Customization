@@ -73,6 +73,7 @@ export interface EffectsSettings {
 export interface TextureConfig {
   diffuseColor?: string; // Palette tint; preserves the material's texture maps.
   slotDiffuseColors?: Record<number, string>;
+  roughnessOverride?: number; // Explicit user edit; otherwise preserve imported GLB roughness.
   scale: number;
   normalScale: number;
   roughness: number;
@@ -177,6 +178,8 @@ export interface UserProfile {
 }
 
 export interface AppState {
+  sourceMaterialRoughness: Record<string, number>;
+  setSourceMaterialRoughness: (values: Record<string, number>) => void;
   isMobile: boolean; // New: responsive state
   user: { email: string | null; uid: string } | null; // Firebase user state
   setUser: (user: { email: string | null; uid: string } | null) => void;

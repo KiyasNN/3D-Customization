@@ -59,6 +59,8 @@ const pushHistory = (state: any, overrides: Partial<any> = {}) => {
 };
 
 export const useStore = create<AppState>((set, get) => ({
+  sourceMaterialRoughness: {},
+  setSourceMaterialRoughness: (values) => set({ sourceMaterialRoughness: values }),
   isMobile: false,
   user: null,
   setUser: (user) => set({ user }),

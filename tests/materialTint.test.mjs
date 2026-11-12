@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { MeshStandardMaterial, MeshPhysicalMaterial, Texture } from 'three';
-import { tintMaterial } from '../services/materialTint.ts';
+import { tintMaterial, configureImportedMaterial } from '../services/materialTint.ts';
 
 test('palette changes base color while preserving imported maps and PBR settings', () => {
   const source = new MeshPhysicalMaterial({
@@ -59,4 +59,29 @@ test('slot tint overrides object tint without affecting other slots', () => {
   const source = [new MeshStandardMaterial(), new MeshStandardMaterial()];
   const tinted = tintMaterial(source, '#ff0000', { 1: '#0000ff' });
   assert.deepEqual(tinted.map(m => m.color.getHexString()), ['ff0000', '0000ff']);
+});
+
+test('roughness edits apply to imported GLB materials while preserving PBR maps', () => {
+  const source = new MeshPhysicalMaterial({ roughness: 0.83, metalness: 0.2,
+    map: new Texture(), roughnessMap: new Texture(), normalMap: new Texture() });
+  const unchanged = configureImportedMaterial(source);
+  assert.equal(unchanged.roughness, 0.83);
+  const edited = configureImportedMaterial(source, 0.12);
+  assert.equal(edited.roughness, 0.12);
+  assert.equal(source.roughness, 0.83);
+  for (const key of ['map', 'normalMap', 'roughnessMap', 'metalness']) {
+    assert.equal(edited[key], source[key], key);
+  }
+  const tinted = tintMaterial(edited, '#ff0000');
+  assert.equal(tinted.roughness, 0.12);
+  assert.equal(tinted.map, source.map);
+});
+
+test('roughness overrides cover all slots without modifying shared originals', () => {
+  const source = [new MeshStandardMaterial({ roughness: 0.2 }), new MeshStandardMaterial({ roughness: 0.9 })];
+  const edited = configureImportedMaterial(source, 0.6, true);
+  assert.deepEqual(edited.map(m => m.roughness), [0.6, 0.6]);
+  assert.deepEqual(source.map(m => m.roughness), [0.2, 0.9]);
+  assert.ok(edited.every(m => m.wireframe));
+  assert.ok(source.every(m => !m.wireframe));
 });

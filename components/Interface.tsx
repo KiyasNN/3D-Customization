@@ -131,6 +131,7 @@ const SliderControl = ({
         </button>
         <input
           type="range"
+          aria-label={t(label)}
           min={min}
           max={max}
           step={step}
@@ -515,7 +516,7 @@ const TopToolbar = ({
 
 // Material Physical Properties
 const MaterialTuning = () => {
-  const { selectedPart, partConfigs, updatePartConfig } = useStore();
+  const { selectedPart, partConfigs, partMaterials, sourceMaterialRoughness, updatePartConfig } = useStore();
 
   const currentConfig = selectedPart
     ? partConfigs[selectedPart] || {
@@ -585,12 +586,12 @@ const MaterialTuning = () => {
 
       <SliderControl
         label={t("Roughness")}
-        value={currentConfig.roughness}
+        value={currentConfig.roughnessOverride ?? (partMaterials[selectedPart] ? currentConfig.roughness : sourceMaterialRoughness[selectedPart] ?? currentConfig.roughness)}
         min="0"
         max="1"
         step="0.01"
         onChange={(v: number) =>
-          updatePartConfig(selectedPart, { roughness: v })
+          updatePartConfig(selectedPart, { roughness: v, roughnessOverride: v })
         }
       />
 
@@ -869,7 +870,7 @@ const ImageProjectionTuning = () => {
   );
 };
 
-// Part Annotation & Info Panel (Now in Left Panel Side)
+// Horizontal annotation and transform strip beneath the main toolbar
 const PartProperties = () => {
   const {
     selectedPart,
@@ -953,13 +954,14 @@ const PartProperties = () => {
   if (!selectedPart) return null;
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="p-3 border-b border-white/5 bg-white/5 backdrop-blur-xl flex items-center gap-2 shrink-0">
+    <div className="flex min-w-0 flex-col">
+      <div className="px-3 py-2 border-b border-white/5 bg-white/5 flex items-center gap-2 shrink-0">
         <TypeIcon size={14} className="text-blue-400" />
         <span className="text-xs font-bold uppercase tracking-wider text-zinc-400">
            {t("Annotation & Transform")} </span>
       </div>
-      <div className="p-3 flex flex-col gap-4 overflow-y-auto custom-scrollbar">
+      <div className="overflow-x-auto custom-scrollbar">
+      <div className="grid min-w-[960px] grid-cols-[minmax(200px,1.1fr)_minmax(220px,1fr)_minmax(200px,1fr)_minmax(200px,1fr)] gap-4 p-3 max-h-[210px] overflow-y-auto custom-scrollbar">
         <div className="flex flex-col gap-3">
           <div>
             <span className="text-[10px] font-medium text-zinc-400 block mb-1">
@@ -979,10 +981,12 @@ const PartProperties = () => {
               value={descValue}
               onChange={(e) => handleUpdate("description", e.target.value)}
               placeholder={t("Details...")}
-              rows={3}
+              rows={2}
               className="w-full bg-black/30 border border-white/10 rounded px-2 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500/50 resize-none"
             />
           </div>
+        </div>
+        <div className="flex flex-col gap-3 border-l border-white/10 pl-4">
           <SliderControl
             label={t("Label Distance")}
             value={offsetValue}
@@ -1037,10 +1041,8 @@ const PartProperties = () => {
           </button>
         </div>
 
-        <div className="h-px bg-white/10 w-full" />
-
         {/* Transform Section */}
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-2 border-l border-white/10 pl-4">
           <div className="flex items-center gap-2 mb-1">
             <Move size={12} className="text-orange-400" />
             <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
@@ -1094,9 +1096,11 @@ const PartProperties = () => {
 
 
 
+        </div>
+        <div className="flex flex-col gap-2 border-l border-white/10 pl-4">
           {isExploded && (
             <>
-              <div className="flex items-center justify-between mt-2 pt-2 border-t border-white/5">
+              <div className="flex items-center justify-between">
                 <div className="flex flex-col text-left">
                   <span className="text-[10px] font-medium text-zinc-300">{t("3D Viewport Gizmo")}</span>
                   <span className="text-[8px] text-zinc-500">{t("Drag part directly in 3D scene")}</span>
@@ -1146,6 +1150,7 @@ const PartProperties = () => {
             </>
           )}
         </div>
+      </div>
       </div>
     </div>
   );
@@ -2796,6 +2801,13 @@ export const Interface: React.FC = () => {
         showLeftPanel={showLeftPanel}
       />
 
+      {selectedPart && showLeftPanel && recordingStatus !== "recording" && (
+        <section id="part-properties-panel" aria-label={t("Annotation & Transform")}
+          className="relative z-30 mx-4 mb-3 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-zinc-900/95 backdrop-blur-md shadow-xl pointer-events-auto">
+          <PartProperties />
+        </section>
+      )}
+
       <div className="flex-1 flex relative overflow-hidden pointer-events-none">
         {/* Attribution centered perfectly below the account widget */}
         <span className="fixed bottom-4 left-4 z-[95] font-mono text-zinc-500 font-semibold tracking-widest text-[9px] uppercase opacity-70 pointer-events-none select-none">
@@ -3376,13 +3388,7 @@ const LeftPanel = ({ showLeftPanel, setShowLeftPanel }: any) => {
         </div>
       </div>
 
-      {selectedPart && (
-        <div
-          className={`w-56 bg-zinc-900/90 backdrop-blur-md rounded-xl border border-white/10 flex flex-col shadow-2xl overflow-hidden pointer-events-auto shrink-0 animate-in slide-in-from-left-2 duration-300 ${isMobile ? "w-64 bg-zinc-900/95" : ""}`}
-        >
-          <PartProperties />
-        </div>
-      )}
+
     </div>
   );
 };

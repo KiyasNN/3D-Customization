@@ -9,7 +9,7 @@ import { OBJLoader, GLTFLoader, SkeletonUtils } from 'three-stdlib';
 import { USDLoader } from 'three/examples/jsm/loaders/USDLoader.js';
 import { useStore } from '../store';
 import { setWorldDragPosition } from '../services/dragPosition';
-import { tintMaterial } from '../services/materialTint';
+import { tintMaterial, configureImportedMaterial } from '../services/materialTint';
 import { SHOE_PARTS } from '../constants';
 import { Material, TextureConfig } from '../types';
 
@@ -917,7 +917,7 @@ const ShoePartMesh = ({ id, geometry, position, scale, explodeOffset, interactiv
   const { camera, raycaster } = useThree();
 
   const onMeshPointerDown = useCallback((e: any) => {
-      if (!interactive || !isSelected || transformMode !== 'translate') return;
+      if (e.button !== 0 || !interactive || !isSelected || transformMode !== 'translate') return;
       e.stopPropagation();
       (e.target as any).setPointerCapture(e.pointerId);
       
@@ -1369,18 +1369,23 @@ const InteractiveModel = ({ url, isObj, isUsdz, customScale, customPosition, cus
   useEffect(() => {
     if (!model || typeof model.traverse !== 'function') return;
     const foundParts: string[] = [];
+    const sourceRoughness: Record<string, number> = {};
     model.traverse((child: any) => {
       if (child.isMesh) {
          child.castShadow = true;
          child.receiveShadow = true;
          if (!child.name) child.name = `part_${child.id}`;
          foundParts.push(child.name);
+         const materials = Array.isArray(child.material) ? child.material : [child.material];
+         const pbr = materials.find(mat => typeof mat?.roughness === 'number');
+         if (pbr) sourceRoughness[child.name] = pbr.roughness;
          initialPositions.current.set(child.uuid, child.position.clone());
          initialRotations.current.set(child.uuid, child.rotation.clone());
          initialScales.current.set(child.uuid, child.scale.clone());
       }
     });
     const unique = [...new Set(foundParts)];
+    useStore.getState().setSourceMaterialRoughness(sourceRoughness);
     
     // Check against current store value before calling setter to avoid triggering store update loops
     const currentParts = useStore.getState().customParts;
@@ -1389,6 +1394,7 @@ const InteractiveModel = ({ url, isObj, isUsdz, customScale, customPosition, cus
     if (isDifferent) {
        setCustomParts(unique);
     }
+    return () => useStore.getState().setSourceMaterialRoughness({});
   }, [model, setCustomParts]);
 
   // Normalization Layout Effect
@@ -1524,14 +1530,17 @@ const RecursiveMeshPart = React.memo(({ object, interactive, videoTexture }: any
 
     const baseMaterial = useMemo(() => {
         if (!matId && object.material) {
-            const baseMat = Array.isArray(object.material) ? object.material[0] : object.material;
-            if (baseMat) {
-                baseMat.wireframe = wireframeEnabled;
-            }
-            return object.material;
+            return configureImportedMaterial(object.material, config.roughnessOverride, wireframeEnabled);
         }
         return getThreeMaterial(matId, materials, config, videoTexture, wireframeEnabled);
     }, [matId, materials, videoTexture, config, object.material, wireframeEnabled]);
+
+    // These material instances belong to this mesh; their texture resources stay shared.
+    useEffect(() => () => {
+      if (!matId && object.material) {
+        (Array.isArray(baseMaterial) ? baseMaterial : [baseMaterial]).forEach(mat => mat.dispose());
+      }
+    }, [baseMaterial, matId, object.material]);
 
     const material = usePaletteTint(baseMaterial, config.diffuseColor, config.slotDiffuseColors);
 
@@ -1607,7 +1616,7 @@ const RecursiveMeshPart = React.memo(({ object, interactive, videoTexture }: any
     const { camera, raycaster } = useThree();
 
     const onMeshPointerDown = useCallback((e: any) => {
-        if (!interactive || !isSelected || transformMode !== 'translate') return;
+        if (e.button !== 0 || !interactive || !isSelected || transformMode !== 'translate') return;
         e.stopPropagation();
         (e.target as any).setPointerCapture(e.pointerId);
         
