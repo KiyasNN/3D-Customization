@@ -911,13 +911,21 @@ const ShoePartMesh = ({ id, geometry, position, scale, explodeOffset, interactiv
   const justFinishedDragging = useRef(false);
 
   const isDraggingMesh = useRef(false);
+  useEffect(() => {
+    if (!isExploded && isDraggingMesh.current) {
+      isDraggingMesh.current = false;
+      setIsDragging(false);
+      const controls = (window as any).controls;
+      if (controls) controls.enabled = true;
+    }
+  }, [isExploded, setIsDragging]);
   const dragPlane = useMemo(() => new THREE.Plane(), []);
   const dragOffset = useMemo(() => new THREE.Vector3(), []);
   const intersection = useMemo(() => new THREE.Vector3(), []);
   const { camera, raycaster } = useThree();
 
   const onMeshPointerDown = useCallback((e: any) => {
-      if (e.button !== 0 || !interactive || !isSelected || transformMode !== 'translate') return;
+      if (e.button !== 0 || !isExploded || !interactive || !isSelected || transformMode !== 'translate') return;
       e.stopPropagation();
       (e.target as any).setPointerCapture(e.pointerId);
       
@@ -938,17 +946,17 @@ const ShoePartMesh = ({ id, geometry, position, scale, explodeOffset, interactiv
       
       const controls = (window as any).controls;
       if (controls) controls.enabled = false;
-  }, [isSelected, interactive, transformMode, setIsDragging, camera, raycaster, dragPlane, dragOffset, intersection]);
+  }, [isSelected, isExploded, interactive, transformMode, setIsDragging, camera, raycaster, dragPlane, dragOffset, intersection]);
 
   const onMeshPointerMove = useCallback((e: any) => {
-      if (!isDraggingMesh.current || !meshRef.current) return;
+      if (!isExploded || !isDraggingMesh.current || !meshRef.current) return;
       e.stopPropagation();
 
       if (raycaster.ray.intersectPlane(dragPlane, intersection)) {
           const newPos = intersection.clone().add(dragOffset);
           setWorldDragPosition(meshRef.current, newPos);
       }
-  }, [dragPlane, dragOffset, intersection, raycaster.ray]);
+  }, [isExploded, dragPlane, dragOffset, intersection, raycaster.ray]);
 
   const onMeshPointerUp = useCallback((e: any) => {
       if (!isDraggingMesh.current) return;
@@ -1610,13 +1618,21 @@ const RecursiveMeshPart = React.memo(({ object, interactive, videoTexture }: any
     const justFinishedDragging = useRef(false);
 
     const isDraggingMesh = useRef(false);
+    useEffect(() => {
+      if (!isExploded && isDraggingMesh.current) {
+        isDraggingMesh.current = false;
+        setIsDragging(false);
+        const controls = (window as any).controls;
+        if (controls) controls.enabled = true;
+      }
+    }, [isExploded, setIsDragging]);
     const dragPlane = useMemo(() => new THREE.Plane(), []);
     const dragOffset = useMemo(() => new THREE.Vector3(), []);
     const intersection = useMemo(() => new THREE.Vector3(), []);
     const { camera, raycaster } = useThree();
 
     const onMeshPointerDown = useCallback((e: any) => {
-        if (e.button !== 0 || !interactive || !isSelected || transformMode !== 'translate') return;
+        if (e.button !== 0 || !isExploded || !interactive || !isSelected || transformMode !== 'translate') return;
         e.stopPropagation();
         (e.target as any).setPointerCapture(e.pointerId);
         
@@ -1637,17 +1653,17 @@ const RecursiveMeshPart = React.memo(({ object, interactive, videoTexture }: any
         
         const controls = (window as any).controls;
         if (controls) controls.enabled = false;
-    }, [isSelected, interactive, transformMode, setIsDragging, camera, raycaster, dragPlane, dragOffset, intersection]);
+    }, [isSelected, isExploded, interactive, transformMode, setIsDragging, camera, raycaster, dragPlane, dragOffset, intersection]);
 
     const onMeshPointerMove = useCallback((e: any) => {
-        if (!isDraggingMesh.current || !meshRef.current) return;
+        if (!isExploded || !isDraggingMesh.current || !meshRef.current) return;
         e.stopPropagation();
 
         if (raycaster.ray.intersectPlane(dragPlane, intersection)) {
             const newPos = intersection.clone().add(dragOffset);
             setWorldDragPosition(meshRef.current, newPos);
         }
-    }, [dragPlane, dragOffset, intersection, raycaster.ray]);
+    }, [isExploded, dragPlane, dragOffset, intersection, raycaster.ray]);
 
     const onMeshPointerUp = useCallback((e: any) => {
         if (!isDraggingMesh.current) return;
