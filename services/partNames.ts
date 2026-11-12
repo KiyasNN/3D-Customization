@@ -13,7 +13,8 @@ function groupingName(id: string): string {
   // Material codes describe variants of the same part, not separate parent groups.
   // Match before display formatting, which also removes numeric export suffixes.
   const base = id.replace(/[\s_.-]+nke?[\s_.-]*\d+(?:_\d+|\.\d{3})*$/i, '');
-  return formatPartName(base);
+  // Stitch is a detail of the following part, not a separate part family.
+  return formatPartName(base).replace(/^(?:stitch|stitches|stitching)\s+/i, '');
 }
 
 // Group by leading part names, retaining suffix matches such as Stitch Heel.
@@ -32,8 +33,9 @@ export function mergeAutomaticPartGroups(parts: string[], existing: Record<strin
     const lower = part.name.toLowerCase();
     // Keep existing parent relationships (Stitch Heel -> Heel), then use the
     // first name token for arbitrary variants (Midsole Paint -> Midsole).
-    const base = candidates.find(candidate => lower.endsWith(' ' + candidate.toLowerCase()))
-      || part.name.split(' ')[0];
+    const parent = candidates.find(candidate => lower.endsWith(' ' + candidate.toLowerCase())) || part.name;
+    // A matched subpart such as Bootie Binding still belongs under Bootie.
+    const base = parent.split(' ')[0];
     if (!base) continue;
     const key = base.toLowerCase();
     if (!groups.has(key)) groups.set(key, { name: base, ids: [] });

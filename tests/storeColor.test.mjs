@@ -39,3 +39,14 @@ test('grouped objects retain independent colors and materials through undo/redo'
   assert.equal(useStore.getState().partMaterials[sibling], 'sibling-material');
   assert.deepEqual(useStore.getState().partGroups.Midsole, [target, sibling]);
 });
+
+test('stitch and body join the same root group while retaining independent palette colors', () => {
+  const body = 'Bootie_Binding_1', stitch = 'Stitch_Bootie_Binding_1';
+  const { setCustomParts, setPartColor } = useStore.getState();
+  setCustomParts([body, stitch, 'Bootie_Lateral_1']);
+  assert.deepEqual(useStore.getState().partGroups.Bootie, [body, stitch, 'Bootie_Lateral_1']);
+  setPartColor(stitch, '#ffffff');
+  setPartColor(body, '#ff0000');
+  assert.equal(useStore.getState().partConfigs[body].diffuseColor, '#ff0000');
+  assert.equal(useStore.getState().partConfigs[stitch].diffuseColor, '#ffffff');
+});

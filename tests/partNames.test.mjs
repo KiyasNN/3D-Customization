@@ -79,3 +79,19 @@ test('spaces, double underscores and camel case share the same prefix rule', () 
     Heel: ['Heel_1', 'Stitch_Heel_1'],
   });
 });
+
+test('screenshot stitch details join their root groups instead of becoming separate subgroups', () => {
+  const bootie = ['Bootie_Binding_1', 'Bootie_Lateral_1', 'Bootie_Medial_1', "Bootie_Skin_O'Lay_1", 'Stitch_Bootie_Binding_1'];
+  const heel = ['Heel_Pull_Tab_1', 'Stitch_Heel_Pull_Tab_1'];
+  const quarter = ["Quarter_O'Lay_1", "Stitch_Quarter_O'Lay_1"];
+  const strap = ['Strap_Bottom_1', 'Stitch_Strap_Bottom_1'];
+  const tongue = ['Tongue_Pull_Tab_1', 'Stitch_Tongue_Pull_Tab_1'];
+  const parts = [...bootie, ...heel, ...quarter, ...strap, ...tongue, 'Strobel_1'];
+  assert.deepEqual(mergeAutomaticPartGroups(parts), { Bootie: bootie, Heel: heel, Quarter: quarter, Strap: strap, Tongue: tongue });
+  assert.equal(formatPartName('Stitch_Bootie_Binding_1'), 'Stitch Bootie Binding');
+});
+
+test('stitch variants group by the following root even without an exact matching subpart', () => {
+  const parts = ['Bootie_Lateral_1', 'StitchBootieBinding_1', 'STITCH_Bootie_Medial_1'];
+  assert.deepEqual(mergeAutomaticPartGroups(parts), { Bootie: parts });
+});
