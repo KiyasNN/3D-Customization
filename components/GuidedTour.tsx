@@ -1,3 +1,4 @@
+import { t, useLanguage } from '../services/i18n';
 import React, { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { 
@@ -37,6 +38,7 @@ export const GuidedTour: React.FC<GuidedTourProps> = ({
   showLeftPanel,
   setShowLeftPanel,
 }) => {
+  useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [coords, setCoords] = useState<{ top: number; left: number; width: number; height: number } | null>(null);
@@ -165,11 +167,11 @@ export const GuidedTour: React.FC<GuidedTourProps> = ({
           setIsOpen(true);
         }}
         className="fixed bottom-24 right-6 pointer-events-auto bg-zinc-900/90 border border-white/10 hover:border-blue-500 hover:bg-zinc-800 text-white p-3 rounded-full shadow-2xl flex items-center gap-2 text-xs transition-all duration-300 group z-40"
-        title="Start Guided Tour"
+        title={t("Start Guided Tour")}
         id="restart-tour-float"
       >
         <HelpCircle size={16} className="text-blue-500 animate-pulse group-hover:rotate-12 transition-transform" />
-        <span className="max-w-0 overflow-hidden group-hover:max-w-[100px] transition-all duration-500 ease-out font-medium">Start Tour</span>
+        <span className="max-w-0 overflow-hidden group-hover:max-w-[100px] transition-all duration-500 ease-out font-medium">{t("Start Tour")}</span>
       </button>
     );
   }
@@ -285,13 +287,13 @@ export const GuidedTour: React.FC<GuidedTourProps> = ({
                 {step.icon}
               </div>
               <h4 className="text-sm font-bold text-white tracking-wide">
-                {step.title}
+                {t(step.title)}
               </h4>
             </div>
             <button 
               onClick={handleComplete}
               className="p-1 hover:bg-white/10 rounded-full text-zinc-500 hover:text-white transition-colors"
-              title="Skip Tour"
+              title={t("Skip Tour")}
             >
               <X size={16} />
             </button>
@@ -299,7 +301,7 @@ export const GuidedTour: React.FC<GuidedTourProps> = ({
 
           {/* Description */}
           <p className="text-xs text-zinc-400 leading-relaxed min-h-[50px] mb-6">
-            {step.description}
+            {t(step.description)}
           </p>
 
           {/* Steps Progress and Navigation buttons */}
@@ -328,15 +330,14 @@ export const GuidedTour: React.FC<GuidedTourProps> = ({
                   className="px-2.5 py-1.5 text-[10px] uppercase font-bold text-zinc-400 hover:text-white flex items-center gap-1 transition-all"
                 >
                   <ChevronLeft size={12} />
-                  Back
-                </button>
+                   {t("Back")} </button>
               )}
               
               <button
                 onClick={handleNext}
                 className="bg-blue-600 hover:bg-blue-500 text-white rounded px-3.5 py-1.5 text-[10px] uppercase font-bold flex items-center gap-1 transition-all shadow-md active:scale-95"
               >
-                {currentStep === steps.length - 1 ? "Finish" : "Next"}
+                {currentStep === steps.length - 1 ? t("Finish") : t("Next")}
                 <ChevronRight size={12} />
               </button>
             </div>

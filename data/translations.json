@@ -1,0 +1,2058 @@
+{
+  "Language": [
+    "Language",
+    "Bahasa"
+  ],
+  "View": [
+    "View",
+    "Tampilan"
+  ],
+  "Visibility": [
+    "Visibility",
+    "Visibilitas"
+  ],
+  "Edit": [
+    "Edit",
+    "Edit"
+  ],
+  "Capture": [
+    "Capture",
+    "Tangkap"
+  ],
+  "Project": [
+    "Project",
+    "Proyek"
+  ],
+  "Fit View": [
+    "Fit View",
+    "Paskan Tampilan"
+  ],
+  "Left": [
+    "Left",
+    "Kiri"
+  ],
+  "Right": [
+    "Right",
+    "Kanan"
+  ],
+  "Turntable": [
+    "Turntable",
+    "Putar Model"
+  ],
+  "Walk": [
+    "Walk",
+    "Berjalan"
+  ],
+  "Layers": [
+    "Layers",
+    "Lapisan"
+  ],
+  "Explode": [
+    "Explode",
+    "Pisahkan"
+  ],
+  "Floor": [
+    "Floor",
+    "Lantai"
+  ],
+  "Labels": [
+    "Labels",
+    "Label"
+  ],
+  "Hide": [
+    "Hide",
+    "Sembunyikan"
+  ],
+  "Single": [
+    "Single",
+    "Isolasi"
+  ],
+  "Undo": [
+    "Undo",
+    "Urungkan"
+  ],
+  "Redo": [
+    "Redo",
+    "Ulangi"
+  ],
+  "Clear": [
+    "Clear",
+    "Bersihkan"
+  ],
+  "Reset": [
+    "Reset",
+    "Atur Ulang"
+  ],
+  "Snap": [
+    "Snap",
+    "Foto"
+  ],
+  "Save": [
+    "Save",
+    "Simpan"
+  ],
+  "Dashboard": [
+    "Dashboard",
+    "Dasbor"
+  ],
+  "Models": [
+    "Models",
+    "Model"
+  ],
+  "Materials": [
+    "Materials",
+    "Material"
+  ],
+  "Colors": [
+    "Colors",
+    "Warna"
+  ],
+  "Light": [
+    "Light",
+    "Cahaya"
+  ],
+  "My Design Variants": [
+    "My Design Variants",
+    "Varian Desain Saya"
+  ],
+  "3D Library": [
+    "3D Library",
+    "Koleksi 3D"
+  ],
+  "Color Palette": [
+    "Color Palette",
+    "Palet Warna"
+  ],
+  "Environment": [
+    "Environment",
+    "Lingkungan"
+  ],
+  "Select a part": [
+    "Select a part",
+    "Pilih bagian"
+  ],
+  "Material Library": [
+    "Material Library",
+    "Koleksi Material"
+  ],
+  "Material slot": [
+    "Material slot",
+    "Slot material"
+  ],
+  "Basic colors": [
+    "Basic colors",
+    "Warna dasar"
+  ],
+  "Color library": [
+    "Color library",
+    "Koleksi warna"
+  ],
+  "Presets": [
+    "Presets",
+    "Preset"
+  ],
+  "Presets (": [
+    "Presets (",
+    "Preset ("
+  ],
+  "Uploads (": [
+    "Uploads (",
+    "Unggahan ("
+  ],
+  "AI Gen (": [
+    "AI Gen (",
+    "Hasil AI ("
+  ],
+  "Upload Texture Image": [
+    "Upload Texture Image",
+    "Unggah Gambar Tekstur"
+  ],
+  "Quick Upload (Basic)": [
+    "Quick Upload (Basic)",
+    "Unggah Cepat (Dasar)"
+  ],
+  "Generating PBR...": [
+    "Generating PBR...",
+    "Membuat PBR..."
+  ],
+  "Smart PBR": [
+    "Smart PBR",
+    "PBR Pintar"
+  ],
+  "Material Tuning": [
+    "Material Tuning",
+    "Pengaturan Material"
+  ],
+  "Texture Tiling (Scale)": [
+    "Texture Tiling (Scale)",
+    "Pengulangan Tekstur (Skala)"
+  ],
+  "UV Scale": [
+    "UV Scale",
+    "Skala UV"
+  ],
+  "UV Projection Type": [
+    "UV Projection Type",
+    "Jenis Proyeksi UV"
+  ],
+  "UV Map (Default)": [
+    "UV Map (Default)",
+    "Peta UV (Bawaan)"
+  ],
+  "Planar": [
+    "Planar",
+    "Datar"
+  ],
+  "Box": [
+    "Box",
+    "Kotak"
+  ],
+  "Cylindrical": [
+    "Cylindrical",
+    "Silinder"
+  ],
+  "Normal Strength (Bump)": [
+    "Normal Strength (Bump)",
+    "Kekuatan Normal (Relief)"
+  ],
+  "Roughness": [
+    "Roughness",
+    "Kekasaran"
+  ],
+  "Displacement": [
+    "Displacement",
+    "Perpindahan Permukaan"
+  ],
+  "Project Image (Logo/Decal)": [
+    "Project Image (Logo/Decal)",
+    "Proyeksikan Gambar (Logo/Decal)"
+  ],
+  "Position on selected part": [
+    "Position on selected part",
+    "Posisi pada bagian terpilih"
+  ],
+  "Projected Image Active": [
+    "Projected Image Active",
+    "Gambar Proyeksi Aktif"
+  ],
+  "Horizontal Offset (X)": [
+    "Horizontal Offset (X)",
+    "Offset Horizontal (X)"
+  ],
+  "Vertical Offset (Y)": [
+    "Vertical Offset (Y)",
+    "Offset Vertikal (Y)"
+  ],
+  "Scale X (Width)": [
+    "Scale X (Width)",
+    "Skala X (Lebar)"
+  ],
+  "Scale Y (Height)": [
+    "Scale Y (Height)",
+    "Skala Y (Tinggi)"
+  ],
+  "Rotation Angle": [
+    "Rotation Angle",
+    "Sudut Rotasi"
+  ],
+  "Repeat": [
+    "Repeat",
+    "Ulangi"
+  ],
+  "Remove": [
+    "Remove",
+    "Hapus"
+  ],
+  "Cancel": [
+    "Cancel",
+    "Batal"
+  ],
+  "Apply": [
+    "Apply",
+    "Terapkan"
+  ],
+  "Close": [
+    "Close",
+    "Tutup"
+  ],
+  "Back": [
+    "Back",
+    "Kembali"
+  ],
+  "Next": [
+    "Next",
+    "Lanjut"
+  ],
+  "Done": [
+    "Done",
+    "Selesai"
+  ],
+  "Part Name": [
+    "Part Name",
+    "Nama Bagian"
+  ],
+  "Part Transform": [
+    "Part Transform",
+    "Transformasi Bagian"
+  ],
+  "Move X (Left / Right)": [
+    "Move X (Left / Right)",
+    "Geser X (Kiri / Kanan)"
+  ],
+  "Move Y (Height / Elevation)": [
+    "Move Y (Height / Elevation)",
+    "Geser Y (Tinggi)"
+  ],
+  "Move Z (Front / Back)": [
+    "Move Z (Front / Back)",
+    "Geser Z (Depan / Belakang)"
+  ],
+  "Scale (Exploded)": [
+    "Scale (Exploded)",
+    "Skala (Terpisah)"
+  ],
+  "Rotation Angles": [
+    "Rotation Angles",
+    "Sudut Rotasi"
+  ],
+  "Drag part directly in 3D scene": [
+    "Drag part directly in 3D scene",
+    "Tarik bagian langsung di tampilan 3D"
+  ],
+  "Annotation & Transform": [
+    "Annotation & Transform",
+    "Anotasi & Transformasi"
+  ],
+  "Description": [
+    "Description",
+    "Deskripsi"
+  ],
+  "Title": [
+    "Title",
+    "Judul"
+  ],
+  "Details...": [
+    "Details...",
+    "Detail..."
+  ],
+  "Annotation": [
+    "Annotation",
+    "Anotasi"
+  ],
+  "Gizmo Size": [
+    "Gizmo Size",
+    "Ukuran Gizmo"
+  ],
+  "Group Manager": [
+    "Group Manager",
+    "Pengelola Grup"
+  ],
+  "Group": [
+    "Group",
+    "Grup"
+  ],
+  "Group:": [
+    "Group:",
+    "Grup:"
+  ],
+  "Ungroup": [
+    "Ungroup",
+    "Pisahkan Grup"
+  ],
+  "Group name... (Press Enter)": [
+    "Group name... (Press Enter)",
+    "Nama grup... (Tekan Enter)"
+  ],
+  "Double-click to rename group": [
+    "Double-click to rename group",
+    "Klik dua kali untuk mengganti nama grup"
+  ],
+  "Release": [
+    "Release",
+    "Lepaskan"
+  ],
+  "Release selected part from group": [
+    "Release selected part from group",
+    "Lepaskan bagian terpilih dari grup"
+  ],
+  "Clear Multi-Selection": [
+    "Clear Multi-Selection",
+    "Bersihkan Pilihan Ganda"
+  ],
+  "Ungroup/dissolve this group entirely": [
+    "Ungroup/dissolve this group entirely",
+    "Bubarkan grup ini"
+  ],
+  "Shift+Click layers to multi-select": [
+    "Shift+Click layers to multi-select",
+    "Shift+Klik lapisan untuk memilih beberapa bagian"
+  ],
+  "Parts": [
+    "Parts",
+    "Bagian"
+  ],
+  "Global Label Size": [
+    "Global Label Size",
+    "Ukuran Label Global"
+  ],
+  "Label Distance": [
+    "Label Distance",
+    "Jarak Label"
+  ],
+  "Dimension Measurements": [
+    "Dimension Measurements",
+    "Pengukuran Dimensi"
+  ],
+  "3D Viewport Gizmo": [
+    "3D Viewport Gizmo",
+    "Gizmo Tampilan 3D"
+  ],
+  "Import Model": [
+    "Import Model",
+    "Impor Model"
+  ],
+  "Clear Scene": [
+    "Clear Scene",
+    "Bersihkan Adegan"
+  ],
+  "No custom 3D models imported yet.": [
+    "No custom 3D models imported yet.",
+    "Belum ada model 3D yang diimpor."
+  ],
+  "No saved variants yet.": [
+    "No saved variants yet.",
+    "Belum ada varian tersimpan."
+  ],
+  "Toggle Selection Mode": [
+    "Toggle Selection Mode",
+    "Ubah Mode Seleksi"
+  ],
+  "Select All": [
+    "Select All",
+    "Pilih Semua"
+  ],
+  "Delete": [
+    "Delete",
+    "Hapus"
+  ],
+  "No uploads yet": [
+    "No uploads yet",
+    "Belum ada unggahan"
+  ],
+  "No preset textures": [
+    "No preset textures",
+    "Tidak ada tekstur preset"
+  ],
+  "No AI textures yet": [
+    "No AI textures yet",
+    "Belum ada tekstur AI"
+  ],
+  "Drag & drop or Click to Upload": [
+    "Drag & drop or Click to Upload",
+    "Tarik file atau Klik untuk Mengunggah"
+  ],
+  "Supports PNG & JPG files": [
+    "Supports PNG & JPG files",
+    "Mendukung file PNG & JPG"
+  ],
+  "Drag & drop an image file or click above to upload custom shoe skins.": [
+    "Drag & drop an image file or click above to upload custom shoe skins.",
+    "Tarik gambar atau klik di atas untuk mengunggah tekstur sepatu."
+  ],
+  "Drag texture to shoe or select layer & click": [
+    "Drag texture to shoe or select layer & click",
+    "Tarik tekstur ke sepatu atau pilih lapisan lalu klik"
+  ],
+  "Apply to selected part": [
+    "Apply to selected part",
+    "Terapkan pada bagian terpilih"
+  ],
+  "Delete texture asset": [
+    "Delete texture asset",
+    "Hapus aset tekstur"
+  ],
+  "Delete preset": [
+    "Delete preset",
+    "Hapus preset"
+  ],
+  "Edit Crop / Perspective Warp": [
+    "Edit Crop / Perspective Warp",
+    "Edit Potongan / Perspektif"
+  ],
+  "Lighting": [
+    "Lighting",
+    "Pencahayaan"
+  ],
+  "Virtual Lights": [
+    "Virtual Lights",
+    "Lampu Virtual"
+  ],
+  "Enable flat directional & spot lights": [
+    "Enable flat directional & spot lights",
+    "Aktifkan lampu arah dan lampu sorot"
+  ],
+  "Post Processing": [
+    "Post Processing",
+    "Pascaproses"
+  ],
+  "Bloom, grain, vignette, tilt-shift, AO": [
+    "Bloom, grain, vignette, tilt-shift, AO",
+    "Bloom, grain, vignette, tilt-shift, AO"
+  ],
+  "Wireframe Mode": [
+    "Wireframe Mode",
+    "Mode Kerangka"
+  ],
+  "Toggle technical wireframe grid overlay": [
+    "Toggle technical wireframe grid overlay",
+    "Tampilkan kerangka teknis model"
+  ],
+  "Show HDRI Background": [
+    "Show HDRI Background",
+    "Tampilkan Latar HDRI"
+  ],
+  "Toggle 360° environment panorama background": [
+    "Toggle 360° environment panorama background",
+    "Tampilkan panorama lingkungan 360°"
+  ],
+  "Environment Brightness": [
+    "Environment Brightness",
+    "Kecerahan Lingkungan"
+  ],
+  "Environment Calibration": [
+    "Environment Calibration",
+    "Kalibrasi Lingkungan"
+  ],
+  "Environment Rotation": [
+    "Environment Rotation",
+    "Rotasi Lingkungan"
+  ],
+  "Ground Height": [
+    "Ground Height",
+    "Tinggi Lantai"
+  ],
+  "Dome Radius": [
+    "Dome Radius",
+    "Radius Kubah"
+  ],
+  "Tilt X": [
+    "Tilt X",
+    "Kemiringan X"
+  ],
+  "Rotation Y": [
+    "Rotation Y",
+    "Rotasi Y"
+  ],
+  "Renderer Exposure": [
+    "Renderer Exposure",
+    "Eksposur Render"
+  ],
+  "Tone Mapping": [
+    "Tone Mapping",
+    "Pemetaan Nada"
+  ],
+  "Bloom Effect Intensity": [
+    "Bloom Effect Intensity",
+    "Intensitas Efek Bloom"
+  ],
+  "Ambient Occlusion (AO)": [
+    "Ambient Occlusion (AO)",
+    "Oklusi Ambien (AO)"
+  ],
+  "Reset Environment to Default": [
+    "Reset Environment to Default",
+    "Atur Ulang Lingkungan"
+  ],
+  "Reset environment settings to default": [
+    "Reset environment settings to default",
+    "Kembalikan lingkungan ke pengaturan awal"
+  ],
+  "Custom HDR/EXR": [
+    "Custom HDR/EXR",
+    "HDR/EXR Khusus"
+  ],
+  "Model Calibration": [
+    "Model Calibration",
+    "Kalibrasi Model"
+  ],
+  "Tune your model's placement and rotation so it aligns perfectly with the standard coordinate system and animations.": [
+    "Tune your model's placement and rotation so it aligns perfectly with the standard coordinate system and animations.",
+    "Sesuaikan posisi dan rotasi model dengan sistem koordinat dan animasi."
+  ],
+  "Position Adjustments": [
+    "Position Adjustments",
+    "Penyesuaian Posisi"
+  ],
+  "Move Horizontal": [
+    "Move Horizontal",
+    "Geser Horizontal"
+  ],
+  "Move Vertical": [
+    "Move Vertical",
+    "Geser Vertikal"
+  ],
+  "Tilt X (Pitch)": [
+    "Tilt X (Pitch)",
+    "Kemiringan X (Pitch)"
+  ],
+  "Turn Y (Yaw)": [
+    "Turn Y (Yaw)",
+    "Putaran Y (Yaw)"
+  ],
+  "Roll Z": [
+    "Roll Z",
+    "Kemiringan Z (Roll)"
+  ],
+  "Scale Multiplier": [
+    "Scale Multiplier",
+    "Pengali Skala"
+  ],
+  "Reset Calibration": [
+    "Reset Calibration",
+    "Atur Ulang Kalibrasi"
+  ],
+  "Walk Configuration": [
+    "Walk Configuration",
+    "Konfigurasi Berjalan"
+  ],
+  "To animate correctly, please specify which shoe the uploaded 3D model represents.": [
+    "To animate correctly, please specify which shoe the uploaded 3D model represents.",
+    "Pilih sisi sepatu model 3D agar animasinya benar."
+  ],
+  "Left Shoe": [
+    "Left Shoe",
+    "Sepatu Kiri"
+  ],
+  "Right Shoe": [
+    "Right Shoe",
+    "Sepatu Kanan"
+  ],
+  "Reverse Orientation": [
+    "Reverse Orientation",
+    "Balik Orientasi"
+  ],
+  "Rotates shoe 180° for custom axes": [
+    "Rotates shoe 180° for custom axes",
+    "Putar sepatu 180° untuk menyesuaikan sumbu"
+  ],
+  "Walk Speed": [
+    "Walk Speed",
+    "Kecepatan Berjalan"
+  ],
+  "Slow": [
+    "Slow",
+    "Lambat"
+  ],
+  "Fast": [
+    "Fast",
+    "Cepat"
+  ],
+  "Turntable Settings": [
+    "Turntable Settings",
+    "Pengaturan Putar Model"
+  ],
+  "Duration (Seconds)": [
+    "Duration (Seconds)",
+    "Durasi (Detik)"
+  ],
+  "Duration": [
+    "Duration",
+    "Durasi"
+  ],
+  "Framerate (FPS)": [
+    "Framerate (FPS)",
+    "Frame per Detik (FPS)"
+  ],
+  "Rotation Direction": [
+    "Rotation Direction",
+    "Arah Rotasi"
+  ],
+  "Rotation Speed": [
+    "Rotation Speed",
+    "Kecepatan Rotasi"
+  ],
+  "Record Current View": [
+    "Record Current View",
+    "Rekam Tampilan Saat Ini"
+  ],
+  "Start Recording": [
+    "Start Recording",
+    "Mulai Rekam"
+  ],
+  "Recording Turntable...": [
+    "Recording Turntable...",
+    "Merekam Putaran Model..."
+  ],
+  "Press ESC to Cancel": [
+    "Press ESC to Cancel",
+    "Tekan ESC untuk Membatalkan"
+  ],
+  "Recording Finished": [
+    "Recording Finished",
+    "Rekaman Selesai"
+  ],
+  "Your 360° turntable video is ready. Would you like to save it to your device?": [
+    "Your 360° turntable video is ready. Would you like to save it to your device?",
+    "Video putaran 360° siap. Simpan ke perangkat?"
+  ],
+  "Save MP4": [
+    "Save MP4",
+    "Simpan MP4"
+  ],
+  "Discard": [
+    "Discard",
+    "Buang"
+  ],
+  "Download": [
+    "Download",
+    "Unduh"
+  ],
+  "Video Studio Export": [
+    "Video Studio Export",
+    "Ekspor Video Studio"
+  ],
+  "Loading engine…": [
+    "Loading engine…",
+    "Memuat mesin…"
+  ],
+  "Loading Model": [
+    "Loading Model",
+    "Memuat Model"
+  ],
+  "Preparing model…": [
+    "Preparing model…",
+    "Menyiapkan model…"
+  ],
+  "Loading Asset • {0}%": [
+    "Loading Asset • {0}%",
+    "Memuat Aset • {0}%"
+  ],
+  "Active Tenant": [
+    "Active Tenant",
+    "Tenant Aktif"
+  ],
+  "Admin Panel": [
+    "Admin Panel",
+    "Panel Admin"
+  ],
+  "Open Admin Control Panel": [
+    "Open Admin Control Panel",
+    "Buka Panel Admin"
+  ],
+  "Sign In": [
+    "Sign In",
+    "Masuk"
+  ],
+  "Sign Up": [
+    "Sign Up",
+    "Daftar"
+  ],
+  "Sign Out": [
+    "Sign Out",
+    "Keluar"
+  ],
+  "Log in": [
+    "Log in",
+    "Masuk"
+  ],
+  "Sign up": [
+    "Sign up",
+    "Daftar"
+  ],
+  "Log in with Google": [
+    "Log in with Google",
+    "Masuk dengan Google"
+  ],
+  "Sign up with Google": [
+    "Sign up with Google",
+    "Daftar dengan Google"
+  ],
+  "Sign in with Google": [
+    "Sign in with Google",
+    "Masuk dengan Google"
+  ],
+  "Email address": [
+    "Email address",
+    "Alamat email"
+  ],
+  "Email Address": [
+    "Email Address",
+    "Alamat Email"
+  ],
+  "Enter email address...": [
+    "Enter email address...",
+    "Masukkan alamat email..."
+  ],
+  "Password": [
+    "Password",
+    "Kata Sandi"
+  ],
+  "Confirm password": [
+    "Confirm password",
+    "Konfirmasi kata sandi"
+  ],
+  "Forgot password?": [
+    "Forgot password?",
+    "Lupa kata sandi?"
+  ],
+  "Back to Log in": [
+    "Back to Log in",
+    "Kembali ke Masuk"
+  ],
+  "Email Verification Required": [
+    "Email Verification Required",
+    "Verifikasi Email Diperlukan"
+  ],
+  "We've sent a verification link to your email address:": [
+    "We've sent a verification link to your email address:",
+    "Tautan verifikasi sudah dikirim ke email Anda:"
+  ],
+  "Please check your inbox (including spam folder) and click the link to activate your session.": [
+    "Please check your inbox (including spam folder) and click the link to activate your session.",
+    "Periksa kotak masuk dan folder spam, lalu klik tautan untuk mengaktifkan sesi."
+  ],
+  "I have verified my email": [
+    "I have verified my email",
+    "Saya sudah memverifikasi email"
+  ],
+  "Resend Verification Link": [
+    "Resend Verification Link",
+    "Kirim Ulang Tautan Verifikasi"
+  ],
+  "Sign Out / Use Another Account": [
+    "Sign Out / Use Another Account",
+    "Keluar / Gunakan Akun Lain"
+  ],
+  "Sign Out of Account": [
+    "Sign Out of Account",
+    "Keluar dari Akun"
+  ],
+  "Registration Email:": [
+    "Registration Email:",
+    "Email Pendaftaran:"
+  ],
+  "Access suspended": [
+    "Access suspended",
+    "Akses ditangguhkan"
+  ],
+  "Awaiting approval": [
+    "Awaiting approval",
+    "Menunggu persetujuan"
+  ],
+  "Pending Approval": [
+    "Pending Approval",
+    "Menunggu Persetujuan"
+  ],
+  "Pending Request": [
+    "Pending Request",
+    "Permintaan Tertunda"
+  ],
+  "Pending User": [
+    "Pending User",
+    "Pengguna Tertunda"
+  ],
+  "Trial User": [
+    "Trial User",
+    "Pengguna Uji Coba"
+  ],
+  "Free Trial": [
+    "Free Trial",
+    "Uji Coba Gratis"
+  ],
+  "Full active access": [
+    "Full active access",
+    "Akses penuh aktif"
+  ],
+  "Trial": [
+    "Trial",
+    "Uji Coba"
+  ],
+  "Trial ({0} days)": [
+    "Trial ({0} days)",
+    "Uji Coba ({0} hari)"
+  ],
+  "Trial Expired": [
+    "Trial Expired",
+    "Uji Coba Habis"
+  ],
+  "Code": [
+    "Code",
+    "Kode"
+  ],
+  "Code Sent:": [
+    "Code Sent:",
+    "Kode Dikirim:"
+  ],
+  "Enter code:": [
+    "Enter code:",
+    "Masukkan kode:"
+  ],
+  "Verification code sent to your email!": [
+    "Verification code sent to your email!",
+    "Kode verifikasi dikirim ke email Anda!"
+  ],
+  "Sandbox / Preview Demo Helper:": [
+    "Sandbox / Preview Demo Helper:",
+    "Bantuan Demo Sandbox / Pratinjau:"
+  ],
+  "Sandbox Fallback Mode Active:": [
+    "Sandbox Fallback Mode Active:",
+    "Mode Cadangan Sandbox Aktif:"
+  ],
+  "Google Sign-In Restricted in Preview:": [
+    "Google Sign-In Restricted in Preview:",
+    "Masuk Google Dibatasi dalam Pratinjau:"
+  ],
+  "Open in New Tab ↗": [
+    "Open in New Tab ↗",
+    "Buka di Tab Baru ↗"
+  ],
+  "Or sign in with custom Google Account": [
+    "Or sign in with custom Google Account",
+    "Atau masuk dengan Akun Google lain"
+  ],
+  "Access Protocol Notice": [
+    "Access Protocol Notice",
+    "Pemberitahuan Protokol Akses"
+  ],
+  "Need immediate entry? Log in with admin credentials to configure authorization parameters.": [
+    "Need immediate entry? Log in with admin credentials to configure authorization parameters.",
+    "Butuh akses segera? Masuk sebagai admin untuk mengatur otorisasi."
+  ],
+  "Note: In order to access settings, log in using the designated admin email:": [
+    "Note: In order to access settings, log in using the designated admin email:",
+    "Catatan: Masuk dengan email admin yang ditentukan untuk mengakses pengaturan:"
+  ],
+  "By signing up, you consent to 3DEggplsn's": [
+    "By signing up, you consent to 3DEggplsn's",
+    "Dengan mendaftar, Anda menyetujui"
+  ],
+  "Terms of Use": [
+    "Terms of Use",
+    "Ketentuan Penggunaan"
+  ],
+  "Privacy Policy": [
+    "Privacy Policy",
+    "Kebijakan Privasi"
+  ],
+  "and": [
+    "and",
+    "dan"
+  ],
+  "or": [
+    "or",
+    "atau"
+  ],
+  "Rendering": [
+    "Rendering",
+    "Render"
+  ],
+  "Customizations": [
+    "Customizations",
+    "Kustomisasi"
+  ],
+  "Supported File Formats": [
+    "Supported File Formats",
+    "Format File yang Didukung"
+  ],
+  "If using": [
+    "If using",
+    "Jika menggunakan"
+  ],
+  ", please select": [
+    ", please select",
+    ", pilih"
+  ],
+  "files (including .bin and textures) at once when uploading.": [
+    "files (including .bin and textures) at once when uploading.",
+    "semua file (termasuk .bin dan tekstur) sekaligus saat mengunggah."
+  ],
+  "We recommend": [
+    "We recommend",
+    "Kami menyarankan"
+  ],
+  "for best performance.": [
+    "for best performance.",
+    "untuk performa terbaik."
+  ],
+  "Start Guided Tour": [
+    "Start Guided Tour",
+    "Mulai Panduan"
+  ],
+  "Start Tour": [
+    "Start Tour",
+    "Mulai Panduan"
+  ],
+  "Skip Tour": [
+    "Skip Tour",
+    "Lewati Panduan"
+  ],
+  "Got it": [
+    "Got it",
+    "Mengerti"
+  ],
+  "Control Panel": [
+    "Control Panel",
+    "Panel Kontrol"
+  ],
+  "Manage platform branding, toggle feature flags, configure premium material lockouts, and inspect client tenants.": [
+    "Manage platform branding, toggle feature flags, configure premium material lockouts, and inspect client tenants.",
+    "Kelola identitas platform, fitur, pembatasan material premium, dan tenant."
+  ],
+  "Branding & Features": [
+    "Branding & Features",
+    "Identitas & Fitur"
+  ],
+  "Tenant Manager": [
+    "Tenant Manager",
+    "Pengelola Tenant"
+  ],
+  "Materials & Tiers": [
+    "Materials & Tiers",
+    "Material & Paket"
+  ],
+  "User Authorization": [
+    "User Authorization",
+    "Otorisasi Pengguna"
+  ],
+  "Total Platform MRR": [
+    "Total Platform MRR",
+    "Total MRR Platform"
+  ],
+  "Active Tenants": [
+    "Active Tenants",
+    "Tenant Aktif"
+  ],
+  "Total Users": [
+    "Total Users",
+    "Total Pengguna"
+  ],
+  "Conversion Rate": [
+    "Conversion Rate",
+    "Tingkat Konversi"
+  ],
+  "Free to Pro subscriber tier conversion": [
+    "Free to Pro subscriber tier conversion",
+    "Konversi pelanggan dari Gratis ke Pro"
+  ],
+  "MRR Monthly Growth (USD)": [
+    "MRR Monthly Growth (USD)",
+    "Pertumbuhan MRR Bulanan (USD)"
+  ],
+  "Active Plan Distribution": [
+    "Active Plan Distribution",
+    "Distribusi Paket Aktif"
+  ],
+  "Total revenue contributions per subscriber tier.": [
+    "Total revenue contributions per subscriber tier.",
+    "Kontribusi pendapatan per paket pelanggan."
+  ],
+  "Platform KPI": [
+    "Platform KPI",
+    "KPI Platform"
+  ],
+  "Platform Name": [
+    "Platform Name",
+    "Nama Platform"
+  ],
+  "Rebrand the customizer title and typography globally.": [
+    "Rebrand the customizer title and typography globally.",
+    "Ubah nama dan tipografi aplikasi secara global."
+  ],
+  "Dynamic Accent Theme": [
+    "Dynamic Accent Theme",
+    "Tema Warna Aksen"
+  ],
+  "Feature Entitlements": [
+    "Feature Entitlements",
+    "Hak Akses Fitur"
+  ],
+  "Dynamically toggle which customizer features are unlocked in the app.": [
+    "Dynamically toggle which customizer features are unlocked in the app.",
+    "Atur fitur aplikasi yang dapat digunakan."
+  ],
+  "AI Texture Generation": [
+    "AI Texture Generation",
+    "Pembuatan Tekstur AI"
+  ],
+  "Renders material styles using Gemini API prompts.": [
+    "Renders material styles using Gemini API prompts.",
+    "Buat gaya material dengan prompt API Gemini."
+  ],
+  "Capture/Live Texture": [
+    "Capture/Live Texture",
+    "Tangkap/Tekstur Langsung"
+  ],
+  "Advanced Rendering": [
+    "Advanced Rendering",
+    "Render Lanjutan"
+  ],
+  "Realistic contact shadows": [
+    "Realistic contact shadows",
+    "Bayangan kontak realistis"
+  ],
+  "Generates Normal & Roughness maps on raw pictures.": [
+    "Generates Normal & Roughness maps on raw pictures.",
+    "Buat peta normal dan kekasaran dari gambar."
+  ],
+  "Display 3D dimension line grids with sizing stats.": [
+    "Display 3D dimension line grids with sizing stats.",
+    "Tampilkan garis dimensi 3D beserta ukuran."
+  ],
+  "Free Saves Limit": [
+    "Free Saves Limit",
+    "Batas Simpan Gratis"
+  ],
+  "Pro Monthly Price": [
+    "Pro Monthly Price",
+    "Harga Bulanan Pro"
+  ],
+  "Active Tenant Accounts": [
+    "Active Tenant Accounts",
+    "Akun Tenant Aktif"
+  ],
+  "View active customer companies configured on this instance.": [
+    "View active customer companies configured on this instance.",
+    "Lihat perusahaan pelanggan yang aktif pada aplikasi ini."
+  ],
+  "Search tenant domain...": [
+    "Search tenant domain...",
+    "Cari domain tenant..."
+  ],
+  "All": [
+    "All",
+    "Semua"
+  ],
+  "ALL": [
+    "ALL",
+    "SEMUA"
+  ],
+  "Free Tier": [
+    "Free Tier",
+    "Paket Gratis"
+  ],
+  "Pro Teams": [
+    "Pro Teams",
+    "Tim Pro"
+  ],
+  "Enterprise": [
+    "Enterprise",
+    "Perusahaan"
+  ],
+  "Tenant Name": [
+    "Tenant Name",
+    "Nama Tenant"
+  ],
+  "Billing Plan": [
+    "Billing Plan",
+    "Paket Tagihan"
+  ],
+  "Service Status": [
+    "Service Status",
+    "Status Layanan"
+  ],
+  "Registration Date": [
+    "Registration Date",
+    "Tanggal Pendaftaran"
+  ],
+  "Actions / Controls": [
+    "Actions / Controls",
+    "Tindakan / Kontrol"
+  ],
+  "Provision Tenant": [
+    "Provision Tenant",
+    "Buat Tenant"
+  ],
+  "Provision Subscriber": [
+    "Provision Subscriber",
+    "Buat Pelanggan"
+  ],
+  "Company / Team Name": [
+    "Company / Team Name",
+    "Nama Perusahaan / Tim"
+  ],
+  "Subscription Tier": [
+    "Subscription Tier",
+    "Paket Langganan"
+  ],
+  "Instantly provision and simulate a new customer workspace subscription.": [
+    "Instantly provision and simulate a new customer workspace subscription.",
+    "Buat dan simulasikan langganan ruang kerja pelanggan baru."
+  ],
+  "No tenants match this search or tier filter.": [
+    "No tenants match this search or tier filter.",
+    "Tidak ada tenant yang sesuai dengan pencarian atau filter paket."
+  ],
+  "Terminate subscriber contract": [
+    "Terminate subscriber contract",
+    "Akhiri kontrak pelanggan"
+  ],
+  "Asset Specifications": [
+    "Asset Specifications",
+    "Spesifikasi Aset"
+  ],
+  "Introduce a custom material preset option available to your active tenants.": [
+    "Introduce a custom material preset option available to your active tenants.",
+    "Tambahkan preset material untuk tenant aktif."
+  ],
+  "Material Name": [
+    "Material Name",
+    "Nama Material"
+  ],
+  "Base Color": [
+    "Base Color",
+    "Warna Dasar"
+  ],
+  "Material Type": [
+    "Material Type",
+    "Jenis Material"
+  ],
+  "Leather": [
+    "Leather",
+    "Kulit"
+  ],
+  "Rubber": [
+    "Rubber",
+    "Karet"
+  ],
+  "Fabric": [
+    "Fabric",
+    "Kain"
+  ],
+  "Metal": [
+    "Metal",
+    "Logam"
+  ],
+  "Glossy Plastic": [
+    "Glossy Plastic",
+    "Plastik Mengilap"
+  ],
+  "Create Preset": [
+    "Create Preset",
+    "Buat Preset"
+  ],
+  "Add Preset Option": [
+    "Add Preset Option",
+    "Tambah Preset"
+  ],
+  "Preset Plan Lock": [
+    "Preset Plan Lock",
+    "Pembatasan Paket Preset"
+  ],
+  "Configure which material presets require a Pro/Enterprise account.": [
+    "Configure which material presets require a Pro/Enterprise account.",
+    "Atur preset material yang memerlukan akun Pro/Enterprise."
+  ],
+  "Asset Browser": [
+    "Asset Browser",
+    "Penjelajah Aset"
+  ],
+  "Premium Lock": [
+    "Premium Lock",
+    "Kunci Premium"
+  ],
+  "Active Materials & Presets Lockouts": [
+    "Active Materials & Presets Lockouts",
+    "Pembatasan Material & Preset Aktif"
+  ],
+  "Adjust Toggles": [
+    "Adjust Toggles",
+    "Atur Fitur"
+  ],
+  "Global Feature Restrictions Active": [
+    "Global Feature Restrictions Active",
+    "Pembatasan Fitur Global Aktif"
+  ],
+  "User Authorization & Access Control": [
+    "User Authorization & Access Control",
+    "Otorisasi Pengguna & Kontrol Akses"
+  ],
+  "Approve registered accounts to give them access to the 3D Customizer, or suspend users to block workspace entry.": [
+    "Approve registered accounts to give them access to the 3D Customizer, or suspend users to block workspace entry.",
+    "Setujui akun terdaftar agar dapat mengakses aplikasi, atau tangguhkan untuk memblokir akses."
+  ],
+  "Sync Profiles": [
+    "Sync Profiles",
+    "Sinkronkan Profil"
+  ],
+  "Registered profiles": [
+    "Registered profiles",
+    "Profil terdaftar"
+  ],
+  "Search users by email...": [
+    "Search users by email...",
+    "Cari pengguna berdasarkan email..."
+  ],
+  "All Statuses": [
+    "All Statuses",
+    "Semua Status"
+  ],
+  "Approved": [
+    "Approved",
+    "Disetujui"
+  ],
+  "Blocked": [
+    "Blocked",
+    "Diblokir"
+  ],
+  "Pending": [
+    "Pending",
+    "Tertunda"
+  ],
+  "Access Status": [
+    "Access Status",
+    "Status Akses"
+  ],
+  "Actions": [
+    "Actions",
+    "Tindakan"
+  ],
+  "User Profile / Email": [
+    "User Profile / Email",
+    "Profil Pengguna / Email"
+  ],
+  "Syncing profiles database...": [
+    "Syncing profiles database...",
+    "Menyinkronkan basis data profil..."
+  ],
+  "No registered profiles found": [
+    "No registered profiles found",
+    "Tidak ada profil terdaftar"
+  ],
+  "Approve": [
+    "Approve",
+    "Setujui"
+  ],
+  "Block": [
+    "Block",
+    "Blokir"
+  ],
+  "Approve User Access": [
+    "Approve User Access",
+    "Setujui Akses Pengguna"
+  ],
+  "Block/Suspend User Access": [
+    "Block/Suspend User Access",
+    "Blokir/Tangguhkan Akses Pengguna"
+  ],
+  "Protected Admin Account": [
+    "Protected Admin Account",
+    "Akun Admin Terlindungi"
+  ],
+  "Live Client Sync": [
+    "Live Client Sync",
+    "Sinkronisasi Klien Langsung"
+  ],
+  "Seamless Texture & Tiling Editor": [
+    "Seamless Texture & Tiling Editor",
+    "Editor Tekstur & Pengulangan Mulus"
+  ],
+  "Seamless PBR Maps (Camera Capture)": [
+    "Seamless PBR Maps (Camera Capture)",
+    "Peta PBR Mulus (Kamera)"
+  ],
+  "Square Crop (Fixed)": [
+    "Square Crop (Fixed)",
+    "Potongan Persegi (Tetap)"
+  ],
+  "Perspective Warp (Substance)": [
+    "Perspective Warp (Substance)",
+    "Warp Perspektif (Substance)"
+  ],
+  "Capture Texture (1:1)": [
+    "Capture Texture (1:1)",
+    "Tangkap Tekstur (1:1)"
+  ],
+  "Stop Live Camera": [
+    "Stop Live Camera",
+    "Hentikan Kamera Langsung"
+  ],
+  "Live Mode": [
+    "Live Mode",
+    "Mode Langsung"
+  ],
+  "Processing...": [
+    "Processing...",
+    "Memproses..."
+  ],
+  "Processing image...": [
+    "Processing image...",
+    "Memproses gambar..."
+  ],
+  "Captured snapshot": [
+    "Captured snapshot",
+    "Foto tersimpan"
+  ],
+  "Projected preview": [
+    "Projected preview",
+    "Pratinjau proyeksi"
+  ],
+  "Perspective Sampler Controls": [
+    "Perspective Sampler Controls",
+    "Kontrol Sampel Perspektif"
+  ],
+  "Drag the four corners to align with repeating patterns.": [
+    "Drag the four corners to align with repeating patterns.",
+    "Tarik keempat sudut untuk menyelaraskan pola berulang."
+  ],
+  "Drag corner": [
+    "Drag corner",
+    "Tarik sudut"
+  ],
+  "1. Adjust Tiling Area & Perspective": [
+    "1. Adjust Tiling Area & Perspective",
+    "1. Sesuaikan Area Pengulangan & Perspektif"
+  ],
+  "2. Live 3x3 Tiling Preview": [
+    "2. Live 3x3 Tiling Preview",
+    "2. Pratinjau Pengulangan 3x3 Langsung"
+  ],
+  "Check how the seams align when repeated across surfaces.": [
+    "Check how the seams align when repeated across surfaces.",
+    "Periksa sambungan pola saat diulang pada permukaan."
+  ],
+  "Click & drag the center area to move the entire quad.": [
+    "Click & drag the center area to move the entire quad.",
+    "Klik dan tarik area tengah untuk memindahkan seluruh bidang."
+  ],
+  "Crop Size": [
+    "Crop Size",
+    "Ukuran Potongan"
+  ],
+  "Edge Feathering / Blend": [
+    "Edge Feathering / Blend",
+    "Penghalusan / Campuran Tepi"
+  ],
+  "Mirror Seamless Mode": [
+    "Mirror Seamless Mode",
+    "Mode Cermin Tanpa Sambungan"
+  ],
+  "Cross-fades opposite borders to smooth out alignment seams.": [
+    "Cross-fades opposite borders to smooth out alignment seams.",
+    "Campurkan tepi berlawanan untuk menghaluskan sambungan."
+  ],
+  "Flips tiles horizontally & vertically to guarantee perfect seams.": [
+    "Flips tiles horizontally & vertically to guarantee perfect seams.",
+    "Balik ubin secara horizontal dan vertikal agar sambungannya mulus."
+  ],
+  "Decrease": [
+    "Decrease",
+    "Kurangi"
+  ],
+  "Increase": [
+    "Increase",
+    "Tambah"
+  ],
+  "Speed": [
+    "Speed",
+    "Kecepatan"
+  ],
+  "New": [
+    "New",
+    "Baru"
+  ],
+  "Details": [
+    "Details",
+    "Detail"
+  ],
+  "Enable": [
+    "Enable",
+    "Aktifkan"
+  ],
+  "Free Basic Plan": [
+    "Free Basic Plan",
+    "Paket Dasar Gratis"
+  ],
+  "Pro Premium Team ($": [
+    "Pro Premium Team ($",
+    "Tim Premium Pro ($"
+  ],
+  "Enterprise Dedicated ($299/mo)": [
+    "Enterprise Dedicated ($299/mo)",
+    "Enterprise Khusus ($299/bulan)"
+  ],
+  "/mo)": [
+    "/mo)",
+    "/bulan)"
+  ],
+  "Pricing Tier": [
+    "Pricing Tier",
+    "Paket Harga"
+  ],
+  "Subscribers": [
+    "Subscribers",
+    "Pelanggan"
+  ],
+  "Steady upward growth across mid-market enterprise tiers.": [
+    "Steady upward growth across mid-market enterprise tiers.",
+    "Pertumbuhan stabil pada paket enterprise pasar menengah."
+  ],
+  "+18.4% this month": [
+    "+18.4% this month",
+    "+18,4% bulan ini"
+  ],
+  "Render 360° turntable animations with direct MP4 export.": [
+    "Render 360° turntable animations with direct MP4 export.",
+    "Rekam animasi putaran 360° dengan ekspor MP4 langsung."
+  ],
+  "Features toggled on the Branding tab instantly enable or disable capabilities globally across the active designer viewports.": [
+    "Features toggled on the Branding tab instantly enable or disable capabilities globally across the active designer viewports.",
+    "Pengaturan pada tab Identitas langsung mengaktifkan atau menonaktifkan fitur di seluruh tampilan desain."
+  ],
+  "Modifications are stored directly in the active Zustand context state and immediately update the live 3D renderer.": [
+    "Modifications are stored directly in the active Zustand context state and immediately update the live 3D renderer.",
+    "Perubahan langsung disimpan pada sesi aktif dan diterapkan pada tampilan 3D."
+  ],
+  "This panel integrates direct synchronization with the Firebase Firestore database schema. Approved users gain immediate entry to the 3D customizer. Blocked or pending users are immediately routed to a secure access-gated screen upon logging in.": [
+    "This panel integrates direct synchronization with the Firebase Firestore database schema. Approved users gain immediate entry to the 3D customizer. Blocked or pending users are immediately routed to a secure access-gated screen upon logging in.",
+    "Panel ini menyinkronkan profil dengan Firebase Firestore. Pengguna yang disetujui mendapat akses langsung. Pengguna diblokir atau tertunda diarahkan ke halaman pembatasan akses."
+  ],
+  "Firebase secrets are not configured in Vercel environment. Emulating account selection below.": [
+    "Firebase secrets are not configured in Vercel environment. Emulating account selection below.",
+    "Konfigurasi Firebase belum tersedia di Vercel. Pilihan akun di bawah memakai simulasi."
+  ],
+  "Google security policies block account selection inside nested iframes. Open the workspace in a new tab to use real Google accounts, or use the sandbox accounts below to test right here in the preview pane.": [
+    "Google security policies block account selection inside nested iframes. Open the workspace in a new tab to use real Google accounts, or use the sandbox accounts below to test right here in the preview pane.",
+    "Kebijakan Google membatasi pemilihan akun dalam iframe. Buka tab baru untuk memakai akun Google, atau gunakan akun sandbox di bawah."
+  ],
+  "To map perspective surfaces (e.g. brick walls, textiles at an angle):": [
+    "To map perspective surfaces (e.g. brick walls, textiles at an angle):",
+    "Untuk memetakan permukaan perspektif (mis. dinding atau kain miring):"
+  ],
+  "Use": [
+    "Use",
+    "Gunakan"
+  ],
+  "to Scale": [
+    "to Scale",
+    "untuk Menskalakan"
+  ],
+  "colors": [
+    "colors",
+    "warna"
+  ],
+  "tenants": [
+    "tenants",
+    "tenant"
+  ],
+  "Trial Habis": [
+    "Trial Expired",
+    "Trial Habis"
+  ],
+  "Access Request Pending": [
+    "Access Request Pending",
+    "Permintaan Akses Tertunda"
+  ],
+  "Access Suspended": [
+    "Access Suspended",
+    "Akses Ditangguhkan"
+  ],
+  "Refresh Access Status": [
+    "Refresh Access Status",
+    "Perbarui Status Akses"
+  ],
+  "Checking...": [
+    "Checking...",
+    "Memeriksa..."
+  ],
+  "Sign In with Google": [
+    "Sign In with Google",
+    "Masuk dengan Google"
+  ],
+  "Sign Up with Google": [
+    "Sign Up with Google",
+    "Daftar dengan Google"
+  ],
+  "Your account is registered! To secure this customizer, an administrator must approve your access request before you can design shoe models.": [
+    "Your account is registered! To secure this customizer, an administrator must approve your access request before you can design shoe models.",
+    "Akun Anda sudah terdaftar. Admin harus menyetujui permintaan akses sebelum Anda dapat mendesain sepatu."
+  ],
+  "Your workspace access has been blocked or suspended by an administrator.": [
+    "Your workspace access has been blocked or suspended by an administrator.",
+    "Akses ruang kerja Anda telah diblokir atau ditangguhkan oleh admin."
+  ],
+  "Welcome to 3D Shoe Customizer!": [
+    "Welcome to 3D Shoe Customizer!",
+    "Selamat Datang di 3D Shoe Customizer!"
+  ],
+  "Shoe Parts (Layer List)": [
+    "Shoe Parts (Layer List)",
+    "Bagian Sepatu (Daftar Lapisan)"
+  ],
+  "PBR Materials Customization": [
+    "PBR Materials Customization",
+    "Kustomisasi Material PBR"
+  ],
+  "Lighting & Studio Calibration": [
+    "Lighting & Studio Calibration",
+    "Pencahayaan & Kalibrasi Studio"
+  ],
+  "Snapshots & Turntable Recording (MP4)": [
+    "Snapshots & Turntable Recording (MP4)",
+    "Foto & Rekaman Putar Model (MP4)"
+  ],
+  "Let's take 1 minute to explore the advanced features of this 3D shoe visualization platform. You can customize materials and colors, record rotating turntable videos, and so much more!": [
+    "Let's take 1 minute to explore the advanced features of this 3D shoe visualization platform. You can customize materials and colors, record rotating turntable videos, and so much more!",
+    "Luangkan 1 menit untuk mengenal fitur aplikasi visualisasi sepatu 3D ini. Sesuaikan material dan warna, rekam video putaran model, dan banyak lagi!"
+  ],
+  "The left panel displays a list of all shoe components (Sole, Midsole, Upper Body, etc.). Click on any row to select the specific part you want to paint or apply custom textures to.": [
+    "The left panel displays a list of all shoe components (Sole, Midsole, Upper Body, etc.). Click on any row to select the specific part you want to paint or apply custom textures to.",
+    "Panel kiri menampilkan seluruh komponen sepatu. Klik baris untuk memilih bagian yang ingin diwarnai atau diberi tekstur."
+  ],
+  "Want to change how reflective or shiny the shoe is? The Materials tab provides you with professional-grade PBR material presets. Adjust Roughness, Metalness, or even connect a live webcam feed for dynamic rendering!": [
+    "Want to change how reflective or shiny the shoe is? The Materials tab provides you with professional-grade PBR material presets. Adjust Roughness, Metalness, or even connect a live webcam feed for dynamic rendering!",
+    "Ingin mengatur kilau sepatu? Tab Material menyediakan preset PBR. Atur kekasaran, sifat logam, atau sambungkan kamera untuk tampilan dinamis!"
+  ],
+  "Change the studio's atmosphere to your liking. The Light tab allows you to calibrate custom HDRI environment rotation, shadow tilt, ambient brightness, and ground floor height.": [
+    "Change the studio's atmosphere to your liking. The Light tab allows you to calibrate custom HDRI environment rotation, shadow tilt, ambient brightness, and ground floor height.",
+    "Atur suasana studio. Tab Cahaya menyediakan rotasi HDRI, kemiringan bayangan, kecerahan lingkungan, dan tinggi lantai."
+  ],
+  "Ready to show off your designs? Take instant high-resolution PNG snapshots, or launch the automated rotating studio turntable to record cinematic MP4 video loops!": [
+    "Ready to show off your designs? Take instant high-resolution PNG snapshots, or launch the automated rotating studio turntable to record cinematic MP4 video loops!",
+    "Siap memamerkan desain? Ambil foto PNG resolusi tinggi atau rekam video MP4 putaran model otomatis!"
+  ],
+  "Editing: {0}": [
+    "Editing: {0}",
+    "Mengedit: {0}"
+  ],
+  "Group: {0}": [
+    "Group: {0}",
+    "Grup: {0}"
+  ],
+  "Semua material: {0}": [
+    "All materials: {0}",
+    "Semua material: {0}"
+  ],
+  "Belum Ada Produk Dipilih": [
+    "No Model Selected",
+    "Belum Ada Produk Dipilih"
+  ],
+  "No Model Selected": [
+    "No Model Selected",
+    "Belum Ada Produk Dipilih"
+  ],
+  "Silakan pilih atau unggah model 3D (format": [
+    "Select or upload a 3D model (formats",
+    "Silakan pilih atau unggah model 3D (format"
+  ],
+  "Select or upload a 3D model (formats": [
+    "Select or upload a 3D model (formats",
+    "Silakan pilih atau unggah model 3D (format"
+  ],
+  ") melalui tab": [
+    ") in the",
+    ") melalui tab"
+  ],
+  ") in the": [
+    ") in the",
+    ") melalui tab"
+  ],
+  "di panel bawah untuk memulai kustomisasi 3D Anda.": [
+    "tab below to start customizing your 3D model.",
+    "di panel bawah untuk memulai kustomisasi 3D Anda."
+  ],
+  "tab below to start customizing your 3D model.": [
+    "tab below to start customizing your 3D model.",
+    "di panel bawah untuk memulai kustomisasi 3D Anda."
+  ],
+  "Biasanya gak lama kok hehehe...": [
+    "This should only take a moment…",
+    "Biasanya gak lama kok hehehe..."
+  ],
+  "This should only take a moment…": [
+    "This should only take a moment…",
+    "Biasanya gak lama kok hehehe..."
+  ],
+  "Baru pertama kali? Sign up with Google": [
+    "First time here? Sign up with Google",
+    "Baru pertama kali? Sign up with Google"
+  ],
+  "First time here? Sign up with Google": [
+    "First time here? Sign up with Google",
+    "Baru pertama kali? Sign up with Google"
+  ],
+  "Jika Anda menggunakan real Firebase namun email verifikasi tidak kunjung masuk (atau diblokir limit/error Firebase), klik tombol di bawah untuk verifikasi instan secara otomatis!": [
+    "If your verification email has not arrived or Firebase reports a limit or error, use the button below to verify.",
+    "Jika Anda menggunakan real Firebase namun email verifikasi tidak kunjung masuk (atau diblokir limit/error Firebase), klik tombol di bawah untuk verifikasi instan secara otomatis!"
+  ],
+  "If your verification email has not arrived or Firebase reports a limit or error, use the button below to verify.": [
+    "If your verification email has not arrived or Firebase reports a limit or error, use the button below to verify.",
+    "Jika Anda menggunakan real Firebase namun email verifikasi tidak kunjung masuk (atau diblokir limit/error Firebase), klik tombol di bawah untuk verifikasi instan secara otomatis!"
+  ],
+  "Cari blue, merah, kode CSI / HEX…": [
+    "Search blue, red, CSI code / HEX…",
+    "Cari blue, merah, kode CSI / HEX…"
+  ],
+  "Search blue, red, CSI code / HEX…": [
+    "Search blue, red, CSI code / HEX…",
+    "Cari blue, merah, kode CSI / HEX…"
+  ],
+  "Search color name, family, code or HEX": [
+    "Search color name, family, code or HEX",
+    "Cari nama, keluarga warna, kode, atau HEX"
+  ],
+  "Pilih object / material": [
+    "Select object / material",
+    "Pilih object / material"
+  ],
+  "Select object / material": [
+    "Select object / material",
+    "Pilih object / material"
+  ],
+  "Semua material": [
+    "All materials",
+    "Semua material"
+  ],
+  "All materials": [
+    "All materials",
+    "Semua material"
+  ],
+  "All materials: {0}": [
+    "All materials: {0}",
+    "Semua material: {0}"
+  ],
+  "Pilih material di model, lalu pilih warna. Tekstur tetap dipakai.": [
+    "Select a material, then choose a color. Textures are preserved.",
+    "Pilih material di model, lalu pilih warna. Tekstur tetap dipakai."
+  ],
+  "Select a material, then choose a color. Textures are preserved.": [
+    "Select a material, then choose a color. Textures are preserved.",
+    "Pilih material di model, lalu pilih warna. Tekstur tetap dipakai."
+  ],
+  "Mesh terpilih punya 1 slot. Warna yang menyatu dalam satu texture map perlu mask untuk diedit terpisah.": [
+    "This mesh has one slot. Separate colors in a single texture map need a mask for individual editing.",
+    "Mesh terpilih punya 1 slot. Warna yang menyatu dalam satu texture map perlu mask untuk diedit terpisah."
+  ],
+  "This mesh has one slot. Separate colors in a single texture map need a mask for individual editing.": [
+    "This mesh has one slot. Separate colors in a single texture map need a mask for individual editing.",
+    "Mesh terpilih punya 1 slot. Warna yang menyatu dalam satu texture map perlu mask untuk diedit terpisah."
+  ],
+  "Part ini memakai material pengganti dari library, bukan slot asli GLB.": [
+    "This part uses a replacement library material instead of its original GLB slots.",
+    "Part ini memakai material pengganti dari library, bukan slot asli GLB."
+  ],
+  "This part uses a replacement library material instead of its original GLB slots.": [
+    "This part uses a replacement library material instead of its original GLB slots.",
+    "Part ini memakai material pengganti dari library, bukan slot asli GLB."
+  ],
+  "Tampilkan lebih banyak": [
+    "Show more",
+    "Tampilkan lebih banyak"
+  ],
+  "Show more": [
+    "Show more",
+    "Tampilkan lebih banyak"
+  ],
+  "Warna tidak ditemukan.": [
+    "No colors found.",
+    "Warna tidak ditemukan."
+  ],
+  "No colors found.": [
+    "No colors found.",
+    "Warna tidak ditemukan."
+  ],
+  "Arahkan mouse ke kotak untuk melihat kode warna.": [
+    "Hover over a swatch to see its color code.",
+    "Arahkan mouse ke kotak untuk melihat kode warna."
+  ],
+  "Hover over a swatch to see its color code.": [
+    "Hover over a swatch to see its color code.",
+    "Arahkan mouse ke kotak untuk melihat kode warna."
+  ],
+  "CSI ColorWall · katalog digital 2021 · preview sRGB.": [
+    "CSI ColorWall · 2021 digital catalog · sRGB preview.",
+    "CSI ColorWall · katalog digital 2021 · preview sRGB."
+  ],
+  "CSI ColorWall · 2021 digital catalog · sRGB preview.": [
+    "CSI ColorWall · 2021 digital catalog · sRGB preview.",
+    "CSI ColorWall · katalog digital 2021 · preview sRGB."
+  ],
+  "Sumber resmi": [
+    "Official source",
+    "Sumber resmi"
+  ],
+  "Official source": [
+    "Official source",
+    "Sumber resmi"
+  ],
+  "Admin": [
+    "Admin",
+    "Admin"
+  ],
+  "Admin Authentication": [
+    "Admin Authentication",
+    "Autentikasi Admin"
+  ],
+  "Create Admin Account": [
+    "Create Admin Account",
+    "Buat Akun Admin"
+  ],
+  "Create Account": [
+    "Create Account",
+    "Buat Akun"
+  ],
+  "Authorize your session to access workspace": [
+    "Authorize your session to access workspace",
+    "Masuk untuk mengakses ruang kerja"
+  ],
+  "Already have an account? Sign in": [
+    "Already have an account? Sign in",
+    "Sudah punya akun? Masuk"
+  ],
+  "Need an account? Sign up": [
+    "Need an account? Sign up",
+    "Belum punya akun? Daftar"
+  ],
+  "Create a new Google account to register": [
+    "Create a new Google account to register",
+    "Buat akun Google baru untuk mendaftar"
+  ],
+  "Choose an account to continue to 3D Customizer": [
+    "Choose an account to continue to 3D Customizer",
+    "Pilih akun untuk melanjutkan ke 3D Customizer"
+  ],
+  "Enter your email to receive a password reset link": [
+    "Enter your email to receive a password reset link",
+    "Masukkan email untuk menerima tautan pengaturan ulang kata sandi"
+  ],
+  "Send reset link": [
+    "Send reset link",
+    "Kirim tautan pengaturan ulang"
+  ],
+  "Send code": [
+    "Send code",
+    "Kirim kode"
+  ],
+  "Reset Password": [
+    "Reset Password",
+    "Atur Ulang Kata Sandi"
+  ],
+  "Register below to create a new session": [
+    "Register below to create a new session",
+    "Daftar di bawah untuk membuat sesi baru"
+  ],
+  "Could not access camera. Please allow permissions.": [
+    "Could not access camera. Please allow permissions.",
+    "Kamera tidak dapat diakses. Izinkan akses kamera."
+  ],
+  "Discard & Retake": [
+    "Discard & Retake",
+    "Buang & Ambil Ulang"
+  ],
+  "Retake": [
+    "Retake",
+    "Ambil Ulang"
+  ],
+  "Drag 4 corners to fit angled tiles. Bilinear interpolation will flatten it perfectly.": [
+    "Drag 4 corners to fit angled tiles. Bilinear interpolation will flatten it perfectly.",
+    "Tarik 4 sudut agar sesuai dengan pola miring. Interpolasi bilinear akan meratakannya."
+  ],
+  "Drag file here or click to browse": [
+    "Drag file here or click to browse",
+    "Tarik file ke sini atau klik untuk memilih"
+  ],
+  "Drag the highlighted square area to crop your seamless texture base.": [
+    "Drag the highlighted square area to crop your seamless texture base.",
+    "Tarik area persegi untuk memotong dasar tekstur tanpa sambungan."
+  ],
+  "Feature Locked: MP4 Video export is locked by your system administrator. Toggles can be modified in the Control Panel.": [
+    "Feature Locked: MP4 Video export is locked by your system administrator. Toggles can be modified in the Control Panel.",
+    "Fitur Terkunci: Ekspor MP4 dinonaktifkan oleh admin. Pengaturan tersedia di Panel Kontrol."
+  ],
+  "Feature Locked: Smart PBR maps generation is disabled. Toggle it in the Control Panel!": [
+    "Feature Locked: Smart PBR maps generation is disabled. Toggle it in the Control Panel!",
+    "Fitur Terkunci: Pembuatan peta PBR dinonaktifkan. Aktifkan di Panel Kontrol."
+  ],
+  "Finish": [
+    "Finish",
+    "Selesai"
+  ],
+  "Hide Global Annotations": [
+    "Hide Global Annotations",
+    "Sembunyikan Semua Anotasi"
+  ],
+  "Hide Measurements": [
+    "Hide Measurements",
+    "Sembunyikan Ukuran"
+  ],
+  "Show Global Annotations": [
+    "Show Global Annotations",
+    "Tampilkan Semua Anotasi"
+  ],
+  "Show Measurements": [
+    "Show Measurements",
+    "Tampilkan Ukuran"
+  ],
+  "Measurements (Premium)": [
+    "Measurements (Premium)",
+    "Pengukuran (Premium)"
+  ],
+  "Material Spec": [
+    "Material Spec",
+    "Spesifikasi Material"
+  ],
+  "Metalness (": [
+    "Metalness (",
+    "Sifat Logam ("
+  ],
+  "New Snapshot": [
+    "New Snapshot",
+    "Foto Baru"
+  ],
+  "New signups will automatically be queued here for access authorization.": [
+    "New signups will automatically be queued here for access authorization.",
+    "Pendaftaran baru otomatis masuk antrean persetujuan akses di sini."
+  ],
+  "ON": [
+    "ON",
+    "AKTIF"
+  ],
+  "OFF": [
+    "OFF",
+    "NONAKTIF"
+  ],
+  "Perspective Warp Active": [
+    "Perspective Warp Active",
+    "Warp Perspektif Aktif"
+  ],
+  "Please include the main 3D model file (.gltf, .glb, .obj, or .usdz) in your selection.": [
+    "Please include the main 3D model file (.gltf, .glb, .obj, or .usdz) in your selection.",
+    "Sertakan file model utama (.gltf, .glb, .obj, atau .usdz) pada pilihan Anda."
+  ],
+  "Please save at least one variant to the dashboard first.": [
+    "Please save at least one variant to the dashboard first.",
+    "Simpan minimal satu varian ke dasbor terlebih dahulu."
+  ],
+  "Pre-configured": [
+    "Pre-configured",
+    "Prakonfigurasi"
+  ],
+  "Premium Pro": [
+    "Premium Pro",
+    "Pro Premium"
+  ],
+  "Rec...": [
+    "Rec...",
+    "Rekam..."
+  ],
+  "Remove?": [
+    "Remove?",
+    "Hapus?"
+  ],
+  "Renders & design variants saved": [
+    "Renders & design variants saved",
+    "Render & varian desain tersimpan"
+  ],
+  "Reset All Transforms": [
+    "Reset All Transforms",
+    "Atur Ulang Semua Transformasi"
+  ],
+  "Reset Selected Transforms": [
+    "Reset Selected Transforms",
+    "Atur Ulang Transformasi Terpilih"
+  ],
+  "Roughness (": [
+    "Roughness (",
+    "Kekasaran ("
+  ],
+  "Roughness / Metal": [
+    "Roughness / Metal",
+    "Kekasaran / Logam"
+  ],
+  "Screen recording not supported in this browser.": [
+    "Screen recording not supported in this browser.",
+    "Perekaman layar tidak didukung browser ini."
+  ],
+  "Snapshot": [
+    "Snapshot",
+    "Foto"
+  ],
+  "Tiling": [
+    "Tiling",
+    "Pengulangan"
+  ],
+  "Upgrade Required: Sizing Measurements is a Premium feature. Enable it in the Control Panel!": [
+    "Upgrade Required: Sizing Measurements is a Premium feature. Enable it in the Control Panel!",
+    "Perlu Upgrade: Pengukuran adalah fitur Premium. Aktifkan di Panel Kontrol."
+  ],
+  "White-label Branding": [
+    "White-label Branding",
+    "Identitas Merek Khusus"
+  ],
+  "{0} - Drag to part, or select a layer and click to apply": [
+    "{0} - Drag to part, or select a layer and click to apply",
+    "{0} - Tarik ke bagian, atau pilih lapisan lalu klik untuk menerapkan"
+  ],
+  "{0} Mode": [
+    "{0} Mode",
+    "Mode {0}"
+  ],
+  "{0}% Tile Area": [
+    "{0}% Tile Area",
+    "Area Ubin {0}%"
+  ],
+  "Aligning:": [
+    "Aligning:",
+    "Menyelaraskan:"
+  ],
+  "Real-time bilinear warp renders a perfect 3D square.": [
+    "Real-time bilinear warp renders a perfect 3D square.",
+    "Warp bilinear langsung menghasilkan bidang 3D persegi."
+  ],
+  "(or enter default:": [
+    "(or enter default:",
+    "(atau masukkan bawaan:"
+  ],
+  "Anonymous Emulated Sandbox Account": [
+    "Anonymous Emulated Sandbox Account",
+    "Akun Sandbox Anonim"
+  ],
+  "⚡ Instant Verification Bypass": [
+    "⚡ Instant Verification Bypass",
+    "⚡ Verifikasi Instan"
+  ],
+  "Akun Anda dibatasi hanya dapat mengunggah maksimal 1 model 3D (hapus model saat ini untuk mengunggah yang baru).": [
+    "Your account can upload one 3D model at a time. Remove the current model to upload another.",
+    "Akun Anda dibatasi hanya dapat mengunggah maksimal 1 model 3D (hapus model saat ini untuk mengunggah yang baru)."
+  ],
+  "Format email tidak valid.": [
+    "Invalid email format.",
+    "Format email tidak valid."
+  ],
+  "Akun ini telah dinonaktifkan.": [
+    "This account has been disabled.",
+    "Akun ini telah dinonaktifkan."
+  ],
+  "Email atau password salah.": [
+    "Incorrect email or password.",
+    "Email atau password salah."
+  ],
+  "Email ini sudah terdaftar. Silakan pilih 'Login' untuk masuk.": [
+    "This email is already registered. Log in to continue.",
+    "Email ini sudah terdaftar. Silakan pilih 'Login' untuk masuk."
+  ],
+  "Password terlalu lemah. Harus terdiri dari minimal 6 karakter.": [
+    "Password is too weak. Use at least 6 characters.",
+    "Password terlalu lemah. Harus terdiri dari minimal 6 karakter."
+  ],
+  "Password harus terdiri dari minimal 6 karakter.": [
+    "Password must contain at least 6 characters.",
+    "Password harus terdiri dari minimal 6 karakter."
+  ],
+  "Metode autentikasi ini belum diaktifkan di konsol Firebase.": [
+    "This sign-in method has not been enabled.",
+    "Metode autentikasi ini belum diaktifkan di konsol Firebase."
+  ],
+  "Jendela sign-in Google ditutup sebelum menyelesaikan proses.": [
+    "The Google sign-in window was closed before completion.",
+    "Jendela sign-in Google ditutup sebelum menyelesaikan proses."
+  ],
+  "Popup diblokir oleh browser. Silakan izinkan popup untuk situs ini.": [
+    "Your browser blocked the popup. Allow popups for this site.",
+    "Popup diblokir oleh browser. Silakan izinkan popup untuk situs ini."
+  ],
+  "Terjadi kesalahan autentikasi.": [
+    "An authentication error occurred.",
+    "Terjadi kesalahan autentikasi."
+  ]
+}

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Box3, BoxGeometry, Group, Mesh, PerspectiveCamera, Vector3 } from 'three';
-import { getModelBounds, getPerspectiveFit } from '../services/cameraFit.ts';
+import { getModelBounds, getPerspectiveFit, getModelClipPlanes } from '../services/cameraFit.ts';
 
 for (const aspect of [0.35, 1, 2.5]) {
   for (const size of [0.01, 3, 1000]) {
@@ -56,4 +56,19 @@ test('empty scene is ignored and zero direction recovers with a valid view', () 
   assert.equal(getPerspectiveFit(camera, new Box3(), new Vector3()), null);
   const bounds = new Box3(new Vector3(-1, -1, -1), new Vector3(1, 1, 1));
   assert.ok(getPerspectiveFit(camera, bounds, new Vector3()).position.length() > 1);
+});
+
+test('fit preserves depth precision for closely layered logo surfaces', () => {
+  const { near, far } = getModelClipPlanes(1, 5);
+  const depth24 = z => Math.round((far / (far - near) - far * near / ((far - near) * z)) * (2 ** 24 - 1));
+  assert.notEqual(depth24(5), depth24(5.0001));
+  assert.ok(near < 5 - 1);
+});
+
+test('zooming close reduces the near plane without placing it at zero', () => {
+  const fitted = getModelClipPlanes(1, 5);
+  const close = getModelClipPlanes(1, 1.01);
+  assert.ok(close.near > 0 && close.near < 0.01);
+  assert.ok(close.near < fitted.near);
+  assert.ok(close.far > close.near);
 });

@@ -1,4 +1,6 @@
 // @ts-nocheck
+import { LanguagePicker } from './components/LanguagePicker';
+import { t, useLanguage } from './services/i18n';
 import React, { Suspense, useEffect, useState, useRef, useLayoutEffect, useMemo } from 'react';
 import { Canvas } from '@react-three/fiber';
 // @ts-ignore
@@ -8,7 +10,7 @@ import { Environment, OrbitControls, MeshReflectorMaterial, ContactShadows, Stag
 // @ts-ignore
 import { EffectComposer, Bloom, Vignette, Noise, ChromaticAberration, TiltShift2, N8AO, SMAA } from '@react-three/postprocessing';
 import * as THREE from 'three';
-import { getModelBounds, getPerspectiveFit } from './services/cameraFit';
+import { getModelBounds, getPerspectiveFit, getModelClipPlanes } from './services/cameraFit';
 import { RGBELoader, EXRLoader } from 'three-stdlib';
 import { Interface } from './components/Interface';
 import { ShoeModel } from './components/ShoeModel';
@@ -110,6 +112,7 @@ const CameraRig = ({ sceneRef }: { sceneRef: React.RefObject<THREE.Group> }) => 
   const targetPos = useRef<THREE.Vector3 | null>(null);
   const targetTarget = useRef<THREE.Vector3 | null>(null);
   const isAnimating = useRef(false);
+  const fittedBounds = useRef<{ center: THREE.Vector3; radius: number } | null>(null);
 
   // When a new camera request comes in, start animating
   useEffect(() => {
@@ -128,6 +131,7 @@ const CameraRig = ({ sceneRef }: { sceneRef: React.RefObject<THREE.Group> }) => 
         : camera.getWorldDirection(new THREE.Vector3()).negate();
       const fit = getPerspectiveFit(camera as THREE.PerspectiveCamera, getModelBounds(sceneRef.current), direction);
       if (!fit) return;
+      fittedBounds.current = { center: fit.center, radius: fit.radius };
 
       // Fit is a recovery action: snap both camera and orbit target into place.
       // Flush pending pan/rotation damping before applying the new view.
@@ -158,6 +162,16 @@ const CameraRig = ({ sceneRef }: { sceneRef: React.RefObject<THREE.Group> }) => 
   }, [fitRequest, fitWithDefaultDirection, camera, controls, sceneRef]);
 
   useFrame(() => {
+    // Adapt clipping while zooming too, so close inspection remains possible.
+    if (fittedBounds.current) {
+      const { center, radius } = fittedBounds.current;
+      const clips = getModelClipPlanes(radius, camera.position.distanceTo(center));
+      if (camera.near !== clips.near || camera.far !== clips.far) {
+        camera.near = clips.near;
+        camera.far = clips.far;
+        camera.updateProjectionMatrix();
+      }
+    }
     if (isAnimating.current && targetPos.current && targetTarget.current) {
       // Smoothly interpolate camera position
       camera.position.lerp(targetPos.current, 0.1); 
@@ -268,7 +282,7 @@ const VideoRecorder = () => {
       } catch (e) {
         console.error("Recording failed", e);
         cancelRecording();
-        alert("Screen recording not supported in this browser.");
+        alert(t("Screen recording not supported in this browser."));
       }
     }
   }, [recordingRequest, gl, camera, finishRecording, cancelRecording, recordingStatus, turntableSettings.fps, turntableSettings.useCurrentView]);
@@ -662,6 +676,7 @@ const RendererConfig = () => {
 };
 
 export default function App() {
+  useLanguage();
   const user = useStore(s => s.user);
   const setUser = useStore(s => s.setUser);
   const userProfile = useStore(s => s.userProfile);
@@ -822,11 +837,12 @@ export default function App() {
   if (checkingAuth) {
     return (
       <div className="w-full h-screen bg-[#09090b] flex flex-col items-center justify-center font-sans">
+        <div className="fixed top-4 right-4 z-[110]"><LanguagePicker /></div>
         <div className="flex flex-col items-center gap-4">
           <div className="w-10 h-10 border-2 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" />
           <div className="flex flex-col items-center gap-1">
-            <span className="text-sm font-bold text-white tracking-widest uppercase">3D Studio</span>
-            <span className="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider animate-pulse">Biasanya gak lama kok hehehe...</span>
+            <span className="text-sm font-bold text-white tracking-widest uppercase">{t("3D Studio")}</span>
+            <span className="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider animate-pulse">{t("Biasanya gak lama kok hehehe...")}</span>
           </div>
         </div>
       </div>
@@ -836,6 +852,7 @@ export default function App() {
   if (!user) {
     return (
       <div className="w-full h-screen bg-[#09090b] flex items-center justify-center font-sans relative overflow-hidden select-none">
+        <div className="fixed top-4 right-4 z-[110]"><LanguagePicker /></div>
         {/* Abstract Background Accents */}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_40%,rgba(79,70,229,0.08),transparent_65%)]" />
         
@@ -845,18 +862,10 @@ export default function App() {
             {/* Header / Brand */}
             <div className="flex flex-col items-center gap-1.5 mb-1">
               <h2 className="text-xl font-bold text-white tracking-tight font-sans">
-                {authMode === "login" 
-                  ? "3DEggplsn" 
-                  : authMode === "signup" 
-                    ? "Create Account" 
-                    : "Reset Password"}
+                {authMode === "login" ? t("3DEggplsn") : authMode === "signup" ? t("Create Account") : t("Reset Password")}
               </h2>
               <p className="text-[11px] text-zinc-500 font-sans">
-                {authMode === "login" 
-                  ? "Authorize your session to access workspace" 
-                  : authMode === "signup"
-                    ? "Register below to create a new session"
-                    : "Enter your email to receive a password reset link"}
+                {authMode === "login" ? t("Authorize your session to access workspace") : authMode === "signup" ? t("Register below to create a new session") : t("Enter your email to receive a password reset link")}
               </p>
             </div>
 
@@ -870,7 +879,7 @@ export default function App() {
             {/* Error Message */}
             {authError && (
               <div className="p-3 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-medium leading-relaxed text-left animate-in fade-in duration-200">
-                {authError}
+                {t(authError)}
               </div>
             )}
 
@@ -933,7 +942,7 @@ export default function App() {
                   type="text"
                   value={authEmail}
                   onChange={(e) => setAuthEmail(e.target.value)}
-                  placeholder="Email address"
+                  placeholder={t("Email address")}
                   className="w-full bg-[#18181c] border border-zinc-800/80 focus:border-zinc-700 rounded-full px-5 py-3.5 text-sm text-zinc-200 placeholder-zinc-500 focus:outline-none transition-all font-sans"
                   autoCapitalize="none"
                   autoCorrect="off"
@@ -949,7 +958,7 @@ export default function App() {
                     type={showPassword ? "text" : "password"}
                     value={authPassword}
                     onChange={(e) => setAuthPassword(e.target.value)}
-                    placeholder="Password"
+                    placeholder={t("Password")}
                     className="w-full bg-[#18181c] border border-zinc-800/80 focus:border-zinc-700 rounded-full pl-5 pr-12 py-3.5 text-sm text-zinc-200 placeholder-zinc-500 focus:outline-none transition-all font-sans"
                     required
                   />
@@ -972,7 +981,7 @@ export default function App() {
                       type={showConfirmPassword ? "text" : "password"}
                       value={authConfirmPassword}
                       onChange={(e) => setAuthConfirmPassword(e.target.value)}
-                      placeholder="Confirm password"
+                      placeholder={t("Confirm password")}
                       className="w-full bg-[#18181c] border border-zinc-800/80 focus:border-zinc-700 rounded-full pl-5 pr-12 py-3.5 text-sm text-zinc-200 placeholder-zinc-500 focus:outline-none transition-all font-sans"
                       required
                     />
@@ -991,7 +1000,7 @@ export default function App() {
                       type="text"
                       value={authCode}
                       onChange={(e) => setAuthCode(e.target.value)}
-                      placeholder="Code"
+                      placeholder={t("Code")}
                       className="w-full bg-[#18181c] border border-zinc-800/80 focus:border-zinc-700 rounded-full pl-5 pr-28 py-3.5 text-sm text-zinc-200 placeholder-zinc-500 focus:outline-none transition-all font-sans"
                       required
                     />
@@ -1013,7 +1022,7 @@ export default function App() {
                             : "text-[#5d75f3] hover:text-[#4c65e4]"
                         } transition-colors`}
                       >
-                        {codeResendTimer > 0 ? `${codeResendTimer}s` : "Send code"}
+                        {codeResendTimer > 0 ? t("{0}s", [codeResendTimer]) : t("Send code")}
                       </button>
                     </div>
                   </div>
@@ -1021,8 +1030,8 @@ export default function App() {
                   {/* Code Sent Message Alert */}
                   {codeSentMessage && (
                     <div className="bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-[10px] px-3.5 py-2.5 rounded-2xl text-left leading-normal animate-in fade-in duration-200 flex flex-col gap-1">
-                      <p><strong>Code Sent:</strong> Verification code sent to your email!</p>
-                      <p className="text-zinc-300">Enter code: <strong className="text-white select-all">{expectedCode}</strong> (or enter default: <strong>888888</strong>)</p>
+                      <p><strong>{t("Code Sent:")}</strong>  {t("Verification code sent to your email!")}</p>
+                      <p className="text-zinc-300">{t("Enter code:")} <strong className="text-white select-all">{expectedCode}</strong>  {t("(or enter default:")} <strong>888888</strong>)</p>
                     </div>
                   )}
                 </>
@@ -1031,10 +1040,10 @@ export default function App() {
               {/* Consent Text */}
               {authMode === "signup" && (
                 <p className="text-zinc-500 text-[11px] font-sans leading-relaxed text-center px-1 mt-0.5">
-                  By signing up, you consent to 3DEggplsn's{" "}
-                  <a href="#" className="underline text-zinc-300 hover:text-white transition-colors font-semibold">Terms of Use</a>{" "}
-                  and{" "}
-                  <a href="#" className="underline text-zinc-300 hover:text-white transition-colors font-semibold">Privacy Policy</a>.
+                   {t("By signing up, you consent to 3DEggplsn's")}{" "}
+                  <a href="#" className="underline text-zinc-300 hover:text-white transition-colors font-semibold">{t("Terms of Use")}</a>{" "}
+                   {t("and")}{" "}
+                  <a href="#" className="underline text-zinc-300 hover:text-white transition-colors font-semibold">{t("Privacy Policy")}</a>.
                 </p>
               )}
 
@@ -1048,11 +1057,7 @@ export default function App() {
                   <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 ) : (
                   <span>
-                    {authMode === "login" 
-                      ? "Log in" 
-                      : authMode === "signup" 
-                        ? "Sign up" 
-                        : "Send reset link"}
+                    {authMode === "login" ? t("Log in") : authMode === "signup" ? t("Sign up") : t("Send reset link")}
                   </span>
                 )}
               </button>
@@ -1070,8 +1075,7 @@ export default function App() {
                   }}
                   className="text-[#5d75f3] hover:text-[#4c65e4] hover:underline transition-colors font-medium cursor-pointer"
                 >
-                  Forgot password?
-                </button>
+                   {t("Forgot password?")} </button>
                 <button
                   type="button"
                   onClick={() => {
@@ -1084,8 +1088,7 @@ export default function App() {
                   }}
                   className="text-[#5d75f3] hover:text-[#4c65e4] hover:underline transition-colors font-medium cursor-pointer"
                 >
-                  Sign up
-                </button>
+                   {t("Sign up")} </button>
               </div>
             ) : authMode === "signup" ? (
               <div className="text-center mt-1">
@@ -1101,8 +1104,7 @@ export default function App() {
                   }}
                   className="text-sm font-semibold text-[#5d75f3] hover:text-[#4c65e4] hover:underline transition-colors cursor-pointer"
                 >
-                  Log in
-                </button>
+                   {t("Log in")} </button>
               </div>
             ) : (
               <div className="text-center mt-1">
@@ -1115,8 +1117,7 @@ export default function App() {
                   }}
                   className="text-sm font-semibold text-[#5d75f3] hover:text-[#4c65e4] hover:underline transition-colors cursor-pointer"
                 >
-                  Back to Log in
-                </button>
+                   {t("Back to Log in")} </button>
               </div>
             )}
 
@@ -1148,8 +1149,7 @@ export default function App() {
                       disabled={authLoading}
                       className="text-xs font-semibold text-zinc-400 hover:text-white underline transition-colors cursor-pointer inline-flex items-center gap-1.5"
                     >
-                      Log in with Google
-                    </button>
+                       {t("Log in with Google")} </button>
                     <button
                       type="button"
                       onClick={async () => {
@@ -1174,8 +1174,7 @@ export default function App() {
                       disabled={authLoading}
                       className="text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors underline cursor-pointer mt-2 inline-block"
                     >
-                      Baru pertama kali? Sign up with Google
-                    </button>
+                       {t("Baru pertama kali? Sign up with Google")} </button>
                   </>
                 ) : (
                   <button
@@ -1201,8 +1200,7 @@ export default function App() {
                     disabled={authLoading}
                     className="text-xs font-semibold text-zinc-400 hover:text-white underline transition-colors cursor-pointer inline-flex items-center gap-1.5"
                   >
-                    Sign up with Google
-                  </button>
+                     {t("Sign up with Google")} </button>
                 )}
               </div>
             )}
@@ -1216,38 +1214,33 @@ export default function App() {
               <div className="flex flex-col gap-1 text-center border-b border-white/5 pb-4">
                 <div className="flex justify-center mb-1">
                   <div className="flex gap-1 text-base font-bold font-sans">
-                    <span className="text-blue-500">G</span>
-                    <span className="text-red-500">o</span>
-                    <span className="text-yellow-500">o</span>
-                    <span className="text-blue-500">g</span>
-                    <span className="text-green-500">l</span>
-                    <span className="text-red-500">e</span>
+                    <span className="text-blue-500">{t("G")}</span>
+                    <span className="text-red-500">{t("o")}</span>
+                    <span className="text-yellow-500">{t("o")}</span>
+                    <span className="text-blue-500">{t("g")}</span>
+                    <span className="text-green-500">{t("l")}</span>
+                    <span className="text-red-500">{t("e")}</span>
                   </div>
                 </div>
-                <h3 className="text-lg font-bold text-white tracking-tight">Sign in with Google</h3>
+                <h3 className="text-lg font-bold text-white tracking-tight">{t("Sign in with Google")}</h3>
                 <p className="text-[10px] text-zinc-400 leading-relaxed">
-                  {authMode === "login" 
-                    ? "Choose an account to continue to 3D Customizer" 
-                    : "Create a new Google account to register"}
+                  {authMode === "login" ? t("Choose an account to continue to 3D Customizer") : t("Create a new Google account to register")}
                 </p>
                 {isFallbackMode ? (
                   <div className="mt-2 bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 text-[9px] px-2.5 py-1.5 rounded-lg text-left leading-relaxed">
-                    <strong>Sandbox Fallback Mode Active:</strong> Firebase secrets are not configured in Vercel environment. Emulating account selection below.
-                  </div>
+                    <strong>{t("Sandbox Fallback Mode Active:")}</strong>  {t("Firebase secrets are not configured in Vercel environment. Emulating account selection below.")} </div>
                 ) : isInIframe() ? (
                   <div className="mt-2 bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[10px] px-2.5 py-2 rounded-xl text-left leading-relaxed flex flex-col gap-1.5">
-                    <p><strong>Google Sign-In Restricted in Preview:</strong></p>
+                    <p><strong>{t("Google Sign-In Restricted in Preview:")}</strong></p>
                     <p className="text-zinc-300 text-[9px] leading-normal">
-                      Google security policies block account selection inside nested iframes. Open the workspace in a new tab to use real Google accounts, or use the sandbox accounts below to test right here in the preview pane.
-                    </p>
+                       {t("Google security policies block account selection inside nested iframes. Open the workspace in a new tab to use real Google accounts, or use the sandbox accounts below to test right here in the preview pane.")} </p>
                     <a 
                       href={window.location.href} 
                       target="_blank" 
                       rel="noopener noreferrer"
                       className="mt-1 bg-[#5d75f3] hover:bg-[#4c65e4] text-white font-bold py-1.5 px-3 rounded-lg text-[9px] uppercase tracking-wider text-center transition-all inline-block"
                     >
-                      Open in New Tab ↗
-                    </a>
+                       {t("Open in New Tab ↗")} </a>
                   </div>
                 ) : null}
               </div>
@@ -1281,13 +1274,12 @@ export default function App() {
                   className="w-full flex items-center gap-3 p-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 transition-all text-left group cursor-pointer"
                 >
                   <div className="w-8 h-8 rounded-full bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400 text-xs font-bold font-sans">
-                    KY
-                  </div>
+                     {t("KY")} </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-bold text-white group-hover:text-blue-400 transition-colors">Kitoru Yasiru</p>
-                    <p className="text-[10px] text-zinc-500 truncate">kitoruyasiru@gmail.com</p>
+                    <p className="text-xs font-bold text-white group-hover:text-blue-400 transition-colors">{t("Kitoru Yasiru")}</p>
+                    <p className="text-[10px] text-zinc-500 truncate">{t("kitoruyasiru@gmail.com")}</p>
                   </div>
-                  <span className="text-[9px] font-bold uppercase tracking-wider text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded-md shrink-0">Admin</span>
+                  <span className="text-[9px] font-bold uppercase tracking-wider text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded-md shrink-0">{t("Admin")}</span>
                 </button>
 
                 {/* Account Item 2 */}
@@ -1311,13 +1303,12 @@ export default function App() {
                   className="w-full flex items-center gap-3 p-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 transition-all text-left group cursor-pointer"
                 >
                   <div className="w-8 h-8 rounded-full bg-green-600/20 border border-green-500/30 flex items-center justify-center text-green-400 text-xs font-bold font-sans">
-                    TU
-                  </div>
+                     {t("TU")} </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-bold text-white group-hover:text-green-400 transition-colors">Trial User</p>
-                    <p className="text-[10px] text-zinc-500 truncate">trial-user@example.com</p>
+                    <p className="text-xs font-bold text-white group-hover:text-green-400 transition-colors">{t("Trial User")}</p>
+                    <p className="text-[10px] text-zinc-500 truncate">{t("trial-user@example.com")}</p>
                   </div>
-                  <span className="text-[9px] font-bold uppercase tracking-wider text-green-400 bg-green-500/10 px-1.5 py-0.5 rounded-md shrink-0">Trial</span>
+                  <span className="text-[9px] font-bold uppercase tracking-wider text-green-400 bg-green-500/10 px-1.5 py-0.5 rounded-md shrink-0">{t("Trial")}</span>
                 </button>
 
                 {/* Account Item 3 */}
@@ -1341,23 +1332,22 @@ export default function App() {
                   className="w-full flex items-center gap-3 p-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 transition-all text-left group cursor-pointer"
                 >
                   <div className="w-8 h-8 rounded-full bg-yellow-600/20 border border-yellow-500/30 flex items-center justify-center text-yellow-400 text-xs font-bold font-sans">
-                    PU
-                  </div>
+                     {t("PU")} </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-bold text-white group-hover:text-yellow-400 transition-colors">Pending User</p>
-                    <p className="text-[10px] text-zinc-500 truncate">pending-user@example.com</p>
+                    <p className="text-xs font-bold text-white group-hover:text-yellow-400 transition-colors">{t("Pending User")}</p>
+                    <p className="text-[10px] text-zinc-500 truncate">{t("pending-user@example.com")}</p>
                   </div>
-                  <span className="text-[9px] font-bold uppercase tracking-wider text-yellow-400 bg-yellow-500/10 px-1.5 py-0.5 rounded-md shrink-0">New</span>
+                  <span className="text-[9px] font-bold uppercase tracking-wider text-yellow-400 bg-yellow-500/10 px-1.5 py-0.5 rounded-md shrink-0">{t("New")}</span>
                 </button>
               </div>
 
               {/* Custom Email Input */}
               <div className="flex flex-col gap-2 border-t border-white/5 pt-4">
-                <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Or sign in with custom Google Account</label>
+                <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">{t("Or sign in with custom Google Account")}</label>
                 <div className="flex gap-2">
                   <input
                     type="email"
-                    placeholder="Enter email address..."
+                    placeholder={t("Enter email address...")}
                     value={customSandboxEmail}
                     onChange={(e) => setCustomSandboxEmail(e.target.value)}
                     className="flex-1 bg-zinc-950 border border-white/10 focus:border-indigo-500 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:ring-1 focus:ring-indigo-500 font-sans"
@@ -1385,8 +1375,7 @@ export default function App() {
                     }}
                     className="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-2 rounded-xl text-xs font-bold uppercase tracking-wider shrink-0 transition-all active:scale-95 cursor-pointer font-sans"
                   >
-                    Use
-                  </button>
+                     {t("Use")} </button>
                 </div>
               </div>
 
@@ -1400,8 +1389,7 @@ export default function App() {
                   }}
                   className="px-4 py-2 text-xs font-bold text-zinc-400 hover:text-white transition-colors cursor-pointer"
                 >
-                  Cancel
-                </button>
+                   {t("Cancel")} </button>
               </div>
             </div>
           </div>
@@ -1422,6 +1410,7 @@ export default function App() {
     
     return (
       <div className="w-full h-screen bg-[#09090b] flex items-center justify-center font-sans relative overflow-hidden select-none">
+        <div className="fixed top-4 right-4 z-[110]"><LanguagePicker /></div>
         {/* Background Accents */}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_40%,rgba(79,70,229,0.1),transparent_60%)]" />
         <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.01)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.01)_1px,transparent_1px)] bg-[size:4rem_4rem]" />
@@ -1437,17 +1426,14 @@ export default function App() {
             {/* Title & Desc */}
             <div className="flex flex-col gap-2">
               <h2 className="text-xl font-bold text-white tracking-tight">
-                Email Verification Required
-              </h2>
+                 {t("Email Verification Required")} </h2>
               <p className="text-xs text-zinc-400 leading-relaxed px-2">
-                We've sent a verification link to your email address:
-              </p>
+                 {t("We've sent a verification link to your email address:")} </p>
               <div className="text-sm bg-zinc-950 text-indigo-300 py-2 px-4 rounded-xl border border-white/5 font-semibold self-center break-all select-all">
                 {user.email}
               </div>
               <p className="text-[11px] text-zinc-500 leading-relaxed px-4">
-                Please check your inbox (including spam folder) and click the link to activate your session.
-              </p>
+                 {t("Please check your inbox (including spam folder) and click the link to activate your session.")} </p>
             </div>
 
             {/* Status Message */}
@@ -1493,8 +1479,7 @@ export default function App() {
                 ) : (
                   <RefreshCw size={14} />
                 )}
-                I have verified my email
-              </button>
+                 {t("I have verified my email")} </button>
 
               {/* Resend Verification Email Button */}
               <button
@@ -1514,7 +1499,7 @@ export default function App() {
                 disabled={verificationResendTimer > 0 || verificationLoading}
                 className="w-full bg-zinc-800 hover:bg-zinc-700 active:scale-95 text-zinc-200 font-bold py-3 px-4 rounded-xl text-xs uppercase tracking-wider transition-all border border-white/10 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
               >
-                Resend Verification Link {verificationResendTimer > 0 ? `(${verificationResendTimer}s)` : ""}
+                 {t("Resend Verification Link")} {verificationResendTimer > 0 ? t("({0}s)", [verificationResendTimer]) : ""}
               </button>
             </div>
 
@@ -1522,10 +1507,9 @@ export default function App() {
             {isSandboxUser && (
               <div className="w-full mt-1 bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 text-[11px] px-4 py-3 rounded-2xl text-left leading-relaxed flex flex-col gap-2">
                 <div>
-                  <p className="font-bold">Sandbox / Preview Demo Helper:</p>
+                  <p className="font-bold">{t("Sandbox / Preview Demo Helper:")}</p>
                   <p className="text-zinc-400 text-[10px] leading-normal mt-0.5">
-                    Jika Anda menggunakan real Firebase namun email verifikasi tidak kunjung masuk (atau diblokir limit/error Firebase), klik tombol di bawah untuk verifikasi instan secara otomatis!
-                  </p>
+                     {t("Jika Anda menggunakan real Firebase namun email verifikasi tidak kunjung masuk (atau diblokir limit/error Firebase), klik tombol di bawah untuk verifikasi instan secara otomatis!")} </p>
                 </div>
                 <button
                   type="button"
@@ -1536,8 +1520,7 @@ export default function App() {
                   }}
                   className="w-full bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-2.5 px-3 rounded-xl text-[10px] uppercase tracking-wider text-center transition-all cursor-pointer"
                 >
-                  ⚡ Instant Verification Bypass
-                </button>
+                   {t("⚡ Instant Verification Bypass")} </button>
               </div>
             )}
 
@@ -1552,8 +1535,7 @@ export default function App() {
                 className="text-zinc-400 hover:text-white transition-colors text-xs font-bold uppercase tracking-wider flex items-center gap-2 cursor-pointer"
               >
                 <LogOut size={14} />
-                Sign Out / Use Another Account
-              </button>
+                 {t("Sign Out / Use Another Account")} </button>
             </div>
 
           </div>
@@ -1565,11 +1547,12 @@ export default function App() {
   if (user && !userProfile) {
     return (
       <div className="w-full h-screen bg-[#09090b] flex flex-col items-center justify-center font-sans">
+        <div className="fixed top-4 right-4 z-[110]"><LanguagePicker /></div>
         <div className="flex flex-col items-center gap-4">
           <div className="w-10 h-10 border-2 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" />
           <div className="flex flex-col items-center gap-1">
-            <span className="text-sm font-bold text-white tracking-widest uppercase">3D Studio</span>
-            <span className="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider animate-pulse">Biasanya gak lama kok hehehe...</span>
+            <span className="text-sm font-bold text-white tracking-widest uppercase">{t("3D Studio")}</span>
+            <span className="text-[10px] text-zinc-500 font-semibold uppercase tracking-wider animate-pulse">{t("Biasanya gak lama kok hehehe...")}</span>
           </div>
         </div>
       </div>
@@ -1584,6 +1567,7 @@ export default function App() {
     if (isBlocked || (!isTrialActive && userProfile.status === 'pending')) {
       return (
       <div className="w-full h-screen bg-[#09090b] flex items-center justify-center font-sans relative overflow-hidden select-none">
+        <div className="fixed top-4 right-4 z-[110]"><LanguagePicker /></div>
         {/* Background Accents */}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_40%,rgba(79,70,229,0.1),transparent_60%)]" />
         <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.01)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.01)_1px,transparent_1px)] bg-[size:4rem_4rem]" />
@@ -1603,16 +1587,14 @@ export default function App() {
             {/* Content */}
             <div className="flex flex-col gap-2">
               <h2 className="text-xl font-bold text-white tracking-tight">
-                {isBlocked ? "Access Suspended" : "Access Request Pending"}
+                {isBlocked ? t("Access Suspended") : t("Access Request Pending")}
               </h2>
               <p className="text-xs text-zinc-400 leading-relaxed px-2">
-                {isBlocked 
-                  ? "Your workspace access has been blocked or suspended by an administrator." 
-                  : "Your account is registered! To secure this customizer, an administrator must approve your access request before you can design shoe models."}
+                {isBlocked ? t("Your workspace access has been blocked or suspended by an administrator.") : t("Your account is registered! To secure this customizer, an administrator must approve your access request before you can design shoe models.")}
               </p>
               {!isBlocked && (
                 <div className="mt-2 text-[10px] bg-indigo-500/10 text-indigo-300 py-1.5 px-3 rounded-lg border border-indigo-500/20 font-semibold self-center">
-                  Registration Email: {user.email}
+                   {t("Registration Email:")} {user.email}
                 </div>
               )}
             </div>
@@ -1625,7 +1607,7 @@ export default function App() {
                 className="w-full bg-zinc-800 hover:bg-zinc-700 active:scale-95 text-white font-bold py-3 px-4 rounded-xl text-xs uppercase tracking-wider transition-all border border-white/10 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
               >
                 <RefreshCw size={14} className={refreshingProfile ? "animate-spin" : ""} />
-                <span>{refreshingProfile ? "Checking..." : "Refresh Access Status"}</span>
+                <span>{refreshingProfile ? t("Checking...") : t("Refresh Access Status")}</span>
               </button>
 
               <button
@@ -1633,14 +1615,13 @@ export default function App() {
                 className="w-full bg-zinc-950 hover:bg-zinc-900 active:scale-95 text-zinc-400 hover:text-red-400 font-bold py-3 px-4 rounded-xl text-xs uppercase tracking-wider transition-all border border-white/5 flex items-center justify-center gap-2 cursor-pointer"
               >
                 <LogOut size={14} />
-                <span>Sign Out of Account</span>
+                <span>{t("Sign Out of Account")}</span>
               </button>
             </div>
 
             {/* Note about admin */}
             <div className="text-[10px] text-zinc-500 leading-relaxed border-t border-white/5 pt-4 w-full">
-              Need immediate entry? Log in with admin credentials to configure authorization parameters.
-            </div>
+               {t("Need immediate entry? Log in with admin credentials to configure authorization parameters.")} </div>
 
           </div>
         </div>
@@ -1746,11 +1727,9 @@ export default function App() {
             </div>
             <div className="flex flex-col gap-1.5">
               <h3 className="text-sm font-semibold text-white tracking-wide">
-                Belum Ada Produk Dipilih
-              </h3>
+                 {t("Belum Ada Produk Dipilih")} </h3>
               <p className="text-xs text-zinc-400 leading-relaxed">
-                Silakan pilih atau unggah model 3D (format <code className="bg-white/5 px-1 py-0.5 rounded text-blue-400 font-mono">.glb</code>, <code className="bg-white/5 px-1 py-0.5 rounded text-blue-400 font-mono">.gltf</code>, <code className="bg-white/5 px-1 py-0.5 rounded text-blue-400 font-mono">.obj</code>) melalui tab <strong className="text-zinc-200">Models</strong> di panel bawah untuk memulai kustomisasi 3D Anda.
-              </p>
+                 {t("Silakan pilih atau unggah model 3D (format")} <code className="bg-white/5 px-1 py-0.5 rounded text-blue-400 font-mono">{t(".glb")}</code>, <code className="bg-white/5 px-1 py-0.5 rounded text-blue-400 font-mono">{t(".gltf")}</code>, <code className="bg-white/5 px-1 py-0.5 rounded text-blue-400 font-mono">{t(".obj")}</code>{t(") melalui tab")} <strong className="text-zinc-200">{t("Models")}</strong>  {t("di panel bawah untuk memulai kustomisasi 3D Anda.")} </p>
             </div>
           </div>
         </div>

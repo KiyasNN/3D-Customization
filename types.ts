@@ -197,9 +197,7 @@ export interface AppState {
   uploadedAssets: UploadedAsset[]; // List of uploaded model metadata
   currentModel: UploadedAsset | null; // Currently loaded custom model
   customParts: string[]; // List of part IDs found in custom model
-  partMaterialSlots: Record<string, string[]>;
-  setPartMaterialSlots: (partId: string, slots: string[]) => void;
-  setPartColor: (partId: string, color: string, slot?: number) => void;
+  setPartColor: (partId: string, color: string) => void;
   modelResetCounter: number; // Increment to force remount/reset of custom model
 
   savedVariants: SavedVariant[]; // Saved designs

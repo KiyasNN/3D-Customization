@@ -1,3 +1,4 @@
+import { t, useLanguage } from '../services/i18n';
 import React, { useState, useRef } from "react";
 import { useStore } from "../store";
 import { INITIAL_MATERIALS, MATERIAL_PRESETS } from "../constants";
@@ -24,6 +25,7 @@ export const AssetBrowser: React.FC<AssetBrowserProps> = ({
   setShowAssetBrowser,
   isEmbedded = false,
 }) => {
+  useLanguage();
   const isMobile = useStore((s) => s.isMobile);
   const materials = useStore((s) => s.materials) || [];
   const uploadMaterial = useStore((s) => s.uploadMaterial);
@@ -103,7 +105,7 @@ export const AssetBrowser: React.FC<AssetBrowserProps> = ({
               : "text-zinc-500 hover:text-zinc-300"
           }`}
         >
-          <Library size={11} /> Presets ({presetMaterials.length})
+          <Library size={11} />  {t("Presets (")}{presetMaterials.length})
         </button>
         <button
           onClick={() => setActiveTab("uploaded")}
@@ -113,7 +115,7 @@ export const AssetBrowser: React.FC<AssetBrowserProps> = ({
               : "text-zinc-500 hover:text-zinc-300"
           }`}
         >
-          <Upload size={11} /> Uploads ({uploadedMaterials.length})
+          <Upload size={11} />  {t("Uploads (")}{uploadedMaterials.length})
         </button>
         <button
           onClick={() => setActiveTab("ai")}
@@ -123,7 +125,7 @@ export const AssetBrowser: React.FC<AssetBrowserProps> = ({
               : "text-zinc-500 hover:text-zinc-300"
           }`}
         >
-          <Sparkles size={11} /> AI Gen ({aiMaterials.length})
+          <Sparkles size={11} />  {t("AI Gen (")}{aiMaterials.length})
         </button>
       </div>
 
@@ -151,13 +153,13 @@ export const AssetBrowser: React.FC<AssetBrowserProps> = ({
             {isProcessingMaterial ? (
               <>
                 <Loader2 size={16} className="text-blue-500 animate-spin" />
-                <span className="text-[9px] font-medium text-zinc-400">Processing image...</span>
+                <span className="text-[9px] font-medium text-zinc-400">{t("Processing image...")}</span>
               </>
             ) : (
               <>
                 <Upload size={16} className="text-zinc-400" />
-                <span className="text-[10px] font-bold text-zinc-300">Upload Texture Image</span>
-                <span className="text-[8px] text-zinc-500">Drag file here or click to browse</span>
+                <span className="text-[10px] font-bold text-zinc-300">{t("Upload Texture Image")}</span>
+                <span className="text-[8px] text-zinc-500">{t("Drag file here or click to browse")}</span>
               </>
             )}
           </div>
@@ -171,23 +173,21 @@ export const AssetBrowser: React.FC<AssetBrowserProps> = ({
             {activeTab === "ai" ? (
               <>
                 <Sparkles size={24} className="text-zinc-600 mb-2" />
-                <p className="text-xs font-semibold text-zinc-400">No AI textures yet</p>
+                <p className="text-xs font-semibold text-zinc-400">{t("No AI textures yet")}</p>
                 <p className="text-[10px] text-zinc-500 max-w-[180px] mt-1">
-                  Use the **AI Texture Generator** tab in the sidebar to generate custom designs.
-                </p>
+                   {t("Use the **AI Texture Generator** tab in the sidebar to generate custom designs.")} </p>
               </>
             ) : activeTab === "uploaded" ? (
               <>
                 <Upload size={24} className="text-zinc-600 mb-2" />
-                <p className="text-xs font-semibold text-zinc-400">No uploads yet</p>
+                <p className="text-xs font-semibold text-zinc-400">{t("No uploads yet")}</p>
                 <p className="text-[10px] text-zinc-500 max-w-[180px] mt-1">
-                  Drag & drop an image file or click above to upload custom shoe skins.
-                </p>
+                   {t("Drag & drop an image file or click above to upload custom shoe skins.")} </p>
               </>
             ) : (
               <>
                 <Library size={24} className="text-zinc-600 mb-2" />
-                <p className="text-xs font-semibold text-zinc-400">No preset textures</p>
+                <p className="text-xs font-semibold text-zinc-400">{t("No preset textures")}</p>
               </>
             )}
           </div>
@@ -210,7 +210,7 @@ export const AssetBrowser: React.FC<AssetBrowserProps> = ({
                       ? "border-blue-500 ring-2 ring-blue-500/30 shadow-[0_0_12px_rgba(59,130,246,0.3)]" 
                       : "border-white/5 hover:border-blue-500/50 hover:shadow-lg hover:shadow-blue-900/10"
                   }`}
-                  title={`${mat.name} - Drag to part, or select a layer and click to apply`}
+                  title={t("{0} - Drag to part, or select a layer and click to apply", [mat.name])}
                 >
                   {/* Texture Preview */}
                   <div
@@ -236,7 +236,7 @@ export const AssetBrowser: React.FC<AssetBrowserProps> = ({
                           handleSelectMaterial(mat.id);
                         }}
                         className="p-1 bg-blue-600 hover:bg-blue-500 rounded text-white shadow transition-colors cursor-pointer"
-                        title="Apply to selected part"
+                        title={t("Apply to selected part")}
                       >
                         <Plus size={10} />
                       </button>
@@ -250,7 +250,7 @@ export const AssetBrowser: React.FC<AssetBrowserProps> = ({
                           removeMaterial(mat.id);
                         }}
                         className="p-1 bg-red-600 hover:bg-red-500 rounded text-white shadow transition-colors cursor-pointer"
-                        title="Delete texture asset"
+                        title={t("Delete texture asset")}
                       >
                         <Trash2 size={10} />
                       </button>
@@ -274,7 +274,7 @@ export const AssetBrowser: React.FC<AssetBrowserProps> = ({
       <div className="p-2 border-t border-white/5 bg-black/40 text-center shrink-0">
         <p className="text-[9px] text-zinc-500 flex items-center justify-center gap-1 font-medium">
           <HelpCircle size={10} className="text-zinc-500 animate-pulse" />
-          <span>Drag texture to shoe or select layer & click</span>
+          <span>{t("Drag texture to shoe or select layer & click")}</span>
         </p>
       </div>
     </>
@@ -297,8 +297,7 @@ export const AssetBrowser: React.FC<AssetBrowserProps> = ({
       {/* Header */}
       <div className="p-3 border-b border-white/5 bg-white/5 backdrop-blur-xl flex justify-between items-center shrink-0">
         <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-300 flex items-center gap-2">
-          <FolderIcon size={14} className="text-blue-400" /> Asset Browser
-        </h3>
+          <FolderIcon size={14} className="text-blue-400" />  {t("Asset Browser")} </h3>
         {setShowAssetBrowser && (
           <button
             onClick={() => setShowAssetBrowser(false)}

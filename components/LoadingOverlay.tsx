@@ -1,9 +1,11 @@
+import { t, useLanguage } from '../services/i18n';
 import React from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Loader2 } from "lucide-react";
 import { useStore } from "../store";
 
 export const LoadingOverlay = () => {
+  useLanguage();
   const isModelLoading = useStore((s) => s.isModelLoading);
   const modelLoadingProgress = useStore((s) => s.modelLoadingProgress);
   const currentModel = useStore((s) => s.currentModel);
@@ -53,8 +55,7 @@ export const LoadingOverlay = () => {
               transition={{ delay: 0.1, duration: 0.4 }}
               className="text-base font-medium text-white tracking-widest uppercase flex items-center gap-2 mb-2 font-sans"
             >
-              Configuring 3D Canvas
-            </motion.h3>
+               {t("Loading engine…")} </motion.h3>
 
             <motion.p 
               initial={{ y: 15, opacity: 0 }}
@@ -62,7 +63,7 @@ export const LoadingOverlay = () => {
               transition={{ delay: 0.2, duration: 0.4 }}
               className="text-sm text-zinc-400 font-medium mb-8 px-4 truncate max-w-sm"
             >
-              {currentModel?.name || 'Loading Model'}
+              {currentModel?.name || t("Loading Model")}
             </motion.p>
 
             {/* Progress bar container */}
@@ -86,14 +87,10 @@ export const LoadingOverlay = () => {
               transition={{ delay: 0.3 }}
               className="text-xs text-zinc-500 font-mono tracking-widest uppercase"
             >
-              {modelLoadingProgress > 0 ? `Loading Asset • ${modelLoadingProgress}%` : 'Communicating with loader...'}
+              {modelLoadingProgress > 0 ? t("Loading Asset • {0}%", [modelLoadingProgress]) : t("Preparing model…")}
             </motion.div>
 
-            {/* Engine Status indicator */}
-            <div className="mt-8 flex items-center gap-2 px-3 py-1.5 rounded-full bg-zinc-900/60 border border-zinc-800/40 text-[10px] text-zinc-500 font-mono tracking-widest uppercase">
-              <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-ping" />
-              <span>Three.js Engine Online</span>
-            </div>
+
           </div>
         </motion.div>
       )}

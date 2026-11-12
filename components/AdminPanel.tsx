@@ -1,3 +1,4 @@
+import { t, useLanguage } from '../services/i18n';
 import React, { useState, useEffect } from "react";
 import { useStore } from "../store";
 import { getAllUserProfiles, updateUserStatus, UserProfile } from "../services/firebase";
@@ -35,6 +36,7 @@ import {
 } from "lucide-react";
 
 export const AdminPanel = () => {
+  useLanguage();
   const isAdminPanelOpen = useStore((s) => s.isAdminPanelOpen);
   const setAdminPanelOpen = useStore((s) => s.setAdminPanelOpen);
   const user = useStore((s) => s.user);
@@ -160,14 +162,11 @@ export const AdminPanel = () => {
             </div>
             <div>
               <h2 className="text-white text-base font-bold tracking-tight flex items-center gap-2">
-                Control Panel
-                <span className="text-[10px] font-semibold text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-full border border-indigo-500/20">
-                  DEVELOPER / ADMIN MODE
-                </span>
+                 {t("Control Panel")} <span className="text-[10px] font-semibold text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-full border border-indigo-500/20">
+                   {t("DEVELOPER / ADMIN MODE")} </span>
               </h2>
               <p className="text-[11px] text-zinc-400 font-medium">
-                Manage platform branding, toggle feature flags, configure premium material lockouts, and inspect client tenants.
-              </p>
+                 {t("Manage platform branding, toggle feature flags, configure premium material lockouts, and inspect client tenants.")} </p>
             </div>
           </div>
           <button
@@ -193,8 +192,7 @@ export const AdminPanel = () => {
                 }`}
               >
                 <BarChart2 size={15} />
-                Dashboard
-              </button>
+                 {t("Dashboard")} </button>
               <button
                 onClick={() => setActiveAdminTab("branding")}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold tracking-wide transition-all ${
@@ -204,8 +202,7 @@ export const AdminPanel = () => {
                 }`}
               >
                 <Sliders size={15} />
-                Branding & Features
-              </button>
+                 {t("Branding & Features")} </button>
               <button
                 onClick={() => setActiveAdminTab("tenants")}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold tracking-wide transition-all ${
@@ -215,8 +212,7 @@ export const AdminPanel = () => {
                 }`}
               >
                 <Users size={15} />
-                Tenant Manager
-              </button>
+                 {t("Tenant Manager")} </button>
               <button
                 onClick={() => setActiveAdminTab("materials")}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold tracking-wide transition-all ${
@@ -226,8 +222,7 @@ export const AdminPanel = () => {
                 }`}
               >
                 <Layers size={15} />
-                Materials & Tiers
-              </button>
+                 {t("Materials & Tiers")} </button>
               <button
                 onClick={() => setActiveAdminTab("users")}
                 className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold tracking-wide transition-all ${
@@ -238,7 +233,7 @@ export const AdminPanel = () => {
               >
                 <div className="flex items-center gap-3">
                   <ShieldCheck size={15} />
-                  <span>User Authorization</span>
+                  <span>{t("User Authorization")}</span>
                 </div>
                 {profiles.filter((p) => p.status === "pending").length > 0 && (
                   <span className="text-[9px] bg-amber-500 text-zinc-950 font-extrabold px-1.5 py-0.5 rounded-full animate-pulse shrink-0">
@@ -252,11 +247,10 @@ export const AdminPanel = () => {
             <div className="p-3 bg-white/5 border border-white/5 rounded-xl">
               <div className="flex items-center gap-2 mb-1">
                 <Database size={12} className="text-zinc-400" />
-                <span className="text-[10px] font-bold text-zinc-300">Live Client Sync</span>
+                <span className="text-[10px] font-bold text-zinc-300">{t("Live Client Sync")}</span>
               </div>
               <p className="text-[9px] text-zinc-500 leading-normal">
-                Modifications are stored directly in the active Zustand context state and immediately update the live 3D renderer.
-              </p>
+                 {t("Modifications are stored directly in the active Zustand context state and immediately update the live 3D renderer.")} </p>
             </div>
           </div>
 
@@ -271,42 +265,40 @@ export const AdminPanel = () => {
                 <div className="grid grid-cols-4 gap-4">
                   <div className="bg-zinc-950 border border-white/10 rounded-xl p-4 flex flex-col">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">Total Platform MRR</span>
+                      <span className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">{t("Total Platform MRR")}</span>
                       <DollarSign size={16} className="text-emerald-400" />
                     </div>
                     <span className="text-xl font-bold text-white">${saasConfig.metrics.totalRevenue.toLocaleString()}</span>
                     <span className="text-[9px] text-emerald-400 font-semibold mt-1 flex items-center gap-1">
-                      <TrendingUp size={10} /> +18.4% this month
-                    </span>
+                      <TrendingUp size={10} />  {t("+18.4% this month")} </span>
                   </div>
 
                   <div className="bg-zinc-950 border border-white/10 rounded-xl p-4 flex flex-col">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">Active Tenants</span>
+                      <span className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">{t("Active Tenants")}</span>
                       <Users size={16} className="text-blue-400" />
                     </div>
-                    <span className="text-xl font-bold text-white">{saasConfig.tenants.length} Subscribers</span>
+                    <span className="text-xl font-bold text-white">{saasConfig.tenants.length}  {t("Subscribers")}</span>
                     <span className="text-[9px] text-blue-400 font-semibold mt-1">
-                      {saasConfig.tenants.filter(t => t.tier === 'Pro').length} Pro · {saasConfig.tenants.filter(t => t.tier === 'Enterprise').length} Enterprise
-                    </span>
+                      {saasConfig.tenants.filter(t => t.tier === 'Pro').length}  {t("Pro ·")} {saasConfig.tenants.filter(t => t.tier === 'Enterprise').length}  {t("Enterprise")} </span>
                   </div>
 
                   <div className="bg-zinc-950 border border-white/10 rounded-xl p-4 flex flex-col">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">Customizations</span>
+                      <span className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">{t("Customizations")}</span>
                       <Layers size={16} className="text-indigo-400" />
                     </div>
                     <span className="text-xl font-bold text-white">{saasConfig.metrics.customizationsCreated.toLocaleString()}</span>
-                    <span className="text-[9px] text-zinc-500 mt-1">Renders & design variants saved</span>
+                    <span className="text-[9px] text-zinc-500 mt-1">{t("Renders & design variants saved")}</span>
                   </div>
 
                   <div className="bg-zinc-950 border border-white/10 rounded-xl p-4 flex flex-col">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">Conversion Rate</span>
+                      <span className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">{t("Conversion Rate")}</span>
                       <Percent size={16} className="text-purple-400" />
                     </div>
                     <span className="text-xl font-bold text-white">{saasConfig.metrics.conversions}%</span>
-                    <span className="text-[9px] text-purple-400 font-semibold mt-1">Free to Pro subscriber tier conversion</span>
+                    <span className="text-[9px] text-purple-400 font-semibold mt-1">{t("Free to Pro subscriber tier conversion")}</span>
                   </div>
                 </div>
 
@@ -316,8 +308,8 @@ export const AdminPanel = () => {
                   {/* CHART 1: MONTHLY REVENUE GROWTH */}
                   <div className="col-span-3 bg-zinc-950 border border-white/10 rounded-xl p-5 flex flex-col justify-between h-[180px]">
                     <div>
-                      <h3 className="text-white text-xs font-bold tracking-tight">MRR Monthly Growth (USD)</h3>
-                      <p className="text-[10px] text-zinc-400">Steady upward growth across mid-market enterprise tiers.</p>
+                      <h3 className="text-white text-xs font-bold tracking-tight">{t("MRR Monthly Growth (USD)")}</h3>
+                      <p className="text-[10px] text-zinc-400">{t("Steady upward growth across mid-market enterprise tiers.")}</p>
                     </div>
                     <div className="flex items-end gap-3 h-20 pt-4 px-2">
                       {[
@@ -342,29 +334,29 @@ export const AdminPanel = () => {
                   {/* CHART 2: SUBSCRIPTION BREAKDOWN PIE */}
                   <div className="col-span-2 bg-zinc-950 border border-white/10 rounded-xl p-5 flex flex-col justify-between h-[180px]">
                     <div>
-                      <h3 className="text-white text-xs font-bold tracking-tight">Active Plan Distribution</h3>
-                      <p className="text-[10px] text-zinc-400">Total revenue contributions per subscriber tier.</p>
+                      <h3 className="text-white text-xs font-bold tracking-tight">{t("Active Plan Distribution")}</h3>
+                      <p className="text-[10px] text-zinc-400">{t("Total revenue contributions per subscriber tier.")}</p>
                     </div>
                     <div className="flex items-center justify-between gap-3">
                       <div className="space-y-1.5 flex-1">
                         <div className="flex items-center gap-2 justify-between">
                           <div className="flex items-center gap-1.5">
                             <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                            <span className="text-[10px] text-zinc-400">Enterprise</span>
+                            <span className="text-[10px] text-zinc-400">{t("Enterprise")}</span>
                           </div>
                           <span className="text-[10px] font-bold text-white font-mono">60%</span>
                         </div>
                         <div className="flex items-center gap-2 justify-between">
                           <div className="flex items-center gap-1.5">
                             <span className="w-2 h-2 rounded-full bg-indigo-500" />
-                            <span className="text-[10px] text-zinc-400">Pro Teams</span>
+                            <span className="text-[10px] text-zinc-400">{t("Pro Teams")}</span>
                           </div>
                           <span className="text-[10px] font-bold text-white font-mono">32%</span>
                         </div>
                         <div className="flex items-center gap-2 justify-between">
                           <div className="flex items-center gap-1.5">
                             <span className="w-2 h-2 rounded-full bg-zinc-500" />
-                            <span className="text-[10px] text-zinc-400">Free Trial</span>
+                            <span className="text-[10px] text-zinc-400">{t("Free Trial")}</span>
                           </div>
                           <span className="text-[10px] font-bold text-white font-mono">8%</span>
                         </div>
@@ -372,7 +364,7 @@ export const AdminPanel = () => {
                       
                       <div className="w-20 h-20 rounded-full border-[8px] border-indigo-600/20 relative flex items-center justify-center flex-shrink-0">
                         <div className="absolute inset-0 rounded-full border-[8px] border-transparent border-t-emerald-500 border-r-indigo-500 rotate-45" />
-                        <span className="text-[9px] font-bold text-white">Platform KPI</span>
+                        <span className="text-[9px] font-bold text-white">{t("Platform KPI")}</span>
                       </div>
                     </div>
                   </div>
@@ -385,18 +377,16 @@ export const AdminPanel = () => {
                       <Award size={18} />
                     </div>
                     <div>
-                      <h4 className="text-white text-xs font-bold tracking-tight">Global Feature Restrictions Active</h4>
+                      <h4 className="text-white text-xs font-bold tracking-tight">{t("Global Feature Restrictions Active")}</h4>
                       <p className="text-[10px] text-zinc-400">
-                        Features toggled on the Branding tab instantly enable or disable capabilities globally across the active designer viewports.
-                      </p>
+                         {t("Features toggled on the Branding tab instantly enable or disable capabilities globally across the active designer viewports.")} </p>
                     </div>
                   </div>
                   <button
                     onClick={() => setActiveAdminTab("branding")}
                     className="bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] uppercase tracking-wider font-bold px-3 py-1.5 rounded-lg shadow transition-colors"
                   >
-                    Adjust Toggles
-                  </button>
+                     {t("Adjust Toggles")} </button>
                 </div>
 
               </div>
@@ -410,25 +400,25 @@ export const AdminPanel = () => {
                   {/* APP NAME BRANDING */}
                   <div className="bg-zinc-950 border border-white/10 rounded-xl p-5 space-y-4">
                     <div>
-                      <h3 className="text-white text-xs font-bold tracking-tight">White-label Branding</h3>
-                      <p className="text-[10px] text-zinc-400">Rebrand the customizer title and typography globally.</p>
+                      <h3 className="text-white text-xs font-bold tracking-tight">{t("White-label Branding")}</h3>
+                      <p className="text-[10px] text-zinc-400">{t("Rebrand the customizer title and typography globally.")}</p>
                     </div>
 
                     <div className="space-y-3">
                       <div className="flex flex-col gap-1.5">
-                        <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Platform Name</label>
+                        <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">{t("Platform Name")}</label>
                         <input
                           type="text"
                           value={saasConfig.appName}
                           onChange={(e) => updateSaasConfig({ appName: e.target.value })}
                           className="bg-zinc-900 border border-white/10 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-lg px-3 py-2 text-xs text-white placeholder-zinc-500 focus:outline-none transition-all"
-                          placeholder="e.g. Customizer Pro"
+                          placeholder={t("e.g. Customizer Pro")}
                         />
                       </div>
 
                       {/* BRANDING ACCENT COLOR */}
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Dynamic Accent Theme</label>
+                        <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">{t("Dynamic Accent Theme")}</label>
                         <div className="grid grid-cols-5 gap-1.5">
                           {themeColors.map((color) => {
                             const isSelected = saasConfig.themeColor === color.value;
@@ -453,7 +443,7 @@ export const AdminPanel = () => {
                       {/* FREE LIMIT SCALE */}
                       <div className="grid grid-cols-2 gap-3 pt-2">
                         <div className="flex flex-col gap-1">
-                          <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Free Saves Limit</label>
+                          <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">{t("Free Saves Limit")}</label>
                           <input
                             type="number"
                             value={saasConfig.pricingTiers.freeLimit}
@@ -462,7 +452,7 @@ export const AdminPanel = () => {
                           />
                         </div>
                         <div className="flex flex-col gap-1">
-                          <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Pro Monthly Price</label>
+                          <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">{t("Pro Monthly Price")}</label>
                           <div className="relative">
                             <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-500 text-xs">$</span>
                             <input
@@ -480,8 +470,8 @@ export const AdminPanel = () => {
                   {/* FEATURE TOGGLES */}
                   <div className="bg-zinc-950 border border-white/10 rounded-xl p-5 space-y-4">
                     <div>
-                      <h3 className="text-white text-xs font-bold tracking-tight">Feature Entitlements</h3>
-                      <p className="text-[10px] text-zinc-400">Dynamically toggle which customizer features are unlocked in the app.</p>
+                      <h3 className="text-white text-xs font-bold tracking-tight">{t("Feature Entitlements")}</h3>
+                      <p className="text-[10px] text-zinc-400">{t("Dynamically toggle which customizer features are unlocked in the app.")}</p>
                     </div>
 
                     <div className="space-y-3.5 divide-y divide-white/5">
@@ -489,10 +479,9 @@ export const AdminPanel = () => {
                       <div className="flex items-center justify-between pt-1.5">
                         <div className="flex flex-col">
                           <span className="text-xs font-semibold text-white flex items-center gap-1.5">
-                            AI Texture Generation
-                            <Sparkles size={11} className="text-purple-400 animate-pulse" />
+                             {t("AI Texture Generation")} <Sparkles size={11} className="text-purple-400 animate-pulse" />
                           </span>
-                          <span className="text-[9px] text-zinc-500">Renders material styles using Gemini API prompts.</span>
+                          <span className="text-[9px] text-zinc-500">{t("Renders material styles using Gemini API prompts.")}</span>
                         </div>
                         <button
                           onClick={() => toggleSaasFeature("aiGen")}
@@ -507,8 +496,8 @@ export const AdminPanel = () => {
                       {/* SEAMLESS PBR */}
                       <div className="flex items-center justify-between pt-3">
                         <div className="flex flex-col">
-                          <span className="text-xs font-semibold text-white">Seamless PBR Maps (Camera Capture)</span>
-                          <span className="text-[9px] text-zinc-500">Generates Normal & Roughness maps on raw pictures.</span>
+                          <span className="text-xs font-semibold text-white">{t("Seamless PBR Maps (Camera Capture)")}</span>
+                          <span className="text-[9px] text-zinc-500">{t("Generates Normal & Roughness maps on raw pictures.")}</span>
                         </div>
                         <button
                           onClick={() => toggleSaasFeature("pbrGen")}
@@ -523,8 +512,8 @@ export const AdminPanel = () => {
                       {/* MEASUREMENT DIMENSIONS */}
                       <div className="flex items-center justify-between pt-3">
                         <div className="flex flex-col">
-                          <span className="text-xs font-semibold text-white">Dimension Measurements</span>
-                          <span className="text-[9px] text-zinc-500">Display 3D dimension line grids with sizing stats.</span>
+                          <span className="text-xs font-semibold text-white">{t("Dimension Measurements")}</span>
+                          <span className="text-[9px] text-zinc-500">{t("Display 3D dimension line grids with sizing stats.")}</span>
                         </div>
                         <button
                           onClick={() => toggleSaasFeature("measurements")}
@@ -539,8 +528,8 @@ export const AdminPanel = () => {
                       {/* VIDEO RECORDING CAPTURE */}
                       <div className="flex items-center justify-between pt-3">
                         <div className="flex flex-col">
-                          <span className="text-xs font-semibold text-white">Video Studio Export</span>
-                          <span className="text-[9px] text-zinc-500">Render 360° turntable animations with direct MP4 export.</span>
+                          <span className="text-xs font-semibold text-white">{t("Video Studio Export")}</span>
+                          <span className="text-[9px] text-zinc-500">{t("Render 360° turntable animations with direct MP4 export.")}</span>
                         </div>
                         <button
                           onClick={() => toggleSaasFeature("videoCapture")}
@@ -568,12 +557,11 @@ export const AdminPanel = () => {
                   <div className="col-span-2 bg-zinc-950 border border-white/10 rounded-xl p-5 space-y-4">
                     <div className="flex justify-between items-center">
                       <div>
-                        <h3 className="text-white text-xs font-bold tracking-tight">Active Tenant Accounts</h3>
-                        <p className="text-[10px] text-zinc-400">View active customer companies configured on this instance.</p>
+                        <h3 className="text-white text-xs font-bold tracking-tight">{t("Active Tenant Accounts")}</h3>
+                        <p className="text-[10px] text-zinc-400">{t("View active customer companies configured on this instance.")}</p>
                       </div>
                       <span className="text-[10px] font-bold text-zinc-400 bg-white/5 px-2 py-0.5 rounded border border-white/5">
-                        {filteredTenants.length} tenants
-                      </span>
+                        {filteredTenants.length}  {t("tenants")} </span>
                     </div>
 
                     {/* SEARCH & FILTERS */}
@@ -585,7 +573,7 @@ export const AdminPanel = () => {
                           value={tenantSearch}
                           onChange={(e) => setTenantSearch(e.target.value)}
                           className="bg-zinc-900 border border-white/10 rounded px-2.5 pl-8 py-1.5 text-[11px] text-white focus:outline-none focus:border-indigo-500 w-full"
-                          placeholder="Search tenant domain..."
+                          placeholder={t("Search tenant domain...")}
                         />
                       </div>
                       <div className="flex gap-1">
@@ -608,16 +596,15 @@ export const AdminPanel = () => {
                     {/* TABLE LIST */}
                     <div className="border border-white/10 rounded-lg overflow-hidden">
                       <div className="grid grid-cols-4 bg-zinc-900 px-3 py-2 border-b border-white/10 text-[9px] font-bold text-zinc-400 uppercase tracking-wider">
-                        <span>Tenant Name</span>
-                        <span>Billing Plan</span>
-                        <span>Service Status</span>
-                        <span className="text-right">Actions</span>
+                        <span>{t("Tenant Name")}</span>
+                        <span>{t("Billing Plan")}</span>
+                        <span>{t("Service Status")}</span>
+                        <span className="text-right">{t("Actions")}</span>
                       </div>
                       <div className="divide-y divide-white/5 max-h-[220px] overflow-y-auto custom-scrollbar">
                         {filteredTenants.length === 0 ? (
                           <div className="p-6 text-center text-[11px] text-zinc-500 font-medium bg-zinc-900/10">
-                            No tenants match this search or tier filter.
-                          </div>
+                             {t("No tenants match this search or tier filter.")} </div>
                         ) : (
                           filteredTenants.map((tenant) => (
                             <div key={tenant.id} className="grid grid-cols-4 px-3 py-2.5 text-xs text-white items-center hover:bg-white/5 transition-colors">
@@ -647,7 +634,7 @@ export const AdminPanel = () => {
                                 <button
                                   onClick={() => deleteSaasTenant(tenant.id)}
                                   className="p-1 hover:bg-red-500/10 text-zinc-500 hover:text-red-400 rounded transition-colors"
-                                  title="Terminate subscriber contract"
+                                  title={t("Terminate subscriber contract")}
                                 >
                                   <Trash2 size={13} />
                                 </button>
@@ -662,32 +649,32 @@ export const AdminPanel = () => {
                   {/* ADD NEW TENANT */}
                   <div className="bg-zinc-950 border border-white/10 rounded-xl p-5 space-y-4">
                     <div>
-                      <h3 className="text-white text-xs font-bold tracking-tight">Provision Tenant</h3>
-                      <p className="text-[10px] text-zinc-400">Instantly provision and simulate a new customer workspace subscription.</p>
+                      <h3 className="text-white text-xs font-bold tracking-tight">{t("Provision Tenant")}</h3>
+                      <p className="text-[10px] text-zinc-400">{t("Instantly provision and simulate a new customer workspace subscription.")}</p>
                     </div>
 
                     <form onSubmit={handleAddTenant} className="space-y-4">
                       <div className="flex flex-col gap-1">
-                        <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Company / Team Name</label>
+                        <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">{t("Company / Team Name")}</label>
                         <input
                           type="text"
                           value={newTenantName}
                           onChange={(e) => setNewTenantName(e.target.value)}
                           className="bg-zinc-900 border border-white/10 focus:border-indigo-500 rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-zinc-600 focus:outline-none"
-                          placeholder="e.g. Flight Club"
+                          placeholder={t("e.g. Flight Club")}
                         />
                       </div>
 
                       <div className="flex flex-col gap-1">
-                        <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Subscription Tier</label>
+                        <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">{t("Subscription Tier")}</label>
                         <select
                           value={newTenantTier}
                           onChange={(e) => setNewTenantTier(e.target.value as any)}
                           className="bg-zinc-900 border border-white/10 focus:border-indigo-500 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none"
                         >
-                          <option value="Free">Free Basic Plan</option>
-                          <option value="Pro">Pro Premium Team (${saasConfig.pricingTiers.proPrice}/mo)</option>
-                          <option value="Enterprise">Enterprise Dedicated ($299/mo)</option>
+                          <option value="Free">{t("Free Basic Plan")}</option>
+                          <option value="Pro">{t("Pro Premium Team ($")}{saasConfig.pricingTiers.proPrice}{t("/mo)")}</option>
+                          <option value="Enterprise">{t("Enterprise Dedicated ($299/mo)")}</option>
                         </select>
                       </div>
 
@@ -695,8 +682,7 @@ export const AdminPanel = () => {
                         type="submit"
                         className="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-1.5 shadow-md shadow-indigo-500/10"
                       >
-                        <Plus size={14} /> Provision Subscriber
-                      </button>
+                        <Plus size={14} />  {t("Provision Subscriber")} </button>
                     </form>
                   </div>
 
@@ -713,21 +699,20 @@ export const AdminPanel = () => {
                   <div className="col-span-2 bg-zinc-950 border border-white/10 rounded-xl p-5 space-y-4">
                     <div className="flex justify-between items-center">
                       <div>
-                        <h3 className="text-white text-xs font-bold tracking-tight">Active Materials & Presets Lockouts</h3>
-                        <p className="text-[10px] text-zinc-400">Configure which material presets require a Pro/Enterprise account.</p>
+                        <h3 className="text-white text-xs font-bold tracking-tight">{t("Active Materials & Presets Lockouts")}</h3>
+                        <p className="text-[10px] text-zinc-400">{t("Configure which material presets require a Pro/Enterprise account.")}</p>
                       </div>
                       <span className="text-[10px] font-bold text-zinc-400 bg-white/5 px-2 py-0.5 rounded border border-white/5">
-                        {materials.length} Presets
-                      </span>
+                        {materials.length}  {t("Presets")} </span>
                     </div>
 
                     {/* TABLE LIST */}
                     <div className="border border-white/10 rounded-lg overflow-hidden">
                       <div className="grid grid-cols-4 bg-zinc-900 px-3 py-2 border-b border-white/10 text-[9px] font-bold text-zinc-400 uppercase tracking-wider">
-                        <span>Material Spec</span>
-                        <span>Roughness / Metal</span>
-                        <span>Pricing Tier</span>
-                        <span className="text-right">Actions</span>
+                        <span>{t("Material Spec")}</span>
+                        <span>{t("Roughness / Metal")}</span>
+                        <span>{t("Pricing Tier")}</span>
+                        <span className="text-right">{t("Actions")}</span>
                       </div>
                       <div className="divide-y divide-white/5 max-h-[220px] overflow-y-auto custom-scrollbar">
                         {materials.map((mat) => (
@@ -740,7 +725,7 @@ export const AdminPanel = () => {
                               <span className="font-semibold truncate">{mat.name}</span>
                             </div>
                             <span className="font-mono text-[10px] text-zinc-500">
-                              R: {mat.roughness} · M: {mat.metalness || 0}
+                               {t("R:")} {mat.roughness}  {t("· M:")} {mat.metalness || 0}
                             </span>
                             <div>
                               <button
@@ -756,14 +741,14 @@ export const AdminPanel = () => {
                                 }`}
                               >
                                 {mat.isPremium ? <Lock size={8} /> : null}
-                                {mat.isPremium ? "Premium Pro" : "Free Tier"}
+                                {mat.isPremium ? t("Premium Pro") : t("Free Tier")}
                               </button>
                             </div>
                             <div className="text-right">
                               <button
                                 onClick={() => removeMaterial(mat.id)}
                                 className="p-1 hover:bg-red-500/10 text-zinc-500 hover:text-red-400 rounded transition-colors"
-                                title="Delete preset"
+                                title={t("Delete preset")}
                               >
                                 <Trash2 size={13} />
                               </button>
@@ -777,25 +762,25 @@ export const AdminPanel = () => {
                   {/* ADD NEW MATERIAL PRESET */}
                   <div className="bg-zinc-950 border border-white/10 rounded-xl p-5 space-y-4">
                     <div>
-                      <h3 className="text-white text-xs font-bold tracking-tight">Create Preset</h3>
-                      <p className="text-[10px] text-zinc-400">Introduce a custom material preset option available to your active tenants.</p>
+                      <h3 className="text-white text-xs font-bold tracking-tight">{t("Create Preset")}</h3>
+                      <p className="text-[10px] text-zinc-400">{t("Introduce a custom material preset option available to your active tenants.")}</p>
                     </div>
 
                     <form onSubmit={handleAddMaterial} className="space-y-4">
                       <div className="flex flex-col gap-1">
-                        <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Material Name</label>
+                        <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">{t("Material Name")}</label>
                         <input
                           type="text"
                           value={newMatName}
                           onChange={(e) => setNewMatName(e.target.value)}
                           className="bg-zinc-900 border border-white/10 focus:border-indigo-500 rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-zinc-600 focus:outline-none"
-                          placeholder="e.g. Suede Carbon"
+                          placeholder={t("e.g. Suede Carbon")}
                         />
                       </div>
 
                       <div className="grid grid-cols-2 gap-2">
                         <div className="flex flex-col gap-1">
-                          <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Base Color</label>
+                          <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">{t("Base Color")}</label>
                           <div className="flex gap-1.5">
                             <input
                               type="color"
@@ -813,24 +798,24 @@ export const AdminPanel = () => {
                         </div>
 
                         <div className="flex flex-col gap-1">
-                          <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Material Type</label>
+                          <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">{t("Material Type")}</label>
                           <select
                             value={newMatType}
                             onChange={(e) => setNewMatType(e.target.value)}
                             className="bg-zinc-900 border border-white/10 focus:border-indigo-500 rounded h-7 text-[10px] text-white focus:outline-none px-1"
                           >
-                            <option value="fabric">Fabric</option>
-                            <option value="leather">Leather</option>
-                            <option value="metal">Metal</option>
-                            <option value="rubber">Rubber</option>
-                            <option value="plastic">Glossy Plastic</option>
+                            <option value="fabric">{t("Fabric")}</option>
+                            <option value="leather">{t("Leather")}</option>
+                            <option value="metal">{t("Metal")}</option>
+                            <option value="rubber">{t("Rubber")}</option>
+                            <option value="plastic">{t("Glossy Plastic")}</option>
                           </select>
                         </div>
                       </div>
 
                       <div className="grid grid-cols-2 gap-2">
                         <div className="flex flex-col gap-1">
-                          <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Roughness ({newMatRoughness})</label>
+                          <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">{t("Roughness (")}{newMatRoughness})</label>
                           <input
                             type="range"
                             min="0"
@@ -842,7 +827,7 @@ export const AdminPanel = () => {
                           />
                         </div>
                         <div className="flex flex-col gap-1">
-                          <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Metalness ({newMatMetalness})</label>
+                          <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">{t("Metalness (")}{newMatMetalness})</label>
                           <input
                             type="range"
                             min="0"
@@ -856,7 +841,7 @@ export const AdminPanel = () => {
                       </div>
 
                       <div className="flex flex-col gap-1">
-                        <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">Preset Plan Lock</label>
+                        <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider">{t("Preset Plan Lock")}</label>
                         <div className="flex gap-3 mt-1">
                           <button
                             type="button"
@@ -867,8 +852,7 @@ export const AdminPanel = () => {
                                 : "bg-zinc-900 text-zinc-500 border-transparent"
                             }`}
                           >
-                            Free Tier
-                          </button>
+                             {t("Free Tier")} </button>
                           <button
                             type="button"
                             onClick={() => setNewMatTier("Premium")}
@@ -878,8 +862,7 @@ export const AdminPanel = () => {
                                 : "bg-zinc-900 text-zinc-500 border-transparent"
                             }`}
                           >
-                            Premium Lock
-                          </button>
+                             {t("Premium Lock")} </button>
                         </div>
                       </div>
 
@@ -887,8 +870,7 @@ export const AdminPanel = () => {
                         type="submit"
                         className="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-1.5 shadow-md shadow-indigo-500/10"
                       >
-                        <Plus size={14} /> Add Preset Option
-                      </button>
+                        <Plus size={14} />  {t("Add Preset Option")} </button>
                     </form>
                   </div>
 
@@ -903,11 +885,9 @@ export const AdminPanel = () => {
                   <div>
                     <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
                       <ShieldCheck size={16} className="text-indigo-400" />
-                      User Authorization & Access Control
-                    </h3>
+                       {t("User Authorization & Access Control")} </h3>
                     <p className="text-[11px] text-zinc-400 mt-1">
-                      Approve registered accounts to give them access to the 3D Customizer, or suspend users to block workspace entry.
-                    </p>
+                       {t("Approve registered accounts to give them access to the 3D Customizer, or suspend users to block workspace entry.")} </p>
                   </div>
                   <button
                     onClick={loadProfiles}
@@ -915,7 +895,7 @@ export const AdminPanel = () => {
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-950 border border-white/10 hover:bg-zinc-900 text-zinc-300 hover:text-white text-[11px] font-semibold transition-all disabled:opacity-50 cursor-pointer"
                   >
                     <RefreshCw size={12} className={loadingProfiles ? "animate-spin" : ""} />
-                    <span>Sync Profiles</span>
+                    <span>{t("Sync Profiles")}</span>
                   </button>
                 </div>
 
@@ -924,47 +904,47 @@ export const AdminPanel = () => {
                   <div className="bg-zinc-950/60 border border-white/5 rounded-xl p-3.5 flex flex-col relative overflow-hidden group">
                     <div className="absolute top-0 right-0 w-16 h-16 bg-indigo-500/5 rounded-full blur-xl group-hover:bg-indigo-500/10 transition-all duration-300" />
                     <div className="flex items-center justify-between mb-1 z-10">
-                      <span className="text-[9px] uppercase font-bold text-zinc-400 tracking-wider">Total Users</span>
+                      <span className="text-[9px] uppercase font-bold text-zinc-400 tracking-wider">{t("Total Users")}</span>
                       <Users size={14} className="text-indigo-400" />
                     </div>
                     <span className="text-xl font-bold text-white z-10">{profiles.length}</span>
-                    <span className="text-[9px] text-zinc-500 mt-0.5 font-medium">Registered profiles</span>
+                    <span className="text-[9px] text-zinc-500 mt-0.5 font-medium">{t("Registered profiles")}</span>
                   </div>
 
                   <div className="bg-zinc-950/60 border border-white/5 rounded-xl p-3.5 flex flex-col relative overflow-hidden group">
                     <div className="absolute top-0 right-0 w-16 h-16 bg-emerald-500/5 rounded-full blur-xl group-hover:bg-emerald-500/10 transition-all duration-300" />
                     <div className="flex items-center justify-between mb-1 z-10">
-                      <span className="text-[9px] uppercase font-bold text-zinc-400 tracking-wider">Approved</span>
+                      <span className="text-[9px] uppercase font-bold text-zinc-400 tracking-wider">{t("Approved")}</span>
                       <UserCheck size={14} className="text-emerald-400" />
                     </div>
                     <span className="text-xl font-bold text-emerald-400 z-10">
                       {profiles.filter((p) => p.status === "approved").length}
                     </span>
-                    <span className="text-[9px] text-zinc-500 mt-0.5 font-medium">Full active access</span>
+                    <span className="text-[9px] text-zinc-500 mt-0.5 font-medium">{t("Full active access")}</span>
                   </div>
 
                   <div className="bg-zinc-950/60 border border-white/5 rounded-xl p-3.5 flex flex-col relative overflow-hidden group">
                     <div className="absolute top-0 right-0 w-16 h-16 bg-amber-500/5 rounded-full blur-xl group-hover:bg-amber-500/10 transition-all duration-300" />
                     <div className="flex items-center justify-between mb-1 z-10">
-                      <span className="text-[9px] uppercase font-bold text-zinc-400 tracking-wider">Pending Approval</span>
+                      <span className="text-[9px] uppercase font-bold text-zinc-400 tracking-wider">{t("Pending Approval")}</span>
                       <Clock size={14} className="text-amber-400 animate-pulse" />
                     </div>
                     <span className={`text-xl font-bold z-10 ${profiles.filter((p) => p.status === "pending").length > 0 ? "text-amber-400 animate-pulse" : "text-white"}`}>
                       {profiles.filter((p) => p.status === "pending").length}
                     </span>
-                    <span className="text-[9px] text-zinc-500 mt-0.5 font-medium">Awaiting approval</span>
+                    <span className="text-[9px] text-zinc-500 mt-0.5 font-medium">{t("Awaiting approval")}</span>
                   </div>
 
                   <div className="bg-zinc-950/60 border border-white/5 rounded-xl p-3.5 flex flex-col relative overflow-hidden group">
                     <div className="absolute top-0 right-0 w-16 h-16 bg-red-500/5 rounded-full blur-xl group-hover:bg-red-500/10 transition-all duration-300" />
                     <div className="flex items-center justify-between mb-1 z-10">
-                      <span className="text-[9px] uppercase font-bold text-zinc-400 tracking-wider">Blocked</span>
+                      <span className="text-[9px] uppercase font-bold text-zinc-400 tracking-wider">{t("Blocked")}</span>
                       <UserX size={14} className="text-red-400" />
                     </div>
                     <span className="text-xl font-bold text-red-400 z-10">
                       {profiles.filter((p) => p.status === "blocked").length}
                     </span>
-                    <span className="text-[9px] text-zinc-500 mt-0.5 font-medium">Access suspended</span>
+                    <span className="text-[9px] text-zinc-500 mt-0.5 font-medium">{t("Access suspended")}</span>
                   </div>
                 </div>
 
@@ -974,7 +954,7 @@ export const AdminPanel = () => {
                     <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
                     <input
                       type="text"
-                      placeholder="Search users by email..."
+                      placeholder={t("Search users by email...")}
                       value={profilesSearch}
                       onChange={(e) => setProfilesSearch(e.target.value)}
                       className="w-full bg-zinc-950/60 border border-white/5 rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-indigo-500/50 transition-all font-sans"
@@ -987,10 +967,10 @@ export const AdminPanel = () => {
                       onChange={(e) => setProfilesFilter(e.target.value as any)}
                       className="bg-zinc-950/60 border border-white/5 rounded-lg px-2.5 py-1.5 text-[11px] text-zinc-300 focus:outline-none focus:border-indigo-500/50 transition-all font-semibold font-sans"
                     >
-                      <option value="all">All Statuses</option>
-                      <option value="pending">Pending Approval</option>
-                      <option value="approved">Approved</option>
-                      <option value="blocked">Blocked</option>
+                      <option value="all">{t("All Statuses")}</option>
+                      <option value="pending">{t("Pending Approval")}</option>
+                      <option value="approved">{t("Approved")}</option>
+                      <option value="blocked">{t("Blocked")}</option>
                     </select>
                   </div>
                 </div>
@@ -1000,7 +980,7 @@ export const AdminPanel = () => {
                   {loadingProfiles && profiles.length === 0 ? (
                     <div className="p-12 flex flex-col items-center justify-center gap-3">
                       <div className="w-8 h-8 border-2 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" />
-                      <span className="text-[11px] text-zinc-500 font-bold uppercase tracking-wider">Syncing profiles database...</span>
+                      <span className="text-[11px] text-zinc-500 font-bold uppercase tracking-wider">{t("Syncing profiles database...")}</span>
                     </div>
                   ) : profiles.filter((p) => {
                     const matchesSearch = p.email.toLowerCase().includes(profilesSearch.toLowerCase());
@@ -1009,11 +989,9 @@ export const AdminPanel = () => {
                   }).length === 0 ? (
                     <div className="p-12 flex flex-col items-center justify-center text-center gap-2">
                       <Users size={32} className="text-zinc-600 mb-1" />
-                      <h4 className="text-xs font-bold text-zinc-400">No registered profiles found</h4>
+                      <h4 className="text-xs font-bold text-zinc-400">{t("No registered profiles found")}</h4>
                       <p className="text-[10px] text-zinc-500 max-w-xs leading-relaxed">
-                        {profilesSearch || profilesFilter !== "all" 
-                          ? "Adjust or clear your search terms and filters to view more profiles."
-                          : "New signups will automatically be queued here for access authorization."}
+                        {profilesSearch || profilesFilter !== "all" ? t("Adjust or clear your search terms and filters to view more profiles.") : t("New signups will automatically be queued here for access authorization.")}
                       </p>
                     </div>
                   ) : (
@@ -1021,10 +999,10 @@ export const AdminPanel = () => {
                       <table className="w-full text-left border-collapse font-sans">
                         <thead>
                           <tr className="bg-zinc-900 border-b border-white/10 text-[10px] uppercase font-bold text-zinc-400 tracking-wider">
-                            <th className="p-4">User Profile / Email</th>
-                            <th className="p-4">Registration Date</th>
-                            <th className="p-4">Access Status</th>
-                            <th className="p-4 text-right">Actions / Controls</th>
+                            <th className="p-4">{t("User Profile / Email")}</th>
+                            <th className="p-4">{t("Registration Date")}</th>
+                            <th className="p-4">{t("Access Status")}</th>
+                            <th className="p-4 text-right">{t("Actions / Controls")}</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-white/5 text-xs text-zinc-300">
@@ -1044,15 +1022,15 @@ export const AdminPanel = () => {
                                 <td className="p-4">
                                   <div className="flex flex-col gap-0.5">
                                     <span className="text-white font-bold tracking-tight">
-                                      {profile.email || "Anonymous Emulated Sandbox Account"}
+                                      {profile.email || t("Anonymous Emulated Sandbox Account")}
                                     </span>
                                     <span className="text-[9px] font-mono text-zinc-500">
-                                      UID: {profile.uid} {isSelf && "• Admin Session Protected"}
+                                       {t("UID:")} {profile.uid} {isSelf && "• Admin Session Protected"}
                                     </span>
                                   </div>
                                 </td>
                                 <td className="p-4 text-zinc-400 font-medium">
-                                  {profile.requestedAt ? new Date(profile.requestedAt).toLocaleString() : "Pre-configured"}
+                                  {profile.requestedAt ? new Date(profile.requestedAt).toLocaleString() : t("Pre-configured")}
                                 </td>
                                 <td className="p-4">
                                   <div className="flex">
@@ -1066,18 +1044,15 @@ export const AdminPanel = () => {
                                       {isApproved ? (
                                         <>
                                           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                                          Approved
-                                        </>
+                                           {t("Approved")} </>
                                       ) : isBlocked ? (
                                         <>
                                           <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
-                                          Blocked
-                                        </>
+                                           {t("Blocked")} </>
                                       ) : (
                                         <>
                                           <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-                                          Pending Request
-                                        </>
+                                           {t("Pending Request")} </>
                                       )}
                                     </span>
                                   </div>
@@ -1085,8 +1060,7 @@ export const AdminPanel = () => {
                                 <td className="p-4 text-right">
                                   {isSelf ? (
                                     <span className="text-[10px] font-bold text-indigo-400 bg-indigo-500/10 px-2.5 py-1 rounded-lg border border-indigo-500/20">
-                                      Protected Admin Account
-                                    </span>
+                                       {t("Protected Admin Account")} </span>
                                   ) : (
                                     <div className="flex gap-2 justify-end">
                                       {/* Approve Option */}
@@ -1095,14 +1069,14 @@ export const AdminPanel = () => {
                                           onClick={() => handleUpdateStatus(profile.uid, "approved")}
                                           disabled={isOperating}
                                           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-400 border border-emerald-500/20 hover:border-emerald-500/30 font-bold text-[10px] uppercase tracking-wider transition-all disabled:opacity-50 cursor-pointer"
-                                          title="Approve User Access"
+                                          title={t("Approve User Access")}
                                         >
                                           {isOperating ? (
                                             <div className="w-3.5 h-3.5 border border-emerald-400/30 border-t-emerald-400 rounded-full animate-spin" />
                                           ) : (
                                             <UserCheck size={12} />
                                           )}
-                                          <span>Approve</span>
+                                          <span>{t("Approve")}</span>
                                         </button>
                                       )}
 
@@ -1112,14 +1086,14 @@ export const AdminPanel = () => {
                                           onClick={() => handleUpdateStatus(profile.uid, "blocked")}
                                           disabled={isOperating}
                                           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-600/10 hover:bg-red-600/20 text-red-400 border border-red-500/20 hover:border-red-500/30 font-bold text-[10px] uppercase tracking-wider transition-all disabled:opacity-50 cursor-pointer"
-                                          title="Block/Suspend User Access"
+                                          title={t("Block/Suspend User Access")}
                                         >
                                           {isOperating ? (
                                             <div className="w-3.5 h-3.5 border border-red-400/30 border-t-red-400 rounded-full animate-spin" />
                                           ) : (
                                             <UserX size={12} />
                                           )}
-                                          <span>Block</span>
+                                          <span>{t("Block")}</span>
                                         </button>
                                       )}
                                     </div>
@@ -1137,10 +1111,9 @@ export const AdminPanel = () => {
                 <div className="p-4 bg-indigo-950/20 border border-indigo-500/20 rounded-xl flex items-start gap-3">
                   <ShieldCheck size={18} className="text-indigo-400 mt-0.5 shrink-0" />
                   <div className="space-y-1">
-                    <span className="text-[11px] font-bold text-white uppercase tracking-wider block">Access Protocol Notice</span>
+                    <span className="text-[11px] font-bold text-white uppercase tracking-wider block">{t("Access Protocol Notice")}</span>
                     <p className="text-[10px] text-zinc-400 leading-relaxed">
-                      This panel integrates direct synchronization with the Firebase Firestore database schema. Approved users gain immediate entry to the 3D customizer. Blocked or pending users are immediately routed to a secure access-gated screen upon logging in.
-                    </p>
+                       {t("This panel integrates direct synchronization with the Firebase Firestore database schema. Approved users gain immediate entry to the 3D customizer. Blocked or pending users are immediately routed to a secure access-gated screen upon logging in.")} </p>
                   </div>
                 </div>
               </div>

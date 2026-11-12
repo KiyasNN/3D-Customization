@@ -26,6 +26,16 @@ export function getModelBounds(root: Object3D): Box3 {
   return bounds;
 }
 
+// Keep the near plane proportional to model size, rather than almost at zero.
+// A tiny near plane wastes depth precision and makes close logo surfaces flicker.
+export function getModelClipPlanes(radius: number, distance: number) {
+  const safeRadius = Math.max(radius, 0.001);
+  return {
+    near: Math.max(safeRadius * 0.001, Math.min(safeRadius * 0.05, Math.max(distance - safeRadius, 0) * 0.5)),
+    far: Math.max(distance + safeRadius * 4, safeRadius * 10),
+  };
+}
+
 export function getPerspectiveFit(camera: PerspectiveCamera, bounds: Box3, direction: Vector3) {
   if (bounds.isEmpty()) return null;
   const center = bounds.getCenter(new Vector3());
@@ -39,8 +49,8 @@ export function getPerspectiveFit(camera: PerspectiveCamera, bounds: Box3, direc
   }
   return {
     center,
+    radius,
     position: center.clone().add(viewDirection.normalize().multiplyScalar(distance)),
-    near: Math.max(distance / 10000, 0.00001),
-    far: Math.max(distance + radius * 4, 1),
+    ...getModelClipPlanes(radius, distance),
   };
 }

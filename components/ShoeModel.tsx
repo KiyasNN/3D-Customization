@@ -1522,12 +1522,6 @@ const RecursiveMeshPart = React.memo(({ object, interactive, videoTexture }: any
     const updatePartConfig = useStore(s => s.updatePartConfig);
     const isDragging = useStore(s => s.isDragging);
 
-    useEffect(() => {
-      const slots = Array.isArray(object.material) ? object.material : [object.material];
-      useStore.getState().setPartMaterialSlots(id, slots.map((mat, index) => mat?.name || `Material ${index + 1}`));
-      return () => useStore.getState().setPartMaterialSlots(id, []);
-    }, [id, object.material]);
-
     const baseMaterial = useMemo(() => {
         if (!matId && object.material) {
             const baseMat = Array.isArray(object.material) ? object.material[0] : object.material;
