@@ -2774,21 +2774,23 @@ export const Interface: React.FC = () => {
         </div>
       )}
 
-      {/* BRANDING OVERLAY (TOP-LEFT) */}
-      <div className="fixed top-4 left-4 z-[95] flex items-center gap-3 pointer-events-auto select-none">
-        <div className="flex items-center gap-2 bg-zinc-950/80 backdrop-blur-md px-4 py-2.5 rounded-xl border border-white/10 shadow-2xl transition-all">
-          <div className={`w-2.5 h-2.5 rounded-full ${getThemeColorClass(saasConfig.themeColor).bg} animate-pulse`} />
-          <span className="text-xs font-bold text-white tracking-tight">
+      {/* Studio identity and account share a row so they never overlap tools. */}
+      <header className="relative z-[95] flex shrink-0 items-center justify-between gap-3 px-4 pt-4 pointer-events-none select-none">
+      {/* Studio identity */}
+      <div className="flex min-w-0 items-center pointer-events-auto">
+        <div className="flex h-11 min-w-0 items-center gap-2.5 rounded-xl border border-white/10 bg-zinc-950/80 px-3 backdrop-blur-md shadow-lg">
+          <div className={`h-2 w-2 shrink-0 rounded-full ${getThemeColorClass(saasConfig.themeColor).bg}`} />
+          <span title={saasConfig.appName} className="truncate text-xs font-semibold tracking-tight text-zinc-100">
             {saasConfig.appName}
           </span>
-          <span className="text-[9px] font-semibold text-zinc-500 bg-white/5 px-1.5 py-0.5 rounded border border-white/5 uppercase tracking-wider hidden md:inline-block">
+          <span className="text-[9px] font-semibold text-zinc-500 bg-white/5 px-1.5 py-0.5 rounded border border-white/5 uppercase tracking-wider hidden xl:inline-block">
             Active Tenant
           </span>
         </div>
       </div>
 
-      {/* USER & ADMIN CONTROLS OVERLAY (TOP-RIGHT) */}
-      <div className="fixed top-4 right-4 z-[95] flex items-center gap-2 pointer-events-auto select-none">
+      {/* Account controls */}
+      <div className="flex shrink-0 items-center gap-2 pointer-events-auto">
         {!user ? (
           <div className="flex items-center gap-2">
             <button
@@ -2821,22 +2823,22 @@ export const Interface: React.FC = () => {
             {(user.email === "kitoruyasiru@gmail.com" || user.email === "eggplosion") && (
               <button
                 onClick={() => setAdminPanelOpen(true)}
-                className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white border border-indigo-500/30 shadow-lg transition-all hover:scale-105 active:scale-95 animate-[pulse_3s_infinite]"
+                className="flex h-11 items-center gap-2 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white border border-indigo-500/30 shadow-lg transition-colors"
                 title="Open Admin Control Panel"
               >
                 <Sliders size={13} className="text-white" />
-                <span className="text-[10px] font-bold uppercase tracking-wider">Admin Panel</span>
+                <span className="hidden lg:inline text-[10px] font-bold uppercase tracking-wider">Admin Panel</span>
               </button>
             )}
             
-            <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-950/80 border border-white/10 text-zinc-300">
-              <User size={12} className={(user.email === "kitoruyasiru@gmail.com" || user.email === "eggplosion") ? "text-indigo-400 animate-pulse" : "text-zinc-400"} />
+            <div className="flex h-11 items-center gap-2.5 px-3 rounded-xl bg-zinc-950/80 backdrop-blur-md border border-white/10 text-zinc-300 shadow-lg">
+              <User size={12} className="shrink-0 text-zinc-400" />
               <div className="flex flex-col">
-                <span className="text-[10px] font-semibold max-w-[120px] truncate leading-tight">
+                <span title={user.email} className="max-w-[90px] sm:max-w-[180px] truncate text-[11px] font-medium leading-tight text-zinc-200">
                   {user.email}
                 </span>
                 {!(user.email === "kitoruyasiru@gmail.com" || user.email === "eggplosion") && userProfile?.trialExpiresAt && (
-                  <span className={`text-[8px] uppercase tracking-wider font-bold ${Date.now() < userProfile.trialExpiresAt ? 'text-green-400' : 'text-red-400'}`}>
+                  <span className={`mt-0.5 text-[9px] uppercase tracking-wide font-semibold ${Date.now() < userProfile.trialExpiresAt ? 'text-green-400' : 'text-red-400'}`}>
                     {Date.now() < userProfile.trialExpiresAt ? `Trial (${Math.ceil((userProfile.trialExpiresAt - Date.now()) / (1000 * 60 * 60 * 24))} hari)` : 'Trial Habis'}
                   </span>
                 )}
@@ -2846,7 +2848,7 @@ export const Interface: React.FC = () => {
                   await signOut();
                   setAdminPanelOpen(false); // Close admin panel if open
                 }}
-                className="ml-1 text-zinc-500 hover:text-red-400 transition-colors"
+                className="ml-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border-l border-white/10 text-zinc-500 hover:bg-white/5 hover:text-red-400 transition-colors"
                 title="Sign Out"
               >
                 <LogOut size={12} />
@@ -2855,6 +2857,8 @@ export const Interface: React.FC = () => {
           </div>
         )}
       </div>
+
+      </header>
 
       <AdminPanel />
 
