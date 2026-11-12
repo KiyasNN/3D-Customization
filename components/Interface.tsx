@@ -3057,7 +3057,7 @@ const LeftPanel = ({ showLeftPanel, setShowLeftPanel }: any) => {
                       onDoubleClick={(e) => e.stopPropagation()}
                       className={`relative h-3.5 w-6 shrink-0 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-indigo-400 ${groupMoveEnabled[groupName] !== false ? "bg-indigo-500" : "bg-zinc-700"}`}
                     >
-                      <span className={`absolute top-0.5 h-2.5 w-2.5 rounded-full bg-white transition-transform ${groupMoveEnabled[groupName] !== false ? "translate-x-3" : "translate-x-0.5"}`} />
+                      <span className={`absolute left-0.5 top-0.5 h-2.5 w-2.5 rounded-full bg-white transition-transform ${groupMoveEnabled[groupName] !== false ? "translate-x-2.5" : "translate-x-0"}`} />
                     </button>
                   </div>
                 </div>
