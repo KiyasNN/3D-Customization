@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { LanguagePicker } from './components/LanguagePicker';
+import { useTheme } from './services/theme';
 import { t, useLanguage } from './services/i18n';
 import React, { Suspense, useEffect, useState, useRef, useLayoutEffect, useMemo } from 'react';
 import { Canvas } from '@react-three/fiber';
@@ -541,6 +542,7 @@ const SandFloor = () => {
 };
 
 const Floor = () => {
+  const { theme } = useTheme();
   const currentFloor = useStore(s => s.currentFloor);
   const isWalking = useStore(s => s.isWalking);
   const isMobile = useStore(s => s.isMobile);
@@ -572,7 +574,7 @@ const Floor = () => {
     return (
       <mesh name="studio-floor" rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} receiveShadow>
          <planeGeometry args={[50, 50]} />
-         <meshStandardMaterial color="#151515" roughness={0.7} metalness={0.5} />
+         <meshStandardMaterial color={theme === "light" ? "#dbe2eb" : "#151515"} roughness={0.7} metalness={0.5} />
       </mesh>
     );
   }
@@ -591,7 +593,7 @@ const Floor = () => {
           depthScale={1.2}
           minDepthThreshold={0.4}
           maxDepthThreshold={1.4}
-          color="#151515"
+          color={theme === "light" ? "#dbe2eb" : "#151515"}
           metalness={0.5}
           mirror={0.7}
        />
@@ -677,6 +679,7 @@ const RendererConfig = () => {
 
 export default function App() {
   useLanguage();
+  const { theme } = useTheme();
   const user = useStore(s => s.user);
   const setUser = useStore(s => s.setUser);
   const userProfile = useStore(s => s.userProfile);
@@ -836,7 +839,7 @@ export default function App() {
 
   if (checkingAuth) {
     return (
-      <div className="w-full h-screen bg-[#09090b] flex flex-col items-center justify-center font-sans">
+      <div className="w-full h-screen bg-[var(--app-background)] flex flex-col items-center justify-center font-sans">
         <div className="fixed top-4 right-4 z-[110]"><LanguagePicker /></div>
         <div className="flex flex-col items-center gap-4">
           <div className="w-10 h-10 border-2 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" />
@@ -851,13 +854,13 @@ export default function App() {
 
   if (!user) {
     return (
-      <div className="w-full h-screen bg-[#09090b] flex items-center justify-center font-sans relative overflow-hidden select-none">
+      <div className="w-full h-screen bg-[var(--app-background)] flex items-center justify-center font-sans relative overflow-hidden select-none">
         <div className="fixed top-4 right-4 z-[110]"><LanguagePicker /></div>
         {/* Abstract Background Accents */}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_40%,rgba(79,70,229,0.08),transparent_65%)]" />
         
         <div className="relative w-full max-w-[370px] md:max-w-[420px] mx-4 z-10 pointer-events-auto">
-          <div className="bg-[#121214] border border-zinc-800/50 rounded-[32px] p-6 sm:p-8 shadow-2xl flex flex-col gap-5 text-center">
+          <div className="bg-[var(--app-surface)] border border-zinc-800/50 rounded-[32px] p-6 sm:p-8 shadow-2xl flex flex-col gap-5 text-center">
             
             {/* Header / Brand */}
             <div className="flex flex-col items-center gap-1.5 mb-1">
@@ -943,7 +946,7 @@ export default function App() {
                   value={authEmail}
                   onChange={(e) => setAuthEmail(e.target.value)}
                   placeholder={t("Email address")}
-                  className="w-full bg-[#18181c] border border-zinc-800/80 focus:border-zinc-700 rounded-full px-5 py-3.5 text-sm text-zinc-200 placeholder-zinc-500 focus:outline-none transition-all font-sans"
+                  className="w-full bg-[var(--app-field)] border border-zinc-800/80 focus:border-zinc-700 rounded-full px-5 py-3.5 text-sm text-zinc-200 placeholder-zinc-500 focus:outline-none transition-all font-sans"
                   autoCapitalize="none"
                   autoCorrect="off"
                   spellCheck={false}
@@ -959,7 +962,7 @@ export default function App() {
                     value={authPassword}
                     onChange={(e) => setAuthPassword(e.target.value)}
                     placeholder={t("Password")}
-                    className="w-full bg-[#18181c] border border-zinc-800/80 focus:border-zinc-700 rounded-full pl-5 pr-12 py-3.5 text-sm text-zinc-200 placeholder-zinc-500 focus:outline-none transition-all font-sans"
+                    className="w-full bg-[var(--app-field)] border border-zinc-800/80 focus:border-zinc-700 rounded-full pl-5 pr-12 py-3.5 text-sm text-zinc-200 placeholder-zinc-500 focus:outline-none transition-all font-sans"
                     required
                   />
                   <button
@@ -982,7 +985,7 @@ export default function App() {
                       value={authConfirmPassword}
                       onChange={(e) => setAuthConfirmPassword(e.target.value)}
                       placeholder={t("Confirm password")}
-                      className="w-full bg-[#18181c] border border-zinc-800/80 focus:border-zinc-700 rounded-full pl-5 pr-12 py-3.5 text-sm text-zinc-200 placeholder-zinc-500 focus:outline-none transition-all font-sans"
+                      className="w-full bg-[var(--app-field)] border border-zinc-800/80 focus:border-zinc-700 rounded-full pl-5 pr-12 py-3.5 text-sm text-zinc-200 placeholder-zinc-500 focus:outline-none transition-all font-sans"
                       required
                     />
                     <button
@@ -1001,7 +1004,7 @@ export default function App() {
                       value={authCode}
                       onChange={(e) => setAuthCode(e.target.value)}
                       placeholder={t("Code")}
-                      className="w-full bg-[#18181c] border border-zinc-800/80 focus:border-zinc-700 rounded-full pl-5 pr-28 py-3.5 text-sm text-zinc-200 placeholder-zinc-500 focus:outline-none transition-all font-sans"
+                      className="w-full bg-[var(--app-field)] border border-zinc-800/80 focus:border-zinc-700 rounded-full pl-5 pr-28 py-3.5 text-sm text-zinc-200 placeholder-zinc-500 focus:outline-none transition-all font-sans"
                       required
                     />
                     <div className="absolute inset-y-0 right-0 flex items-center pr-4">
@@ -1409,7 +1412,7 @@ export default function App() {
                           window.location.hostname.includes("localhost");
     
     return (
-      <div className="w-full h-screen bg-[#09090b] flex items-center justify-center font-sans relative overflow-hidden select-none">
+      <div className="w-full h-screen bg-[var(--app-background)] flex items-center justify-center font-sans relative overflow-hidden select-none">
         <div className="fixed top-4 right-4 z-[110]"><LanguagePicker /></div>
         {/* Background Accents */}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_40%,rgba(79,70,229,0.1),transparent_60%)]" />
@@ -1546,7 +1549,7 @@ export default function App() {
 
   if (user && !userProfile) {
     return (
-      <div className="w-full h-screen bg-[#09090b] flex flex-col items-center justify-center font-sans">
+      <div className="w-full h-screen bg-[var(--app-background)] flex flex-col items-center justify-center font-sans">
         <div className="fixed top-4 right-4 z-[110]"><LanguagePicker /></div>
         <div className="flex flex-col items-center gap-4">
           <div className="w-10 h-10 border-2 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" />
@@ -1566,7 +1569,7 @@ export default function App() {
     // Only block if they are explicitly blocked, OR if their trial has expired AND they are still pending
     if (isBlocked || (!isTrialActive && userProfile.status === 'pending')) {
       return (
-      <div className="w-full h-screen bg-[#09090b] flex items-center justify-center font-sans relative overflow-hidden select-none">
+      <div className="w-full h-screen bg-[var(--app-background)] flex items-center justify-center font-sans relative overflow-hidden select-none">
         <div className="fixed top-4 right-4 z-[110]"><LanguagePicker /></div>
         {/* Background Accents */}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_40%,rgba(79,70,229,0.1),transparent_60%)]" />
@@ -1650,8 +1653,8 @@ export default function App() {
           {/* Apply background color and fog if environment background is disabled. */}
           {!showEnvironmentBackground && (
             <>
-              <color attach="background" args={['#080808']} />
-              <fog attach="fog" args={['#080808', 8, 30]} />
+              <color attach="background" args={[theme === 'light' ? '#f1f5f9' : '#080808']} />
+              <fog attach="fog" args={[theme === 'light' ? '#f1f5f9' : '#080808', 8, 30]} />
             </>
           )}
           

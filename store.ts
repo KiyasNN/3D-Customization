@@ -1,3 +1,4 @@
+import { mergeAutomaticPartGroups } from './services/partNames';
 import { create } from 'zustand';
 import { 
   AppState, 
@@ -701,7 +702,8 @@ export const useStore = create<AppState>((set, get) => ({
     };
 
     return { 
-      customParts: parts, 
+      customParts: parts,
+      partGroups: mergeAutomaticPartGroups(parts, state.partGroups),
       partVisibility: newVisibility,
       history: [initialHistoryEntry],
       historyIndex: 0

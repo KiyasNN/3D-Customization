@@ -1,3 +1,4 @@
+import { formatPartName } from '../services/partNames';
 import { LanguagePicker } from './LanguagePicker';
 import { t, useLanguage } from '../services/i18n';
 import React, { useState, useRef, useEffect } from "react";
@@ -920,12 +921,7 @@ const PartProperties = () => {
   const getDisplayName = (id: string) => {
     const preset = SHOE_PARTS.find((p) => p.id === id);
     if (preset) return preset.name;
-    // Fallback: beautify ID
-    return id
-      .replace(/[_-]/g, " ")
-      .replace(/([A-Z])/g, " $1")
-      .replace(/^./, (str) => str.toUpperCase())
-      .trim();
+    return formatPartName(id);
   };
 
   const savedAnnotation = selectedPart ? partAnnotations[selectedPart] : null;
@@ -2774,7 +2770,7 @@ const LeftPanel = ({ showLeftPanel, setShowLeftPanel }: any) => {
   const displayParts = React.useMemo(() => {
     if (!effectiveModel) return [];
     if (effectiveModel.id === "demo-shoe") return SHOE_PARTS;
-    return customParts.map((id) => ({ id, name: id }));
+    return customParts.map((id) => ({ id, name: formatPartName(id) }));
   }, [effectiveModel, customParts]);
   const selectedPart = useStore((s) => s.selectedPart);
   const selectedParts = useStore((s) => s.selectedParts || []);
@@ -3093,7 +3089,7 @@ const LeftPanel = ({ showLeftPanel, setShowLeftPanel }: any) => {
                             size={10}
                             className={`${isPartSelected ? "text-white" : isPartMultiSelected ? "text-blue-300" : "text-zinc-500"}`}
                           />
-                          <span className="truncate flex-1" title={part.name}>
+                          <span className="truncate flex-1" title={part.id}>
                             {part.name}
                           </span>
                           {isPartSelected && <CheckCircle size={10} className="text-white/80 shrink-0 ml-1" />}
@@ -3163,7 +3159,7 @@ const LeftPanel = ({ showLeftPanel, setShowLeftPanel }: any) => {
                       size={10}
                       className={`${isPartSelected ? "text-white" : isPartMultiSelected ? "text-blue-300" : "text-zinc-500"}`}
                     />
-                    <span className="truncate flex-1" title={part.name}>
+                    <span className="truncate flex-1" title={part.id}>
                       {part.name}
                     </span>
                     {isPartSelected && <CheckCircle size={10} className="text-white/80 shrink-0 ml-1" />}
@@ -3352,7 +3348,7 @@ const RightPanel = ({ activeTab, showLeftPanel, onStartCamera, onStopCamera, onE
   const displayParts = React.useMemo(() => {
     if (!effectiveModel) return [];
     if (effectiveModel.id === "demo-shoe") return SHOE_PARTS;
-    return useStore.getState().customParts.map((id) => ({ id, name: id }));
+    return useStore.getState().customParts.map((id) => ({ id, name: formatPartName(id) }));
   }, [effectiveModel]);
 
   const handleAssetUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
