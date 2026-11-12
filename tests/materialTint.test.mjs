@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { MeshStandardMaterial, MeshPhysicalMaterial, Texture } from 'three';
+import { MeshStandardMaterial, MeshPhysicalMaterial, Texture, DataTexture } from 'three';
 import { tintMaterial, configureImportedMaterial } from '../services/materialTint.ts';
 
 test('palette changes base color while preserving imported maps and PBR settings', () => {
@@ -84,4 +84,37 @@ test('roughness overrides cover all slots without modifying shared originals', (
   assert.deepEqual(source.map(m => m.roughness), [0.2, 0.9]);
   assert.ok(edited.every(m => m.wireframe));
   assert.ok(source.every(m => !m.wireframe));
+});
+
+test('palette replaces dark imported albedo but retains normal and PBR maps', () => {
+  const darkMap = new DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1);
+  const source = new MeshPhysicalMaterial({ color: '#000000', map: darkMap,
+    normalMap: new Texture(), roughnessMap: new Texture(), metalnessMap: new Texture(),
+    aoMap: new Texture(), roughness: 0.4, metalness: 0.1, vertexColors: true });
+  const colored = tintMaterial(source, '#ff0000', undefined, true);
+  assert.equal(colored.color.getHexString(), 'ff0000');
+  assert.equal(colored.map, null);
+  assert.equal(colored.vertexColors, false);
+  for (const key of ['normalMap', 'roughnessMap', 'metalnessMap', 'aoMap', 'roughness', 'metalness']) {
+    assert.equal(colored[key], source[key], key);
+  }
+  assert.equal(source.map, darkMap);
+  assert.equal(source.vertexColors, true);
+  assert.equal(source.color.getHexString(), '000000');
+  assert.equal(tintMaterial(source, undefined, undefined, true), source);
+});
+
+test('solid GLB palette color preserves cutout alpha without sampling diffuse RGB', () => {
+  const source = new MeshStandardMaterial({ map: new Texture(), alphaTest: 0.5 });
+  let sourceHookCalled = false;
+  source.onBeforeCompile = () => { sourceHookCalled = true; };
+  const colored = tintMaterial(source, '#ffffff', undefined, true);
+  const shader = { fragmentShader: '#include <map_fragment>', uniforms: {} };
+  colored.onBeforeCompile(shader, {});
+  assert.equal(sourceHookCalled, true);
+  assert.equal(colored.map, source.map);
+  assert.equal(colored.alphaTest, 0.5);
+  assert.match(shader.fragmentShader, /diffuseColor\.a \*= sampledDiffuseColor\.a/);
+  assert.doesNotMatch(shader.fragmentShader, /diffuseColor \*= sampledDiffuseColor/);
+  assert.notEqual(colored.customProgramCacheKey(), source.customProgramCacheKey());
 });

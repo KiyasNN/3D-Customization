@@ -1,4 +1,4 @@
-import { Color, Material } from 'three';
+import { Color, Material, ShaderChunk } from 'three';
 
 function cloneMaterial(original: Material): Material {
   const clone = original.clone();
@@ -21,7 +21,7 @@ export function configureImportedMaterial<T extends Material | Material[]>(sourc
 
 // Clone material instances, retaining shared texture resources and shader hooks.
 // A selected part must never recolor another mesh sharing its imported material.
-export function tintMaterial<T extends Material | Material[]>(source: T, color?: string, slots?: Record<number, string>): T {
+export function tintMaterial<T extends Material | Material[]>(source: T, color?: string, slots?: Record<number, string>, replaceBaseColorMap = false): T {
   if (!color && !Object.keys(slots || {}).length) return source;
   const tint = (original: Material, index: number) => {
     const slotColor = slots?.[index] ?? color;
@@ -29,6 +29,27 @@ export function tintMaterial<T extends Material | Material[]>(source: T, color?:
     const result = cloneMaterial(original);
     if (slotColor && 'color' in result && result.color instanceof Color) {
       result.color.set(slotColor);
+      if (replaceBaseColorMap) {
+        // Imported albedo and vertex colors must not darken the selected color.
+        if ('vertexColors' in result) result.vertexColors = false;
+        if ('map' in result && result.map) {
+          if (result.transparent || result.alphaTest > 0 || result.alphaHash) {
+            // GLB base-color maps may also carry cutout alpha. Keep that channel
+            // without multiplying the chosen diffuse RGB by the original map.
+            const beforeCompile = result.onBeforeCompile;
+            const sourceCacheKey = original.customProgramCacheKey();
+            result.onBeforeCompile = function(shader, renderer) {
+              beforeCompile.call(this, shader, renderer);
+              shader.fragmentShader = shader.fragmentShader
+                .replace('#include <map_fragment>', ShaderChunk.map_fragment)
+                .replace('diffuseColor *= sampledDiffuseColor;', 'diffuseColor.a *= sampledDiffuseColor.a;');
+            };
+            result.customProgramCacheKey = () => sourceCacheKey + '|solid-base-color-alpha';
+          } else {
+            result.map = null;
+          }
+        }
+      }
     }
     return result;
   };

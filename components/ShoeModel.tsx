@@ -14,8 +14,8 @@ import { SHOE_PARTS } from '../constants';
 import { Material, TextureConfig } from '../types';
 
 
-const usePaletteTint = (base: THREE.Material | THREE.Material[], color?: string, slots?: Record<number, string>) => {
-  const tinted = useMemo(() => tintMaterial(base, color, slots), [base, color, slots]);
+const usePaletteTint = (base: THREE.Material | THREE.Material[], color?: string, slots?: Record<number, string>, replaceBaseColorMap = false) => {
+  const tinted = useMemo(() => tintMaterial(base, color, slots, replaceBaseColorMap), [base, color, slots, replaceBaseColorMap]);
   useEffect(() => () => {
     if (tinted !== base) {
       const instances = Array.isArray(tinted) ? tinted : [tinted];
@@ -1542,7 +1542,7 @@ const RecursiveMeshPart = React.memo(({ object, interactive, videoTexture }: any
       }
     }, [baseMaterial, matId, object.material]);
 
-    const material = usePaletteTint(baseMaterial, config.diffuseColor, config.slotDiffuseColors);
+    const material = usePaletteTint(baseMaterial, config.diffuseColor, config.slotDiffuseColors, !matId && !!object.material);
 
     const meshRef = useRef<THREE.Mesh>(null);
     const isDraggingGizmo = useRef(false);
