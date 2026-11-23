@@ -621,6 +621,7 @@ const _tempLocalStart = new THREE.Vector3();
 const _tempLocalEnd = new THREE.Vector3();
 const _tempCurrentEnd = new THREE.Vector3();
 const _tempRestPos = new THREE.Vector3();
+const LABEL_SIDE_HYSTERESIS = 0.3; // NDC units
 
 // --- Smart Annotation Manager ---
 const AnnotationManager = ({ scene }: { scene: THREE.Group }) => {
@@ -636,6 +637,7 @@ const AnnotationManager = ({ scene }: { scene: THREE.Group }) => {
   const { camera } = useThree();
   
   const progressRefs = useRef<Record<string, number>>({});
+  const labelSideRef = useRef<Record<string, boolean>>({});
   const lastSelectedRef = useRef<string | null>(null);
 
   const labelGroupsRef = useRef<Record<string, THREE.Group>>({});
@@ -708,11 +710,18 @@ const AnnotationManager = ({ scene }: { scene: THREE.Group }) => {
        cache.worldPos.copy(_tempWorldPos);
        cache.screenPos.copy(_tempScreenPos);
 
+       // Sticky side: only switch columns once the part is clearly on the other half of the screen,
+       // so labels don't flip back and forth while the camera orbits.
+       const prevRight = labelSideRef.current[id];
+       const isRight = prevRight === undefined ? _tempScreenPos.x >= 0
+          : prevRight ? _tempScreenPos.x > -LABEL_SIDE_HYSTERESIS : _tempScreenPos.x > LABEL_SIDE_HYSTERESIS;
+       labelSideRef.current[id] = isRight;
+
        active.push({
           id,
           worldPos: cache.worldPos,
           screenPos: cache.screenPos,
-          isRight: _tempScreenPos.x >= 0,
+          isRight,
           data
        });
     });
