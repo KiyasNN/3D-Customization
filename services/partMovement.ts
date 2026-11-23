@@ -59,3 +59,13 @@ export function cancelPartMove(session: PartMoveSession) {
     holdUntil.delete(object);
   });
 }
+
+// World position a part would have with no drag/explode offset applied. Annotation
+// labels anchor here so they stay put while the user moves the part around.
+export function getPartRestWorldPosition(object: Object3D, localCenter: Vector3, target: Vector3): Vector3 {
+  const meta = metadata.get(object);
+  object.updateWorldMatrix(true, false);
+  target.copy(localCenter).applyMatrix4(object.matrix);
+  if (meta) target.sub(object.position).add(meta.basePosition);
+  return object.parent ? target.applyMatrix4(object.parent.matrixWorld) : target;
+}

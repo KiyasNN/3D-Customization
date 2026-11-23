@@ -9,7 +9,7 @@ import { OBJLoader, GLTFLoader, SkeletonUtils } from 'three-stdlib';
 import { USDLoader } from 'three/examples/jsm/loaders/USDLoader.js';
 import { useStore } from '../store';
 import { setWorldDragPosition } from '../services/dragPosition';
-import { beginPartMove, cancelPartMove, finishPartMove, isPartMoving, PartMoveSession, registerPartMovement, syncPartMove } from '../services/partMovement';
+import { beginPartMove, cancelPartMove, finishPartMove, getPartRestWorldPosition, isPartMoving, PartMoveSession, registerPartMovement, syncPartMove } from '../services/partMovement';
 import { tintMaterial, configureImportedMaterial } from '../services/materialTint';
 import { SHOE_PARTS } from '../constants';
 import { Material, TextureConfig } from '../types';
@@ -620,6 +620,7 @@ const _tempNdc = new THREE.Vector3();
 const _tempLocalStart = new THREE.Vector3();
 const _tempLocalEnd = new THREE.Vector3();
 const _tempCurrentEnd = new THREE.Vector3();
+const _tempRestPos = new THREE.Vector3();
 
 // --- Smart Annotation Manager ---
 const AnnotationManager = ({ scene }: { scene: THREE.Group }) => {
@@ -683,20 +684,18 @@ const AnnotationManager = ({ scene }: { scene: THREE.Group }) => {
           progressRefs.current[id] = Math.min(progressRefs.current[id] + delta * 3, 1);
        }
 
-       _tempWorldPos.set(0, 0, 0);
-       if ((mesh as THREE.Mesh).geometry) {
-          if (!mesh.geometry.boundingBox) mesh.geometry.computeBoundingBox();
-          if (mesh.geometry.boundingBox) {
-             mesh.geometry.boundingBox.getCenter(_tempCenter);
-             _tempWorldPos.copy(_tempCenter).applyMatrix4(mesh.matrixWorld);
-          } else {
-             mesh.getWorldPosition(_tempWorldPos);
-          }
-       } else {
-          mesh.getWorldPosition(_tempWorldPos);
+       _tempCenter.set(0, 0, 0);
+       const geometry = (mesh as THREE.Mesh).geometry;
+       if (geometry) {
+          if (!geometry.boundingBox) geometry.computeBoundingBox();
+          geometry.boundingBox?.getCenter(_tempCenter);
        }
+       // Leader line starts at the part's live position...
+       _tempWorldPos.copy(_tempCenter).applyMatrix4(mesh.matrixWorld);
+       // ...but the label is laid out from its rest position, so dragging a part doesn't move its label.
+       getPartRestWorldPosition(mesh, _tempCenter, _tempRestPos);
 
-       _tempScreenPos.copy(_tempWorldPos).project(camera);
+       _tempScreenPos.copy(_tempRestPos).project(camera);
        if (_tempScreenPos.z > 1) return;
 
        if (!preallocatedPositions.current[id]) {
