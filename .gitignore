@@ -12,3 +12,6 @@ dist/
 # Logs and system files
 *.log
 .DS_Store
+
+# Test scratch output
+tmp/
