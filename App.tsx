@@ -13,6 +13,8 @@ import { EffectComposer, Bloom, Vignette, Noise, ChromaticAberration, TiltShift2
 import * as THREE from 'three';
 import { getModelBounds, getPerspectiveFit, getModelClipPlanes } from './services/cameraFit';
 import { RGBELoader, EXRLoader } from 'three-stdlib';
+import { GalleryPlayer } from './components/GalleryPlayer';
+import { registerGalleryView, useGalleryStore } from './services/gallery';
 import { Interface } from './components/Interface';
 import { ShoeModel } from './components/ShoeModel';
 import { Mannequin } from './components/Mannequin'; // Import Mannequin
@@ -103,6 +105,72 @@ const SceneManager = () => {
   return null;
 }
 
+// Annotation labels are HTML overlays, so they aren't in the WebGL frame; paint them onto the thumbnail.
+const drawAnnotationLabels = (ctx: CanvasRenderingContext2D, canvasRect: DOMRect, scale: number) => {
+  document.querySelectorAll<HTMLElement>('[data-gallery-label]').forEach(label => {
+    const rect = label.getBoundingClientRect();
+    if (!rect.width) return;
+    const x = (rect.left - canvasRect.left) * scale;
+    const y = (rect.top - canvasRect.top) * scale;
+    const w = rect.width * scale;
+    const h = rect.height * scale;
+    ctx.fillStyle = label.dataset.selected ? 'rgba(30,58,138,0.85)' : 'rgba(24,24,27,0.85)';
+    ctx.strokeStyle = label.dataset.selected ? 'rgba(96,165,250,0.9)' : 'rgba(255,255,255,0.25)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.roundRect?.(x, y, w, h, 3 * scale);
+    if (!ctx.roundRect) ctx.rect(x, y, w, h);
+    ctx.fill();
+    ctx.stroke();
+    // Labels are CSS-scaled with distance, which computed font sizes don't include.
+    const k = scale * (label.offsetHeight ? rect.height / label.offsetHeight : 1);
+    let lineY = y + 6 * k;
+    Array.from(label.children).forEach(child => {
+      const text = (child as HTMLElement).innerText?.trim();
+      if (!text) return;
+      const style = getComputedStyle(child);
+      const size = Math.max(6, parseFloat(style.fontSize) * k);
+      ctx.font = `${style.fontWeight} ${size}px ${style.fontFamily}`;
+      ctx.fillStyle = style.color;
+      ctx.textBaseline = 'top';
+      ctx.fillText(text, x + 12 * k, lineY, w - 18 * k);
+      lineY += size * 1.35;
+    });
+  });
+};
+
+// Lets the gallery read the current view and grab a thumbnail of the canvas.
+const GalleryViewBridge = () => {
+  const { gl, camera, controls } = useThree();
+  useEffect(() => {
+    registerGalleryView({
+      getCamera: () => {
+        const target = (controls as any)?.target as THREE.Vector3 | undefined;
+        return {
+          position: camera.position.toArray() as [number, number, number],
+          target: (target ? target.toArray() : [0, 0.5, 0]) as [number, number, number],
+        };
+      },
+      captureFrame: () => {
+        const source = gl.domElement;
+        if (!source.width || !source.height) return null;
+        const width = 480;
+        const height = Math.round(width * source.height / source.width);
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return null;
+        ctx.drawImage(source, 0, 0, width, height);
+        drawAnnotationLabels(ctx, source.getBoundingClientRect(), width / source.clientWidth);
+        return canvas.toDataURL('image/jpeg', 0.85);
+      },
+    });
+    return () => registerGalleryView(null);
+  }, [gl, camera, controls]);
+  return null;
+};
+
 // Controls the camera animation based on store state
 const CameraRig = ({ sceneRef }: { sceneRef: React.RefObject<THREE.Group> }) => {
   const cameraRequest = useStore(s => s.cameraRequest);
@@ -113,6 +181,7 @@ const CameraRig = ({ sceneRef }: { sceneRef: React.RefObject<THREE.Group> }) => 
   const targetPos = useRef<THREE.Vector3 | null>(null);
   const targetTarget = useRef<THREE.Vector3 | null>(null);
   const isAnimating = useRef(false);
+  const animationFrames = useRef(0);
   const fittedBounds = useRef<{ center: THREE.Vector3; radius: number } | null>(null);
 
   // When a new camera request comes in, start animating
@@ -121,6 +190,7 @@ const CameraRig = ({ sceneRef }: { sceneRef: React.RefObject<THREE.Group> }) => 
       targetPos.current = new THREE.Vector3(...cameraRequest.position);
       targetTarget.current = new THREE.Vector3(...cameraRequest.target);
       isAnimating.current = true;
+      animationFrames.current = 0;
     }
   }, [cameraRequest]);
 
@@ -184,9 +254,11 @@ const CameraRig = ({ sceneRef }: { sceneRef: React.RefObject<THREE.Group> }) => 
          orbitControls.update();
       }
 
-      // Stop animating when we are close enough
-      if (camera.position.distanceTo(targetPos.current) < 0.01 &&
-          (!orbitControls || orbitControls.target.distanceTo(targetTarget.current) < 0.01)) {
+      // Stop animating when we are close enough. The frame cap keeps auto-rotate
+      // (which moves the camera every frame) from holding the animation open forever.
+      animationFrames.current += 1;
+      if (animationFrames.current > 120 || (camera.position.distanceTo(targetPos.current) < 0.01 &&
+          (!orbitControls || orbitControls.target.distanceTo(targetTarget.current) < 0.01))) {
         isAnimating.current = false;
       }
     }
@@ -805,8 +877,13 @@ export default function App() {
   
   // Calculate control states
   const isRecording = recordingStatus === 'recording';
-  const shouldAutoRotate = isTurntableActive && !isRecording && !isWalking;
-  const computedTurntableSpeed = turntableSettings.direction === 'clockwise' ? turntableSpeed : -turntableSpeed;
+  const galleryPlaying = useGalleryStore(s => s.playing);
+  const galleryRotating = useGalleryStore(s => s.playing && !s.paused);
+  const turntableRotating = isTurntableActive && !isRecording && !isWalking;
+  // The gallery slideshow slowly orbits each saved scene.
+  const shouldAutoRotate = turntableRotating || galleryRotating;
+  const computedTurntableSpeed = !turntableRotating && galleryRotating ? 0.8
+    : turntableSettings.direction === 'clockwise' ? turntableSpeed : -turntableSpeed;
   const controlsEnabled = !isRecording; 
 
   const isDemo = currentModel?.id === 'demo-shoe';
@@ -1664,6 +1741,7 @@ export default function App() {
 
              {/* Snapshot Listener */}
              <ScreenshotHandler />
+             <GalleryViewBridge />
              
              {/* Camera Animation Rig */}
              <CameraRig sceneRef={sceneRef} />
@@ -1706,7 +1784,8 @@ export default function App() {
                target={[0, 0.5, 0]} // Lowered target to center on volume
             />
 
-            {/* Bottom-left Axis Guide */}
+            {/* Bottom-left Axis Guide (hidden while presenting the gallery) */}
+            {!galleryPlaying && (
             <GizmoHelper
                alignment="bottom-left"
                margin={[80, 80]}
@@ -1716,6 +1795,7 @@ export default function App() {
                   labelColor="white" 
                />
             </GizmoHelper>
+            )}
           </Suspense>
         </Canvas>
       </div>
@@ -1738,9 +1818,10 @@ export default function App() {
         </div>
       )}
 
-      <div className="absolute inset-0 z-10 pointer-events-none">
+      <div className={`absolute inset-0 z-10 pointer-events-none ${galleryPlaying ? 'hidden' : ''}`}>
         <Interface />
       </div>
+      {galleryPlaying && <GalleryPlayer />}
 
       <LoadingOverlay />
 

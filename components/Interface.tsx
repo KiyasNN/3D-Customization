@@ -4,6 +4,7 @@ import { t, useLanguage } from '../services/i18n';
 import React, { useState, useRef, useEffect } from "react";
 import { useStore, DEMO_ASSET } from "../store";
 import { GuidedTour } from "./GuidedTour";
+import { GalleryPanel } from "./GalleryPanel";
 import { AssetBrowser } from "./AssetBrowser";
 import { AdminPanel } from "./AdminPanel";
 import { onAuthStateChanged, signOut, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "../services/firebase";
@@ -85,6 +86,7 @@ import {
   LogOut,
   ShieldCheck,
   UserPlus,
+  GalleryHorizontalEnd,
 } from "lucide-react";
 
 // Reusable Slider Component
@@ -1080,7 +1082,7 @@ export const Interface: React.FC = () => {
   const [authError, setAuthError] = useState("");
 
   const [activeTab, setActiveTab] = useState<
-    "dashboard" | "models" | "materials" | "colors" | "light"
+    "dashboard" | "models" | "materials" | "colors" | "light" | "gallery"
   >("dashboard");
 
   const [showWalkModal, setShowWalkModal] = useState(false);
@@ -2721,6 +2723,7 @@ export const Interface: React.FC = () => {
               { id: "materials", icon: Layers, label: "Materials" },
               { id: "colors", icon: Palette, label: "Colors" },
               { id: "light", icon: Sun, label: "Light" },
+              { id: "gallery", icon: GalleryHorizontalEnd, label: "Gallery" },
             ];
             return items;
           })().map((tab) => (
@@ -3523,7 +3526,7 @@ const RightPanel = ({ activeTab, showLeftPanel, onStartCamera, onStopCamera, onE
       >
         <div className="p-3 border-b border-white/5 bg-white/5 backdrop-blur-xl flex justify-between items-center shrink-0">
           <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400">
-            {activeTab === "dashboard" ? t("My Design Variants") : activeTab === "models" ? t("3D Library") : activeTab === "colors" ? t("Color Palette") : activeTab === "light" ? t("Environment") : selectedPart ? t("Editing: {0}", [displayParts.find((p) => p.id === selectedPart)?.name || selectedPart]) : t("Select a part")}
+            {activeTab === "gallery" ? t("Gallery") : activeTab === "dashboard" ? t("My Design Variants") : activeTab === "models" ? t("3D Library") : activeTab === "colors" ? t("Color Palette") : activeTab === "light" ? t("Environment") : selectedPart ? t("Editing: {0}", [displayParts.find((p) => p.id === selectedPart)?.name || selectedPart]) : t("Select a part")}
           </h3>
           <div className="flex gap-2 items-center">
             {activeTab === "dashboard" && savedVariants.length > 0 && (
@@ -3578,6 +3581,8 @@ const RightPanel = ({ activeTab, showLeftPanel, onStartCamera, onStopCamera, onE
         <div
           className={`p-2 ${isMobile ? "max-h-[40vh] overflow-y-auto" : ""}`}
         >
+          {activeTab === "gallery" && <GalleryPanel />}
+
           {activeTab === "dashboard" && (
             <div>
               {savedVariants.length === 0 ? (

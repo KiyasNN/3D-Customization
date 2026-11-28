@@ -809,7 +809,7 @@ const AnnotationManager = ({ scene }: { scene: THREE.Group }) => {
                             className="flex flex-col transition-all duration-300 origin-center"
                             style={{ transform: `scale(${labelSize * (selectedPart === id ? 1.1 : 1.0)})`, transformOrigin: 'center' }}
                           >
-                            <div className={`
+                            <div data-gallery-label="" data-selected={selectedPart === id ? 'true' : undefined} className={`
                                 px-3 py-1.5 rounded backdrop-blur-md border shadow-lg flex flex-col gap-0.5
                                 ${selectedPart === id ? 'bg-blue-900/80 border-blue-400' : 'bg-zinc-900/80 border-white/20'}
                             `}>

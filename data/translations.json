@@ -2074,5 +2074,93 @@
   "Switch to dark mode": [
     "Switch to dark mode",
     "Ganti ke mode gelap"
+  ],
+  "Gallery": [
+    "Gallery",
+    "Galeri"
+  ],
+  "Saving…": [
+    "Saving…",
+    "Menyimpan…"
+  ],
+  "Save to Gallery": [
+    "Save to Gallery",
+    "Simpan ke Galeri"
+  ],
+  "Play slideshow": [
+    "Play slideshow",
+    "Putar tayangan"
+  ],
+  "Play": [
+    "Play",
+    "Putar"
+  ],
+  "Seconds per slide": [
+    "Seconds per slide",
+    "Detik per tampilan"
+  ],
+  "{0} s": [
+    "{0} s",
+    "{0} dtk"
+  ],
+  "No gallery items yet.": [
+    "No gallery items yet.",
+    "Galeri masih kosong."
+  ],
+  "Explode, arrange and annotate a model, then save it here.": [
+    "Explode, arrange and annotate a model, then save it here.",
+    "Explode, atur, dan beri anotasi pada model, lalu simpan di sini."
+  ],
+  "Open in editor": [
+    "Open in editor",
+    "Buka di editor"
+  ],
+  "Opening…": [
+    "Opening…",
+    "Membuka…"
+  ],
+  "Rename": [
+    "Rename",
+    "Ganti nama"
+  ],
+  "Play from here": [
+    "Play from here",
+    "Putar dari sini"
+  ],
+  "Delete \"{0}\" from the gallery?": [
+    "Delete \"{0}\" from the gallery?",
+    "Hapus \"{0}\" dari galeri?"
+  ],
+  "Saved in this browser only. Clearing site data removes the gallery.": [
+    "Saved in this browser only. Clearing site data removes the gallery.",
+    "Hanya tersimpan di browser ini. Menghapus data situs akan menghapus galeri."
+  ],
+  "Loading…": [
+    "Loading…",
+    "Memuat…"
+  ],
+  "Previous": [
+    "Previous",
+    "Sebelumnya"
+  ],
+  "Resume": [
+    "Resume",
+    "Lanjutkan"
+  ],
+  "Pause": [
+    "Pause",
+    "Jeda"
+  ],
+  "Exit slideshow": [
+    "Exit slideshow",
+    "Keluar dari tayangan"
+  ],
+  "Browser storage is full. Delete some gallery items and try again.": [
+    "Browser storage is full. Delete some gallery items and try again.",
+    "Penyimpanan browser penuh. Hapus beberapa item galeri lalu coba lagi."
+  ],
+  "This gallery item no longer exists.": [
+    "This gallery item no longer exists.",
+    "Item galeri ini sudah tidak ada."
   ]
 }

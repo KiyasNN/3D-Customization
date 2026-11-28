@@ -81,3 +81,7 @@ html[data-theme="light"] .custom-scrollbar::-webkit-scrollbar-thumb:hover { back
 html[data-theme="light"] :is(.shadow-2xl, .shadow-xl, .shadow-lg) {
   box-shadow: 0 8px 24px rgb(15 23 42 / 0.08), 0 1px 3px rgb(15 23 42 / 0.05);
 }
+
+/* Gallery slideshow: time remaining on the current slide */
+@keyframes gallery-progress { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.gallery-progress { animation-name: gallery-progress; animation-timing-function: linear; animation-fill-mode: forwards; }
