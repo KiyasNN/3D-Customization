@@ -798,7 +798,11 @@ const AnnotationManager = ({ scene }: { scene: THREE.Group }) => {
                 
                  <group ref={(el) => { if(el) labelGroupsRef.current[id] = el; }}>
                    {use3DLabels ? (
-                      <ThreeLabel data={data} isSelected={selectedPart === id} />
+                      // Text loads its font on demand; keep that suspension local so a slow or
+                      // unreachable font can't unmount the whole model.
+                      <React.Suspense fallback={null}>
+                        <ThreeLabel data={data} isSelected={selectedPart === id} />
+                      </React.Suspense>
                    ) : (
                       <Html distanceFactor={8} zIndexRange={[100, 0]} center>
                           <div 
